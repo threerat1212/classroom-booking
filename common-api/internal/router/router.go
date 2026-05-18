@@ -120,6 +120,13 @@ func New(cfg *config.Config, h *handler.Handlers) *gin.Engine {
 
 		protected.GET("/leaderboard", h.User.Leaderboard)
 
+		ai := protected.Group("/ai")
+		{
+			ai.POST("/chat", h.AI.Chat)
+			ai.GET("/chat/sessions", h.AI.ListSessions)
+			ai.GET("/chat/sessions/:id/messages", h.AI.ListMessages)
+		}
+
 		protected.GET("/export/attendance", middleware.RequireRoles("teacher", "admin"), h.Export.Attendance)
 		protected.GET("/export/grades", middleware.RequireRoles("teacher", "admin"), h.Export.Grades)
 	}

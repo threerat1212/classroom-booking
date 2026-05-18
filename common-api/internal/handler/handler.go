@@ -17,6 +17,7 @@ type Handlers struct {
 	Notification *NotificationHandler
 	Badge        *BadgeHandler
 	Export       *ExportHandler
+	AI           *AIHandler
 }
 
 func NewHandlers(services *service.Services, cfg *config.Config) *Handlers {
@@ -32,5 +33,6 @@ func NewHandlers(services *service.Services, cfg *config.Config) *Handlers {
 		Notification: NewNotificationHandler(services.Notification),
 		Badge:        NewBadgeHandler(services.Badge),
 		Export:       NewExportHandler(services.Export),
+		AI:           NewAIHandler(services.AI),
 	}
 }

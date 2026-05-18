@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
 import { Button } from '@/components/ui/button'
+import { AIChatWidget } from '@/components/shared/ai-chat'
 import { 
   Calendar, Home, LogOut, Settings, Users, BookOpen, 
   ClipboardList, Award, UserCircle, DoorOpen, Bell, 
@@ -214,6 +215,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <main className="flex-1 overflow-y-auto bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
         <div className="mx-auto max-w-7xl p-6">{children}</div>
       </main>
+
+      {/* AI Chat - only for students */}
+      {user?.role === 'student' && <AIChatWidget />}
     </div>
   )
 }

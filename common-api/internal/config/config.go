@@ -13,6 +13,7 @@ type Config struct {
 	APIPort          string `mapstructure:"API_PORT"`
 	UploadDir        string `mapstructure:"UPLOAD_DIR"`
 	GoogleClientID   string `mapstructure:"GOOGLE_CLIENT_ID"`
+	GLMAPIKey        string `mapstructure:"GLM_API_KEY"`
 }
 
 func Load() *Config {
@@ -32,6 +33,7 @@ func Load() *Config {
 	_ = viper.BindEnv("PORT")
 	_ = viper.BindEnv("GOOGLE_CLIENT_ID")
 	_ = viper.BindEnv("UPLOAD_DIR")
+	_ = viper.BindEnv("GLM_API_KEY")
 
 	if err := viper.ReadInConfig(); err != nil {
 		log.Println("No .env file found, using environment variables")
