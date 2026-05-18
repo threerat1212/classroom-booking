@@ -11,12 +11,14 @@ import (
 func CORSMiddleware() gin.HandlerFunc {
 	return cors.New(cors.Config{
 		AllowOriginFunc: func(origin string) bool {
-			// Allow any localhost / 127.0.0.1 origin on any port (covers
-			// Next dev server, Vite, and Windsurf browser-preview proxy).
+			// Allow localhost (dev) + production domains
 			return strings.HasPrefix(origin, "http://localhost:") ||
 				strings.HasPrefix(origin, "http://127.0.0.1:") ||
 				strings.HasPrefix(origin, "https://localhost:") ||
-				strings.HasPrefix(origin, "https://127.0.0.1:")
+				strings.HasPrefix(origin, "https://127.0.0.1:") ||
+				strings.HasSuffix(origin, ".netlify.app") ||
+				strings.HasSuffix(origin, ".onrender.com") ||
+				strings.HasSuffix(origin, ".vercel.app")
 		},
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization", "X-Requested-With"},
