@@ -90,3 +90,12 @@ func (h *UserHandler) Delete(c *gin.Context) {
 	}
 	response.NoContent(c)
 }
+
+func (h *UserHandler) Leaderboard(c *gin.Context) {
+	users, err := h.service.Leaderboard(c.Request.Context(), 20)
+	if err != nil {
+		response.InternalError(c, err.Error())
+		return
+	}
+	response.OK(c, users)
+}

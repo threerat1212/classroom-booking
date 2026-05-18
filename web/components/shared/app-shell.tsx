@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { 
   Calendar, Home, LogOut, Settings, Users, BookOpen, 
   ClipboardList, Award, UserCircle, DoorOpen, Bell, 
-  LayoutDashboard, ChevronRight, Sparkles, Building2
+  LayoutDashboard, ChevronRight, Sparkles, Building2, Trophy
 } from 'lucide-react'
 
 interface NavSection {
@@ -55,6 +55,7 @@ const navSections: NavSection[] = [
     items: [
       { href: '/student/dashboard', label: 'My Dashboard', icon: Home, roles: ['student'] },
       { href: '/student/assignments', label: 'My Assignments', icon: BookOpen, roles: ['student'] },
+      { href: '/student/leaderboard', label: 'Leaderboard', icon: Trophy, roles: ['student'] },
       { href: '/student/notifications', label: 'Notifications', icon: Bell, roles: ['student'], badge: 0 },
       { href: '/student/badges', label: 'Badges', icon: Award, roles: ['student'] },
     ],

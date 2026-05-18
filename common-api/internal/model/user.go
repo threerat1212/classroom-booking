@@ -17,6 +17,9 @@ type User struct {
 	Phone      *string    `json:"phone,omitempty"`
 	AvatarURL  *string    `json:"avatar_url,omitempty"`
 	Status     string     `json:"status"`
+	XP         int        `json:"xp"`
+	Level      int        `json:"level"`
+	RankTitle  *string    `json:"rank_title,omitempty"`
 	LastLogin  *time.Time `json:"last_login_at,omitempty"`
 	CreatedAt  time.Time  `json:"created_at"`
 	UpdatedAt  time.Time  `json:"updated_at"`

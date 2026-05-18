@@ -6,6 +6,9 @@ export interface StoredUser {
   email: string
   full_name: string
   role: 'admin' | 'teacher' | 'student' | 'guest'
+  xp?: number
+  level?: number
+  rank_title?: string
 }
 
 export function getAccessToken(): string | null {

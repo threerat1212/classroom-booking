@@ -59,7 +59,7 @@ export default function RegisterPage() {
 
     setLoading(true)
     try {
-      const res = await apiFetch<{ data: { access_token: string; user: { id: string; email: string; full_name: string; role: string } } }>(
+      const res = await apiFetch<{ data: { access_token: string; user: { id: string; email: string; full_name: string; role: string; xp?: number; level?: number; rank_title?: string } } }>(
         '/api/v1/auth/register',
         {
           method: 'POST',
@@ -77,6 +77,9 @@ export default function RegisterPage() {
         email: res.data.user.email,
         full_name: res.data.user.full_name,
         role: res.data.user.role as 'admin' | 'teacher' | 'student' | 'guest',
+        xp: res.data.user.xp,
+        level: res.data.user.level,
+        rank_title: res.data.user.rank_title,
       })
       document.cookie = `access_token=${res.data.access_token}; path=/; max-age=86400`
       setSuccess(true)

@@ -118,6 +118,8 @@ func New(cfg *config.Config, h *handler.Handlers) *gin.Engine {
 			badges.GET("/my", h.Badge.MyBadges)
 		}
 
+		protected.GET("/leaderboard", h.User.Leaderboard)
+
 		protected.GET("/export/attendance", middleware.RequireRoles("teacher", "admin"), h.Export.Attendance)
 		protected.GET("/export/grades", middleware.RequireRoles("teacher", "admin"), h.Export.Grades)
 	}
