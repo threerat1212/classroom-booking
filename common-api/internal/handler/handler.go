@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"classroom-api/internal/config"
 	"classroom-api/internal/service"
 )
 
@@ -18,9 +19,9 @@ type Handlers struct {
 	Export       *ExportHandler
 }
 
-func NewHandlers(services *service.Services) *Handlers {
+func NewHandlers(services *service.Services, cfg *config.Config) *Handlers {
 	return &Handlers{
-		Auth:         NewAuthHandler(services.Auth, services.User),
+		Auth:         NewAuthHandler(services.Auth, services.User, cfg),
 		User:         NewUserHandler(services.User),
 		Room:         NewRoomHandler(services.Room),
 		Booking:      NewBookingHandler(services.Booking),

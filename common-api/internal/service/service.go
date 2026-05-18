@@ -2,7 +2,12 @@ package service
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
+	"net/http"
+	"strings"
 	"time"
 
 	"classroom-api/internal/auth"
@@ -45,8 +50,8 @@ func NewServices(db *pgxpool.Pool, cfg *config.Config) *Services {
 }
 
 type AuthService struct {
-	db         *pgxpool.Pool
-	jwtSecret  string
+	db            *pgxpool.Pool
+	jwtSecret     string
 	refreshSecret string
 }
 
@@ -128,6 +133,144 @@ func (s *AuthService) Refresh(ctx context.Context, refreshToken string) (*model.
 		RefreshToken: tp.RefreshToken,
 		ExpiresIn:    tp.ExpiresIn,
 	}, nil
+}
+
+func (s *AuthService) Register(ctx context.Context, req model.RegisterRequest) (*model.TokenResponse, *model.User, error) {
+	userSvc := NewUserService(s.db)
+
+	// check if email already exists
+	_, _, err := userSvc.GetByEmail(ctx, req.Email)
+	if err == nil {
+		return nil, nil, fmt.Errorf("email already registered")
+	}
+
+	role := req.Role
+	if role == "" {
+		role = "student"
+	}
+
+	createReq := model.CreateUserRequest{
+		Email:    req.Email,
+		Password: req.Password,
+		FullName: req.FullName,
+		Role:     role,
+	}
+	u, err := userSvc.Create(ctx, createReq)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	tp, err := auth.GenerateTokenPair(u.ID, u.Email, u.Role, s.jwtSecret, s.refreshSecret)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	_, err = s.db.Exec(ctx,
+		`INSERT INTO refresh_tokens (user_id, token_hash, expires_at) VALUES ($1, $2, now() + interval '7 days')
+		 ON CONFLICT (token_hash) DO UPDATE SET expires_at = EXCLUDED.expires_at, revoked_at = NULL`,
+		u.ID, tp.RefreshToken)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	_, _ = s.db.Exec(ctx, `UPDATE users SET last_login_at = now() WHERE id = $1`, u.ID)
+
+	return &model.TokenResponse{
+		AccessToken:  tp.AccessToken,
+		RefreshToken: tp.RefreshToken,
+		ExpiresIn:    tp.ExpiresIn,
+	}, u, nil
+}
+
+func (s *AuthService) GoogleLogin(ctx context.Context, credential, expectedClientID string) (*model.TokenResponse, *model.User, error) {
+	// Verify Google ID token using Google's tokeninfo endpoint
+	tokenInfoURL := "https://oauth2.googleapis.com/tokeninfo?id_token=" + credential
+	res, err := http.Get(tokenInfoURL)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to verify token with Google: %w", err)
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusOK {
+		return nil, nil, fmt.Errorf("invalid google token")
+	}
+
+	var tokenInfo struct {
+		Iss           string `json:"iss"`
+		Aud           string `json:"aud"`
+		Sub           string `json:"sub"`
+		Email         string `json:"email"`
+		Name          string `json:"name"`
+		Picture       string `json:"picture"`
+		EmailVerified string `json:"email_verified"`
+	}
+	if err := json.NewDecoder(res.Body).Decode(&tokenInfo); err != nil {
+		return nil, nil, fmt.Errorf("failed to decode token info: %w", err)
+	}
+
+	// Validate issuer
+	if tokenInfo.Iss != "https://accounts.google.com" && tokenInfo.Iss != "accounts.google.com" {
+		return nil, nil, fmt.Errorf("invalid token issuer")
+	}
+
+	// Validate audience (client ID)
+	if expectedClientID != "" && tokenInfo.Aud != expectedClientID {
+		return nil, nil, fmt.Errorf("invalid token audience")
+	}
+
+	if strings.ToLower(tokenInfo.EmailVerified) != "true" {
+		return nil, nil, fmt.Errorf("email not verified")
+	}
+
+	userSvc := NewUserService(s.db)
+	u, _, err := userSvc.GetByEmail(ctx, tokenInfo.Email)
+	if err != nil {
+		// User doesn't exist — create new user with OAuth
+		createReq := model.CreateUserRequest{
+			Email:     tokenInfo.Email,
+			Password:  randomPassword(),
+			FullName:  tokenInfo.Name,
+			Role:      "student",
+			AvatarURL: &tokenInfo.Picture,
+		}
+		u, err = userSvc.Create(ctx, createReq)
+		if err != nil {
+			return nil, nil, err
+		}
+	} else {
+		// Update avatar if changed
+		if tokenInfo.Picture != "" && (u.AvatarURL == nil || *u.AvatarURL != tokenInfo.Picture) {
+			_, _ = s.db.Exec(ctx, `UPDATE users SET avatar_url = $1, updated_at = now() WHERE id = $2`, tokenInfo.Picture, u.ID)
+			u.AvatarURL = &tokenInfo.Picture
+		}
+	}
+
+	tp, err := auth.GenerateTokenPair(u.ID, u.Email, u.Role, s.jwtSecret, s.refreshSecret)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	_, err = s.db.Exec(ctx,
+		`INSERT INTO refresh_tokens (user_id, token_hash, expires_at) VALUES ($1, $2, now() + interval '7 days')
+		 ON CONFLICT (token_hash) DO UPDATE SET expires_at = EXCLUDED.expires_at, revoked_at = NULL`,
+		u.ID, tp.RefreshToken)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	_, _ = s.db.Exec(ctx, `UPDATE users SET last_login_at = now() WHERE id = $1`, u.ID)
+
+	return &model.TokenResponse{
+		AccessToken:  tp.AccessToken,
+		RefreshToken: tp.RefreshToken,
+		ExpiresIn:    tp.ExpiresIn,
+	}, u, nil
+}
+
+func randomPassword() string {
+	b := make([]byte, 32)
+	_, _ = rand.Read(b)
+	return hex.EncodeToString(b)
 }
 
 func (s *AuthService) RevokeRefreshToken(ctx context.Context, token string) error {

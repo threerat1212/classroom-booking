@@ -36,6 +36,7 @@ type CreateUserRequest struct {
 	EmployeeID *string `json:"employee_id,omitempty"`
 	Department *string `json:"department,omitempty"`
 	Phone      *string `json:"phone,omitempty"`
+	AvatarURL  *string `json:"avatar_url,omitempty"`
 }
 
 type UpdateUserRequest struct {
@@ -46,6 +47,17 @@ type UpdateUserRequest struct {
 	Department *string `json:"department,omitempty"`
 	Phone      *string `json:"phone,omitempty"`
 	Status     *string `json:"status,omitempty" binding:"omitempty,oneof=active inactive suspended"`
+}
+
+type RegisterRequest struct {
+	Email    string `json:"email" binding:"required,email"`
+	Password string `json:"password" binding:"required,min=6"`
+	FullName string `json:"full_name" binding:"required"`
+	Role     string `json:"role" binding:"omitempty,oneof=student guest"`
+}
+
+type GoogleLoginRequest struct {
+	Credential string `json:"credential" binding:"required"`
 }
 
 type TokenResponse struct {

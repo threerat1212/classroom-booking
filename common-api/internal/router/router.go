@@ -25,6 +25,8 @@ func New(cfg *config.Config, h *handler.Handlers) *gin.Engine {
 	auth := api.Group("/auth")
 	{
 		auth.POST("/login", h.Auth.Login)
+		auth.POST("/register", h.Auth.Register)
+		auth.POST("/google-login", h.Auth.GoogleLogin)
 		auth.POST("/refresh", h.Auth.Refresh)
 		auth.POST("/logout", h.Auth.Logout)
 	}

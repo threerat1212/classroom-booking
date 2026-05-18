@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -55,7 +56,6 @@ export default function LoginPage() {
         full_name: res.data.user.full_name,
         role: res.data.user.role as 'admin' | 'teacher' | 'student' | 'guest',
       })
-      // Also set cookie so middleware can read it
       document.cookie = `access_token=${res.data.access_token}; path=/; max-age=86400`
       router.push('/dashboard')
     } catch (err: any) {
@@ -67,16 +67,11 @@ export default function LoginPage() {
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-slate-950 p-4">
-      {/* Animated gradient background */}
       <div className="absolute inset-0 bg-gradient-to-br from-indigo-950 via-slate-900 to-blue-950" />
-      
-      {/* Floating orbs */}
       <FloatingOrb className="top-20 left-1/4 h-72 w-72 bg-blue-600" delay={0} />
       <FloatingOrb className="bottom-20 right-1/4 h-96 w-96 bg-indigo-600" delay={2} />
       <FloatingOrb className="top-1/2 left-10 h-48 w-48 bg-purple-600" delay={4} />
-      
-      {/* Grid pattern overlay */}
-      <div 
+      <div
         className="absolute inset-0 opacity-[0.03]"
         style={{
           backgroundImage: `linear-gradient(rgba(255,255,255,.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.1) 1px, transparent 1px)`,
@@ -90,10 +85,8 @@ export default function LoginPage() {
         transition={{ duration: 0.5, ease: 'easeOut' }}
         className="relative z-10 w-full max-w-md"
       >
-        {/* Glass card */}
         <div className="rounded-2xl border border-white/10 bg-white/5 p-8 shadow-2xl backdrop-blur-xl">
-          {/* Logo area */}
-          <motion.div 
+          <motion.div
             className="flex flex-col items-center text-center"
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -110,9 +103,8 @@ export default function LoginPage() {
             </p>
           </motion.div>
 
-          {/* Form */}
-          <motion.form 
-            onSubmit={handleSubmit} 
+          <motion.form
+            onSubmit={handleSubmit}
             className="mt-8 space-y-5"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -122,12 +114,12 @@ export default function LoginPage() {
               <Label htmlFor="email" className="text-sm font-medium text-slate-300">
                 Email
               </Label>
-              <Input 
-                id="email" 
-                type="email" 
-                value={email} 
-                onChange={(e) => setEmail(e.target.value)} 
-                required 
+              <Input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
                 placeholder="you@school.edu"
                 className="border-white/10 bg-white/5 text-white placeholder:text-slate-500 focus-visible:ring-blue-500 focus-visible:ring-offset-0 focus-visible:bg-white/10 transition-colors"
               />
@@ -136,18 +128,17 @@ export default function LoginPage() {
               <Label htmlFor="password" className="text-sm font-medium text-slate-300">
                 Password
               </Label>
-              <Input 
-                id="password" 
-                type="password" 
-                value={password} 
-                onChange={(e) => setPassword(e.target.value)} 
-                required 
+              <Input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
                 placeholder="Enter your password"
                 className="border-white/10 bg-white/5 text-white placeholder:text-slate-500 focus-visible:ring-blue-500 focus-visible:ring-offset-0 focus-visible:bg-white/10 transition-colors"
               />
             </div>
-            
-            {/* Error with animation */}
+
             {error && (
               <motion.div
                 initial={{ opacity: 0, height: 0 }}
@@ -159,9 +150,9 @@ export default function LoginPage() {
                 <p className="text-sm text-red-300">{error}</p>
               </motion.div>
             )}
-            
-            <Button 
-              type="submit" 
+
+            <Button
+              type="submit"
               className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:from-blue-600 hover:to-indigo-700 shadow-lg shadow-blue-500/25 transition-all duration-300"
               disabled={loading}
             >
@@ -174,11 +165,29 @@ export default function LoginPage() {
                 'Sign In'
               )}
             </Button>
+
+            <div className="relative py-1">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-white/10" />
+              </div>
+              <div className="relative flex justify-center text-xs">
+                <span className="bg-slate-900/50 px-3 text-slate-500">or</span>
+              </div>
+            </div>
+
+            <Link href="/register" className="block w-full">
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full border-white/20 bg-white/5 text-white hover:bg-white/10 hover:text-white hover:border-white/30 transition-all duration-300"
+              >
+                Sign Up
+              </Button>
+            </Link>
           </motion.form>
 
-          {/* Footer */}
-          <motion.p 
-            className="mt-6 text-center text-xs text-slate-500"
+          <motion.p
+            className="mt-4 text-center text-xs text-slate-500"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.5 }}

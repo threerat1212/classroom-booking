@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"classroom-api/internal/config"
 	"classroom-api/internal/model"
 	"classroom-api/internal/service"
 	"classroom-api/pkg/response"
@@ -12,10 +13,11 @@ import (
 type AuthHandler struct {
 	authService *service.AuthService
 	userService *service.UserService
+	cfg         *config.Config
 }
 
-func NewAuthHandler(authSvc *service.AuthService, userSvc *service.UserService) *AuthHandler {
-	return &AuthHandler{authService: authSvc, userService: userSvc}
+func NewAuthHandler(authSvc *service.AuthService, userSvc *service.UserService, cfg *config.Config) *AuthHandler {
+	return &AuthHandler{authService: authSvc, userService: userSvc, cfg: cfg}
 }
 
 func (h *AuthHandler) Login(c *gin.Context) {
@@ -60,6 +62,56 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 		AccessToken:  tokens.AccessToken,
 		RefreshToken: tokens.RefreshToken,
 		ExpiresIn:    tokens.ExpiresIn,
+	})
+}
+
+func (h *AuthHandler) Register(c *gin.Context) {
+	var req model.RegisterRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "VALIDATION_ERROR", err.Error())
+		return
+	}
+
+	tokens, user, err := h.authService.Register(c.Request.Context(), req)
+	if err != nil {
+		if err.Error() == "email already registered" {
+			response.Conflict(c, "EMAIL_EXISTS", "email already registered")
+			return
+		}
+		response.InternalError(c, "registration failed")
+		return
+	}
+
+	c.SetCookie("refresh_token", tokens.RefreshToken, 7*24*60*60, "/", "", false, true)
+
+	response.OK(c, model.TokenResponse{
+		AccessToken:  tokens.AccessToken,
+		RefreshToken: tokens.RefreshToken,
+		ExpiresIn:    tokens.ExpiresIn,
+		User:         user,
+	})
+}
+
+func (h *AuthHandler) GoogleLogin(c *gin.Context) {
+	var req model.GoogleLoginRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "VALIDATION_ERROR", err.Error())
+		return
+	}
+
+	tokens, user, err := h.authService.GoogleLogin(c.Request.Context(), req.Credential, h.cfg.GoogleClientID)
+	if err != nil {
+		response.Unauthorized(c, err.Error())
+		return
+	}
+
+	c.SetCookie("refresh_token", tokens.RefreshToken, 7*24*60*60, "/", "", false, true)
+
+	response.OK(c, model.TokenResponse{
+		AccessToken:  tokens.AccessToken,
+		RefreshToken: tokens.RefreshToken,
+		ExpiresIn:    tokens.ExpiresIn,
+		User:         user,
 	})
 }
 

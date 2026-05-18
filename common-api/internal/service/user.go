@@ -55,10 +55,10 @@ func (s *UserService) Create(ctx context.Context, req model.CreateUserRequest) (
 
 	var u model.User
 	err = s.db.QueryRow(ctx,
-		`INSERT INTO users (email, password_hash, full_name, role, student_id, employee_id, department, phone)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		`INSERT INTO users (email, password_hash, full_name, role, student_id, employee_id, department, phone, avatar_url)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 		 RETURNING id, email, full_name, role, student_id, employee_id, department, phone, avatar_url, status, last_login_at, created_at, updated_at`,
-		req.Email, hash, req.FullName, req.Role, req.StudentID, req.EmployeeID, req.Department, req.Phone,
+		req.Email, hash, req.FullName, req.Role, req.StudentID, req.EmployeeID, req.Department, req.Phone, req.AvatarURL,
 	).Scan(&u.ID, &u.Email, &u.FullName, &u.Role, &u.StudentID, &u.EmployeeID, &u.Department, &u.Phone, &u.AvatarURL, &u.Status, &u.LastLogin, &u.CreatedAt, &u.UpdatedAt)
 	if err != nil {
 		return nil, err

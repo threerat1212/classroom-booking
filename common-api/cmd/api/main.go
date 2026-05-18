@@ -33,7 +33,7 @@ func main() {
 	log.Info().Msg("database connected")
 
 	services := service.NewServices(db, cfg)
-	handlers := handler.NewHandlers(services)
+	handlers := handler.NewHandlers(services, cfg)
 
 	r := router.New(cfg, handlers)
 

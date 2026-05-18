@@ -12,6 +12,7 @@ type Config struct {
 	JWTRefreshSecret string `mapstructure:"JWT_REFRESH_SECRET"`
 	APIPort          string `mapstructure:"API_PORT"`
 	UploadDir        string `mapstructure:"UPLOAD_DIR"`
+	GoogleClientID   string `mapstructure:"GOOGLE_CLIENT_ID"`
 }
 
 func Load() *Config {
@@ -29,6 +30,7 @@ func Load() *Config {
 	_ = viper.BindEnv("JWT_REFRESH_SECRET")
 	_ = viper.BindEnv("API_PORT")
 	_ = viper.BindEnv("PORT")
+	_ = viper.BindEnv("GOOGLE_CLIENT_ID")
 	_ = viper.BindEnv("UPLOAD_DIR")
 
 	if err := viper.ReadInConfig(); err != nil {
