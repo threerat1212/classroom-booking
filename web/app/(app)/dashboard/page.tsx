@@ -9,6 +9,7 @@ import { listAssignments } from '@/lib/api/assignments'
 import { apiFetch } from '@/lib/http/client'
 import { Skeleton } from '@/components/ui/skeleton'
 import { roomKeys, bookingKeys, assignmentKeys, userKeys } from '@/lib/query/keys'
+import { useCurrentUser } from '@/hooks/useCurrentUser'
 
 interface User {
   id: string
@@ -97,8 +98,17 @@ function KPICard({ item, value, isLoading, index }: {
   )
 }
 
+const QUICK_ACTIONS = [
+  { label: 'New Booking', desc: 'Reserve a room', href: '/bookings/new', color: 'from-blue-500/20 to-blue-600/5', border: 'border-blue-500/20', roles: ['admin', 'teacher'] },
+  { label: 'New Assignment', desc: 'Create task', href: '/assignments/new', color: 'from-amber-500/20 to-amber-600/5', border: 'border-amber-500/20', roles: ['admin', 'teacher'] },
+  { label: 'View Calendar', desc: 'See schedule', href: '/calendar', color: 'from-emerald-500/20 to-emerald-600/5', border: 'border-emerald-500/20', roles: ['admin', 'teacher', 'student', 'guest'] },
+]
+
 export default function DashboardPage() {
   const stats = useDashboardStats()
+  const { role } = useCurrentUser()
+
+  const visibleActions = QUICK_ACTIONS.filter((a) => !role || a.roles.includes(role))
 
   return (
     <div className="space-y-8">
@@ -135,12 +145,8 @@ export default function DashboardPage() {
         transition={{ delay: 0.5 }}
       >
         <h2 className="mb-4 text-lg font-semibold text-white">Quick Actions</h2>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          {[
-            { label: 'New Booking', desc: 'Reserve a room', href: '/bookings/new', color: 'from-blue-500/20 to-blue-600/5', border: 'border-blue-500/20' },
-            { label: 'New Assignment', desc: 'Create task', href: '/assignments/new', color: 'from-amber-500/20 to-amber-600/5', border: 'border-amber-500/20' },
-            { label: 'View Calendar', desc: 'See schedule', href: '/calendar', color: 'from-emerald-500/20 to-emerald-600/5', border: 'border-emerald-500/20' },
-          ].map((action, i) => (
+        <div className={`grid grid-cols-1 gap-3 ${visibleActions.length === 1 ? '' : 'sm:grid-cols-3'}`}>
+          {visibleActions.map((action, i) => (
             <motion.a
               key={action.label}
               href={action.href}

@@ -56,11 +56,95 @@ function useRooms() {
   })
 }
 
+function getMonthGrid(date: Date): Date[] {
+  const year = date.getFullYear()
+  const month = date.getMonth()
+  const firstDayOfMonth = new Date(year, month, 1)
+  const startDay = firstDayOfMonth.getDay()
+  const daysInMonth = new Date(year, month + 1, 0).getDate()
+  const days: Date[] = []
+  for (let i = 0; i < startDay; i++) {
+    const d = new Date(year, month, -startDay + i + 1)
+    days.push(d)
+  }
+  for (let i = 1; i <= daysInMonth; i++) {
+    days.push(new Date(year, month, i))
+  }
+  const remaining = (7 - (days.length % 7)) % 7
+  for (let i = 1; i <= remaining; i++) {
+    days.push(new Date(year, month + 1, i))
+  }
+  return days
+}
+
+function MonthView({
+  date,
+  bookings,
+}: {
+  date: Date
+  bookings: Booking[]
+}) {
+  const days = getMonthGrid(date)
+  const monthName = date.toLocaleString('default', { month: 'long', year: 'numeric' })
+
+  const bookingsForDay = (day: Date) => {
+    const start = new Date(day)
+    start.setHours(0, 0, 0, 0)
+    const end = new Date(day)
+    end.setHours(23, 59, 59, 999)
+    return bookings.filter((b) => {
+      const bs = new Date(b.start_time)
+      return bs >= start && bs <= end
+    })
+  }
+
+  const isToday = (day: Date) => new Date().toDateString() === day.toDateString()
+  const isCurrentMonth = (day: Date) => day.getMonth() === date.getMonth()
+
+  return (
+    <div className="space-y-3">
+      <div className="text-center text-lg font-semibold text-white">{monthName}</div>
+      <div className="grid grid-cols-7 gap-1">
+        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
+          <div key={d} className="text-center text-xs font-medium uppercase text-slate-400 py-2">
+            {d}
+          </div>
+        ))}
+        {days.map((day, idx) => {
+          const dayBookings = bookingsForDay(day)
+          const today = isToday(day)
+          const currentMonth = isCurrentMonth(day)
+          return (
+            <div
+              key={idx}
+              className={`min-h-[80px] rounded-lg border p-2 ${today ? 'border-blue-500 ring-1 ring-blue-500' : 'border-white/10'} ${currentMonth ? 'bg-white/5' : 'bg-white/[0.02]'} transition-colors hover:bg-white/[0.07]`}
+            >
+              <div className={`text-sm font-semibold ${today ? 'text-blue-400' : currentMonth ? 'text-white' : 'text-slate-600'}`}>
+                {day.getDate()}
+              </div>
+              <div className="mt-1 space-y-0.5">
+                {dayBookings.slice(0, 2).map((b) => (
+                  <div key={b.id} className={`truncate rounded border px-1 py-0.5 text-[10px] font-medium ${statusColors[b.status] || 'bg-white/5 text-slate-300 border-white/10'}`}>
+                    {b.title}
+                  </div>
+                ))}
+                {dayBookings.length > 2 && (
+                  <div className="text-[10px] text-slate-500">+{dayBookings.length - 2} more</div>
+                )}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 export default function CalendarPage() {
   const { data: bookings, isLoading: bookingsLoading } = useBookings()
   const { data: rooms, isLoading: roomsLoading } = useRooms()
   const [currentDate, setCurrentDate] = useState(new Date())
-  const [view, setView] = useState<'week' | 'day'>('week')
+  const [view, setView] = useState<'month' | 'week' | 'day'>('month')
 
   const startOfWeek = new Date(currentDate)
   startOfWeek.setDate(currentDate.getDate() - currentDate.getDay())
@@ -74,13 +158,21 @@ export default function CalendarPage() {
 
   const prev = () => {
     const d = new Date(currentDate)
-    d.setDate(d.getDate() - (view === 'week' ? 7 : 1))
+    if (view === 'month') {
+      d.setMonth(d.getMonth() - 1)
+    } else {
+      d.setDate(d.getDate() - (view === 'week' ? 7 : 1))
+    }
     setCurrentDate(d)
   }
 
   const next = () => {
     const d = new Date(currentDate)
-    d.setDate(d.getDate() + (view === 'week' ? 7 : 1))
+    if (view === 'month') {
+      d.setMonth(d.getMonth() + 1)
+    } else {
+      d.setDate(d.getDate() + (view === 'week' ? 7 : 1))
+    }
     setCurrentDate(d)
   }
 
@@ -108,6 +200,12 @@ export default function CalendarPage() {
         <div className="flex items-center gap-2">
           <div className="flex rounded-md border border-white/10 bg-white/5 p-1">
             <button
+              onClick={() => setView('month')}
+              className={`rounded px-3 py-1 text-sm font-medium transition-colors ${view === 'month' ? 'bg-white/10 text-white' : 'text-slate-400 hover:text-slate-300'}`}
+            >
+              Month
+            </button>
+            <button
               onClick={() => setView('week')}
               className={`rounded px-3 py-1 text-sm font-medium transition-colors ${view === 'week' ? 'bg-white/10 text-white' : 'text-slate-400 hover:text-slate-300'}`}
             >
@@ -125,7 +223,9 @@ export default function CalendarPage() {
         </div>
       </div>
 
-      {view === 'week' ? (
+      {view === 'month' ? (
+        <MonthView date={currentDate} bookings={bookings ?? []} />
+      ) : view === 'week' ? (
         <div className="grid grid-cols-7 gap-2">
           {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
             <div key={d} className="text-center text-xs font-medium uppercase text-slate-400">

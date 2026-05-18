@@ -38,7 +38,7 @@ const navSections: NavSection[] = [
     title: 'Management',
     items: [
       { href: '/rooms', label: 'Rooms', icon: DoorOpen, roles: ['admin'] },
-      { href: '/bookings', label: 'Bookings', icon: Calendar, roles: ['admin', 'teacher', 'student'] },
+      { href: '/bookings', label: 'Bookings', icon: Calendar, roles: ['admin', 'teacher'] },
       { href: '/users', label: 'Users', icon: Users, roles: ['admin'] },
     ],
   },
