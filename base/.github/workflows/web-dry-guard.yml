@@ -1,0 +1,85 @@
+name: Web DRY Guard
+
+on:
+  pull_request:
+    paths:
+      - 'web/**'
+      - '.github/workflows/web-dry-guard.yml'
+      - 'docs/PROGRESS-TRACKER.md'
+      - 'web/README.md'
+      - '.github/instructions/web-dry-rules.instructions.md'
+  push:
+    branches:
+      - main
+    paths:
+      - 'web/**'
+      - '.github/workflows/web-dry-guard.yml'
+      - 'docs/PROGRESS-TRACKER.md'
+      - 'web/README.md'
+      - '.github/instructions/web-dry-rules.instructions.md'
+
+jobs:
+  dry-guard:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+
+      - name: Install dependencies
+        working-directory: web
+        run: pnpm install --frozen-lockfile
+
+      - name: Enforce DRY foundation guards
+        run: |
+          set -euo pipefail
+
+          echo "Checking fetch() usage is centralized..."
+          fetch_hits=$(rg -n "\\bfetch\\(" web --glob '!web/lib/http/client.ts' --glob '!web/.next/**' --glob '!web/node_modules/**' || true)
+          if [ -n "$fetch_hits" ]; then
+            echo "Found forbidden fetch() usage outside web/lib/http/client.ts"
+            echo "$fetch_hits"
+            exit 1
+          fi
+
+          echo "Checking getStoredUser() definition count..."
+          stored_user_count=$(rg -n "function getStoredUser" web | wc -l | tr -d ' ')
+          if [ "$stored_user_count" -ne 1 ]; then
+            echo "Expected exactly one getStoredUser() definition, found: $stored_user_count"
+            rg -n "function getStoredUser" web || true
+            exit 1
+          fi
+
+          echo "Checking direct ui/table imports outside canonical DataTable..."
+          table_hits=$(rg -n "from '@/components/ui/table'" web/components --glob '!web/components/data-table.tsx' --glob '!web/components/data-table/**' || true)
+          if [ -n "$table_hits" ]; then
+            echo "Found forbidden '@/components/ui/table' imports outside data-table components"
+            echo "$table_hits"
+            exit 1
+          fi
+
+          echo "Checking local FieldError reimplementations..."
+          field_error_hits=$(rg -n "function.*FieldError|<FieldError" web/components/debt-management || true)
+          if [ -n "$field_error_hits" ]; then
+            echo "Found forbidden local FieldError usage"
+            echo "$field_error_hits"
+            exit 1
+          fi
+
+      - name: Strict type and lint checks
+        working-directory: web
+        run: |
+          pnpm tsc --noEmit
+          pnpm lint --max-warnings=0

@@ -1,0 +1,55 @@
+# ====== Secrets ======
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# ====== Node / Next.js ======
+node_modules/
+.next/
+out/
+.turbo/
+.vercel/
+.netlify/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ====== Go ======
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+common-api/bin/
+common-api/tmp/
+
+# ====== PostgreSQL local ======
+pg/
+pgdata/
+pg.zip
+pg.log
+*.backup
+
+# ====== IDE ======
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# ====== Build artifacts ======
+dist/
+build/
+coverage/
+
+# ====== Uploads (runtime) ======
+uploads/
+common-api/uploads/
+
+# ====== Windsurf ======
+.windsurf/
+windsurf_deployment.yaml

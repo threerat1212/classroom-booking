@@ -1,0 +1,28 @@
+name: Validate Skills
+
+on:
+  pull_request:
+    paths:
+      - '.github/skills/**'
+      - '.github/instructions/**'
+      - '.github/copilot-instructions.md'
+      - 'Makefile'
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/skills/**'
+      - '.github/instructions/**'
+      - '.github/copilot-instructions.md'
+      - 'Makefile'
+
+jobs:
+  validate-skills:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate skill catalog and metadata
+        run: bash .github/skills/validate-skills.sh
