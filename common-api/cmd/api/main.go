@@ -6,6 +6,7 @@ import (
 
 	"classroom-api/internal/config"
 	"classroom-api/internal/handler"
+	"classroom-api/internal/migrate"
 	"classroom-api/internal/router"
 	"classroom-api/internal/service"
 
@@ -31,6 +32,24 @@ func main() {
 		log.Fatal().Err(err).Msg("failed to ping database")
 	}
 	log.Info().Msg("database connected")
+
+	// Auto-run migrations
+	migrationsDir := os.Getenv("MIGRATIONS_DIR")
+	if migrationsDir == "" {
+		// Try common locations
+		candidates := []string{"/app/migrations", "/migrations", "./migrations", "../../migrations"}
+		for _, c := range candidates {
+			if _, err := os.Stat(c); err == nil {
+				migrationsDir = c
+				break
+			}
+		}
+	}
+	if migrationsDir != "" {
+		if err := migrate.Run(ctx, db, migrationsDir); err != nil {
+			log.Error().Err(err).Msg("auto-migration failed (continuing)")
+		}
+	}
 
 	services := service.NewServices(db, cfg)
 	handlers := handler.NewHandlers(services, cfg)
