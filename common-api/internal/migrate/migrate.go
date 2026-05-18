@@ -17,6 +17,8 @@ import (
 // golang-migrate's schema_migrations to avoid conflicts).
 // "Already exists" errors are tolerated to allow re-import on existing databases.
 func Run(ctx context.Context, db *pgxpool.Pool, migrationsDir string) error {
+	log.Info().Str("dir", migrationsDir).Msg("auto-migration starting")
+
 	// Ensure tracker table
 	if _, err := db.Exec(ctx, `
 		CREATE TABLE IF NOT EXISTS app_migrations (
@@ -27,10 +29,16 @@ func Run(ctx context.Context, db *pgxpool.Pool, migrationsDir string) error {
 		return fmt.Errorf("failed to create app_migrations: %w", err)
 	}
 
+	// Verify migrations directory exists
+	if info, err := os.Stat(migrationsDir); err != nil || !info.IsDir() {
+		log.Error().Str("dir", migrationsDir).Err(err).Msg("migrations directory not found or not a directory")
+		return fmt.Errorf("migrations dir not found: %s", migrationsDir)
+	}
+
 	// Read migration files
 	entries, err := os.ReadDir(migrationsDir)
 	if err != nil {
-		log.Warn().Err(err).Str("dir", migrationsDir).Msg("migrations dir not found, skipping auto-migrate")
+		log.Warn().Err(err).Str("dir", migrationsDir).Msg("migrations dir not readable, skipping auto-migrate")
 		return nil
 	}
 
@@ -61,6 +69,7 @@ func Run(ctx context.Context, db *pgxpool.Pool, migrationsDir string) error {
 	}
 	rows.Close()
 
+	appliedCount := 0
 	for _, f := range files {
 		version := strings.TrimSuffix(f, ".up.sql")
 		if applied[version] {
@@ -85,11 +94,14 @@ func Run(ctx context.Context, db *pgxpool.Pool, migrationsDir string) error {
 				continue
 			}
 		}
+		appliedCount++
 
 		if _, err := db.Exec(ctx, `INSERT INTO app_migrations (version) VALUES ($1) ON CONFLICT DO NOTHING`, version); err != nil {
 			log.Error().Err(err).Str("migration", version).Msg("failed to mark migration as applied")
 		}
 	}
+
+	log.Info().Int("applied", appliedCount).Msg("auto-migration complete")
 
 	// Ensure demo users exist (idempotent)
 	ensureDemoUsers(ctx, db)

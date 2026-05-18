@@ -36,7 +36,6 @@ func main() {
 	// Auto-run migrations
 	migrationsDir := os.Getenv("MIGRATIONS_DIR")
 	if migrationsDir == "" {
-		// Try common locations
 		candidates := []string{"/app/migrations", "/migrations", "./migrations", "../../migrations"}
 		for _, c := range candidates {
 			if _, err := os.Stat(c); err == nil {
@@ -46,9 +45,12 @@ func main() {
 		}
 	}
 	if migrationsDir != "" {
+		log.Info().Str("dir", migrationsDir).Msg("found migrations directory")
 		if err := migrate.Run(ctx, db, migrationsDir); err != nil {
 			log.Error().Err(err).Msg("auto-migration failed (continuing)")
 		}
+	} else {
+		log.Warn().Msg("no migrations directory found — checked /app/migrations, /migrations, ./migrations, ../../migrations")
 	}
 
 	services := service.NewServices(db, cfg)
