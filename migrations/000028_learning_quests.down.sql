@@ -1,0 +1,4 @@
+DROP TABLE IF EXISTS quest_attempts CASCADE;
+DROP TABLE IF EXISTS learning_quests CASCADE;
+DROP TYPE IF EXISTS quest_status CASCADE;
+DROP TYPE IF EXISTS quest_difficulty CASCADE;

@@ -9,7 +9,7 @@ import { AIChatWidget } from '@/components/shared/ai-chat'
 import { 
   Calendar, Home, LogOut, Settings, Users, BookOpen, 
   ClipboardList, Award, UserCircle, DoorOpen, Bell, 
-  LayoutDashboard, ChevronRight, Sparkles, Building2, Trophy
+  LayoutDashboard, ChevronRight, Sparkles, Building2, Trophy, Zap
 } from 'lucide-react'
 
 interface NavSection {
@@ -56,6 +56,7 @@ const navSections: NavSection[] = [
     items: [
       { href: '/student/dashboard', label: 'My Dashboard', icon: Home, roles: ['student'] },
       { href: '/student/assignments', label: 'My Assignments', icon: BookOpen, roles: ['student'] },
+      { href: '/student/quests', label: 'Learning Quests', icon: Zap, roles: ['student'] },
       { href: '/student/leaderboard', label: 'Leaderboard', icon: Trophy, roles: ['student'] },
       { href: '/student/notifications', label: 'Notifications', icon: Bell, roles: ['student'], badge: 0 },
       { href: '/student/badges', label: 'Badges', icon: Award, roles: ['student'] },

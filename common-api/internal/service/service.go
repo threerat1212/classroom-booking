@@ -32,6 +32,7 @@ type Services struct {
 	Badge        *BadgeService
 	Export       *ExportService
 	AI           *AIService
+	Quest        *QuestService
 }
 
 func NewServices(db *pgxpool.Pool, cfg *config.Config) *Services {
@@ -48,6 +49,7 @@ func NewServices(db *pgxpool.Pool, cfg *config.Config) *Services {
 		Badge:        NewBadgeService(db),
 		Export:       NewExportService(db),
 		AI:           NewAIService(db, cfg.GLMAPIKey),
+		Quest:        NewQuestService(db),
 	}
 }
 
