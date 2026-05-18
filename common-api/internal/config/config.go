@@ -23,8 +23,21 @@ func Load() *Config {
 	viper.SetConfigType("env")
 	viper.AutomaticEnv()
 
+	// Explicitly bind env vars (viper.Unmarshal doesn't read AutomaticEnv reliably)
+	_ = viper.BindEnv("DATABASE_URL")
+	_ = viper.BindEnv("JWT_SECRET")
+	_ = viper.BindEnv("JWT_REFRESH_SECRET")
+	_ = viper.BindEnv("API_PORT")
+	_ = viper.BindEnv("PORT")
+	_ = viper.BindEnv("UPLOAD_DIR")
+
 	if err := viper.ReadInConfig(); err != nil {
 		log.Println("No .env file found, using environment variables")
+	}
+
+	// Render sets PORT — use it if API_PORT not set
+	if viper.GetString("API_PORT") == "" && viper.GetString("PORT") != "" {
+		viper.Set("API_PORT", viper.GetString("PORT"))
 	}
 
 	var cfg Config
