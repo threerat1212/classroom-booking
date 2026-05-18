@@ -186,6 +186,7 @@ export default function RegisterPage() {
                   </SelectTrigger>
                   <SelectContent className="bg-slate-900 border-white/10 text-white">
                     <SelectItem value="student">Student</SelectItem>
+                    <SelectItem value="teacher">Teacher</SelectItem>
                     <SelectItem value="guest">Guest</SelectItem>
                   </SelectContent>
                 </Select>
