@@ -47,6 +47,7 @@ const navSections: NavSection[] = [
     title: 'Academic',
     items: [
       { href: '/assignments', label: 'Assignments', icon: ClipboardList, roles: ['teacher', 'admin'] },
+      { href: '/teacher/quests', label: 'Learning Quests', icon: Zap, roles: ['teacher', 'admin'] },
       { href: '/attendance', label: 'Attendance', icon: Users, roles: ['teacher', 'admin'] },
       { href: '/grades', label: 'Grades', icon: Award, roles: ['teacher', 'admin'] },
     ],

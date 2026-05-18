@@ -149,6 +149,169 @@ Student Context:
 	}, nil
 }
 
+func (s *AIService) callGLM(ctx context.Context, systemPrompt, userPrompt string) (string, error) {
+	messages := []model.GLMMessage{
+		{Role: "system", Content: systemPrompt},
+		{Role: "user", Content: userPrompt},
+	}
+	glmReq := model.GLMRequest{Model: "glm-5", Messages: messages}
+	body, _ := json.Marshal(glmReq)
+
+	httpReq, _ := http.NewRequestWithContext(ctx, "POST", glmEndpoint, bytes.NewReader(body))
+	httpReq.Header.Set("Authorization", "Bearer "+s.apiKey)
+	httpReq.Header.Set("Content-Type", "application/json")
+
+	resp, err := s.httpClient.Do(httpReq)
+	if err != nil {
+		return "", fmt.Errorf("failed to call GLM API: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("GLM API returned status %d", resp.StatusCode)
+	}
+
+	var glmResp model.GLMResponse
+	if err := json.NewDecoder(resp.Body).Decode(&glmResp); err != nil {
+		return "", fmt.Errorf("failed to decode GLM response: %w", err)
+	}
+	if len(glmResp.Choices) == 0 {
+		return "", fmt.Errorf("no response from GLM")
+	}
+	return glmResp.Choices[0].Message.Content, nil
+}
+
+func (s *AIService) GenerateQuests(ctx context.Context, topic string, teacherID uuid.UUID) ([]*model.LearningQuest, error) {
+	systemPrompt := `You are an educational AI that creates practice quests for students. You must output ONLY valid JSON.
+
+Create 4 quests (easy, medium, hard, expert) for the given topic. Each quest must have:
+- title: short title (Thai or English is fine)
+- question: the actual question
+- answer: correct answer (short)
+- hints: array of 2 hint strings
+- explanation: explanation of the answer
+- exp_reward: number (easy=10, medium=25, hard=50, expert=80)
+- time_limit_minutes: number (easy=5, medium=10, hard=15, expert=20)
+
+Output format:
+{
+  "quests": [
+    {"difficulty":"easy","title":"...","question":"...","answer":"...","hints":["...","..."],"explanation":"...","exp_reward":10,"time_limit_minutes":5},
+    ...
+  ]
+}`
+
+	content, err := s.callGLM(ctx, systemPrompt, fmt.Sprintf("Create practice quests for the topic: %s", topic))
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse JSON response
+	var result struct {
+		Quests []struct {
+			Difficulty       string   `json:"difficulty"`
+			Title            string   `json:"title"`
+			Question         string   `json:"question"`
+			Answer           string   `json:"answer"`
+			Hints            []string `json:"hints"`
+			Explanation      string   `json:"explanation"`
+			ExpReward        int      `json:"exp_reward"`
+			TimeLimitMinutes int      `json:"time_limit_minutes"`
+		} `json:"quests"`
+	}
+	if err := json.Unmarshal([]byte(content), &result); err != nil {
+		return nil, fmt.Errorf("failed to parse AI response: %w", err)
+	}
+
+	quests := make([]*model.LearningQuest, 0, len(result.Quests))
+	for _, q := range result.Quests {
+		var id uuid.UUID
+		err := s.db.QueryRow(ctx,
+			`INSERT INTO learning_quests (teacher_id, title, topic, description, difficulty, question, answer, hints, explanation, exp_reward, time_limit_minutes, status)
+			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'active')
+			 RETURNING id, title, topic, description, difficulty, exp_reward, time_limit_minutes, status, created_at, updated_at`,
+			teacherID, q.Title, topic, "AI-generated practice quest", q.Difficulty, q.Question, q.Answer, q.Hints, q.Explanation, q.ExpReward, q.TimeLimitMinutes,
+		).Scan(&id, &q.Title, &topic, &q.Title, &q.Difficulty, &q.ExpReward, &q.TimeLimitMinutes, &q.Title, &q.Title, &q.Title)
+		if err != nil {
+			continue
+		}
+		quests = append(quests, &model.LearningQuest{
+			ID:               id,
+			TeacherID:        teacherID,
+			Title:            q.Title,
+			Topic:            topic,
+			Description:      "AI-generated practice quest",
+			Difficulty:       q.Difficulty,
+			Question:         q.Question,
+			Answer:           &q.Answer,
+			Hints:            q.Hints,
+			Explanation:      &q.Explanation,
+			ExpReward:        q.ExpReward,
+			TimeLimitMinutes: &q.TimeLimitMinutes,
+			Status:           "active",
+		})
+	}
+	return quests, nil
+}
+
+func (s *AIService) GradeQuest(ctx context.Context, question, correctAnswer, studentAnswer string, expReward int) (*model.QuestAttempt, error) {
+	systemPrompt := fmt.Sprintf(`You are an AI grader for student practice quests. You must output ONLY valid JSON.
+
+Evaluate the student's answer to the question.
+- Be lenient: accept partially correct answers if the student shows understanding.
+- Award partial credit if the answer is close.
+
+Output format:
+{
+  "is_correct": true/false,
+  "score": 0-100 (percentage, 0 if completely wrong, partial for close answers, 100 if fully correct),
+  "feedback": "Polite feedback in Thai. If correct: praise + encouragement. If wrong: explain why + show correct answer + encourage them. Include a fun consolation emoji or phrase if wrong.",
+  "consolation_reward": "A fun, encouraging message like 'Nice try! You earned a virtual star for effort!' or 'Don\'t give up! Practice makes perfect!'",
+  "exp_earned": number (full exp if score>=80, half if score>=50, 2 if score<50 as consolation)
+}`)
+
+	userPrompt := fmt.Sprintf("Question: %s\nCorrect Answer: %s\nStudent Answer: %s\nMax EXP: %d",
+		question, correctAnswer, studentAnswer, expReward)
+
+	content, err := s.callGLM(ctx, systemPrompt, userPrompt)
+	if err != nil {
+		return nil, err
+	}
+
+	var result struct {
+		IsCorrect         bool   `json:"is_correct"`
+		Score             int    `json:"score"`
+		Feedback          string `json:"feedback"`
+		ConsolationReward string `json:"consolation_reward"`
+		ExpEarned         int    `json:"exp_earned"`
+	}
+	if err := json.Unmarshal([]byte(content), &result); err != nil {
+		// fallback grading
+		isCorrect := studentAnswer == correctAnswer
+		score := 0
+		if isCorrect {
+			score = 100
+		}
+		return &model.QuestAttempt{
+			Answer:    &studentAnswer,
+			IsCorrect: &isCorrect,
+			Score:     &score,
+			Feedback:  strPtr("Simple match grading used."),
+			ExpEarned: 0,
+		}, nil
+	}
+
+	return &model.QuestAttempt{
+		Answer:    &studentAnswer,
+		IsCorrect: &result.IsCorrect,
+		Score:     &result.Score,
+		Feedback:  &result.Feedback,
+		ExpEarned: result.ExpEarned,
+	}, nil
+}
+
+func strPtr(s string) *string { return &s }
+
 func (s *AIService) buildStudentContext(ctx context.Context, userID uuid.UUID) (string, error) {
 	// Get assignments
 	assignRows, err := s.db.Query(ctx,

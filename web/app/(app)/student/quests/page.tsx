@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { Zap, Clock, BookOpen, CheckCircle, Lock, Star, ChevronRight } from 'lucide-react'
 import { apiFetch } from '@/lib/http/client'
@@ -139,7 +140,8 @@ export default function StudentQuestsPage() {
                     </div>
                   )}
                 </div>
-                <button
+                <Link
+                  href={`/student/quests/${quest.id}`}
                   className={`flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
                     completed
                       ? 'bg-emerald-500/20 text-emerald-400'
@@ -157,7 +159,7 @@ export default function StudentQuestsPage() {
                       <ChevronRight className="h-3 w-3" />
                     </>
                   )}
-                </button>
+                </Link>
               </div>
 
               {/* Completed overlay */}

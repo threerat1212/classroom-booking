@@ -12,9 +12,12 @@ import (
 
 type QuestService struct {
 	db *pgxpool.Pool
+	ai *AIService
 }
 
 func NewQuestService(db *pgxpool.Pool) *QuestService { return &QuestService{db: db} }
+
+func (s *QuestService) SetAI(ai *AIService) { s.ai = ai }
 
 func (s *QuestService) List(ctx context.Context, studentID uuid.UUID) ([]*model.LearningQuest, error) {
 	rows, err := s.db.Query(ctx,
@@ -81,20 +84,34 @@ func (s *QuestService) Submit(ctx context.Context, studentID, questID uuid.UUID,
 		return nil, err
 	}
 
-	// Simple scoring: exact match for now, AI grading to be added
+	// AI grading
+	var graded *model.QuestAttempt
+	if s.ai != nil && quest.Answer != nil {
+		graded, err = s.ai.GradeQuest(ctx, quest.Question, *quest.Answer, answer, quest.ExpReward)
+		if err != nil {
+			graded = nil
+		}
+	}
+
 	isCorrect := false
 	score := 0
 	feedback := "Incorrect. Please review the explanation and try again."
 	expEarned := 0
 
-	if quest.Answer != nil && answer == *quest.Answer {
+	if graded != nil {
+		isCorrect = *graded.IsCorrect
+		score = *graded.Score
+		if graded.Feedback != nil {
+			feedback = *graded.Feedback
+		}
+		expEarned = graded.ExpEarned
+	} else if quest.Answer != nil && answer == *quest.Answer {
 		isCorrect = true
 		score = 100
 		feedback = "Correct! Well done!"
 		expEarned = quest.ExpReward
 	}
 
-	// Insert attempt
 	var attempt model.QuestAttempt
 	err = s.db.QueryRow(ctx,
 		`INSERT INTO quest_attempts (quest_id, student_id, answer, is_correct, score, feedback, exp_earned, completed_at)
@@ -106,11 +123,18 @@ func (s *QuestService) Submit(ctx context.Context, studentID, questID uuid.UUID,
 		return nil, err
 	}
 
-	// Award XP if correct
-	if isCorrect && expEarned > 0 {
+	// Award XP
+	if expEarned > 0 {
 		userSvc := NewUserService(s.db)
-		_, _ = userSvc.AddXP(ctx, studentID, expEarned, "quest_completed", fmt.Sprintf("Completed quest: %s", quest.Title), "quest", &questID)
+		_, _ = userSvc.AddXP(ctx, studentID, expEarned, "quest_completed", fmt.Sprintf("Quest: %s (Score: %d%%)", quest.Title, score), "quest", &questID)
 	}
 
 	return &attempt, nil
+}
+
+func (s *QuestService) Generate(ctx context.Context, topic string, teacherID uuid.UUID) ([]*model.LearningQuest, error) {
+	if s.ai == nil {
+		return nil, fmt.Errorf("AI service not available")
+	}
+	return s.ai.GenerateQuests(ctx, topic, teacherID)
 }

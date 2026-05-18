@@ -36,7 +36,7 @@ type Services struct {
 }
 
 func NewServices(db *pgxpool.Pool, cfg *config.Config) *Services {
-	return &Services{
+	svcs := &Services{
 		Auth:         NewAuthService(db, cfg),
 		User:         NewUserService(db),
 		Room:         NewRoomService(db),
@@ -51,6 +51,8 @@ func NewServices(db *pgxpool.Pool, cfg *config.Config) *Services {
 		AI:           NewAIService(db, cfg.GLMAPIKey),
 		Quest:        NewQuestService(db),
 	}
+	svcs.Quest.SetAI(svcs.AI)
+	return svcs
 }
 
 type AuthService struct {

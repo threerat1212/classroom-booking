@@ -125,6 +125,7 @@ func New(cfg *config.Config, h *handler.Handlers) *gin.Engine {
 			quests.GET("", h.Quest.List)
 			quests.GET("/:id", h.Quest.Get)
 			quests.POST("", middleware.RequireRoles("teacher", "admin"), h.Quest.Create)
+			quests.POST("/generate", middleware.RequireRoles("teacher", "admin"), h.Quest.Generate)
 			quests.POST("/submit", h.Quest.Submit)
 		}
 

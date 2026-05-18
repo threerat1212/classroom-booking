@@ -70,6 +70,26 @@ func (h *QuestHandler) Create(c *gin.Context) {
 	response.Created(c, quest)
 }
 
+func (h *QuestHandler) Generate(c *gin.Context) {
+	var req struct {
+		Topic string `json:"topic" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "VALIDATION_ERROR", err.Error())
+		return
+	}
+
+	userIDStr, _ := c.Get("userID")
+	teacherID, _ := uuid.Parse(userIDStr.(string))
+
+	quests, err := h.service.Generate(c.Request.Context(), req.Topic, teacherID)
+	if err != nil {
+		response.InternalError(c, err.Error())
+		return
+	}
+	response.Created(c, quests)
+}
+
 func (h *QuestHandler) Submit(c *gin.Context) {
 	userIDStr, exists := c.Get("userID")
 	if !exists {
