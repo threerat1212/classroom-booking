@@ -319,7 +319,10 @@ A student answer is CORRECT (is_correct: true, score: 100) if ANY of these apply
 3. The student answer contains the correct answer plus extra correct info.
 4. The student answer is a synonym, equivalent expression, or alternate valid form.
 5. For chemistry/formula questions, accept any standard notation (H2O, H₂O, water, H-O-H).
-6. For numeric questions, accept any equivalent numeric value.
+6. For chemical equations, ALL arrow symbols are equivalent: →, ->, >, ⟶, =>, yields, to. So "2H2 + O2 > 2H2O" is the SAME as "2H2 + O2 → 2H2O".
+7. For numeric questions, accept any equivalent numeric value.
+
+THE CORE QUESTION you ask yourself: Did the student demonstrate the correct chemistry/math/concept? If yes → CORRECT (regardless of formatting).
 
 A student answer is PARTIALLY CORRECT (is_correct: true, score: 50-90) only if:
 - It captures the main idea but is missing minor details.
@@ -328,9 +331,10 @@ A student answer is INCORRECT (is_correct: false, score: 0) ONLY if:
 - It is clearly a different concept (e.g. correct="H2O", student="CO2").
 - It is empty, gibberish, or completely unrelated to the question.
 - The numeric value is clearly different (off by more than a rounding error).
+- For balanced chemical equations: the coefficients are wrong (atoms don't balance).
 
 # CRITICAL RULES
-- DO NOT mark wrong just because of formatting, casing, spacing, punctuation, or trailing period.
+- DO NOT mark wrong just because of formatting, casing, spacing, punctuation, trailing period, or arrow notation.
 - DO NOT require the student to write the answer in a specific language if the meaning is the same.
 - When in doubt → mark CORRECT. These are practice quests for learning, not exams.
 
