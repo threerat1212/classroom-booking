@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"classroom-api/internal/model"
 
@@ -42,9 +43,9 @@ func (s *QuestService) List(ctx context.Context, userID uuid.UUID, role string) 
 	switch role {
 	case "student":
 		sql = baseSelect + `
-		  AND q.classroom_id IN (
+		  AND (q.classroom_id IS NULL OR q.classroom_id IN (
 		    SELECT room_id FROM classroom_members WHERE student_id = $1
-		  )
+		  ))
 		ORDER BY q.difficulty, q.created_at DESC`
 	case "teacher":
 		sql = baseSelect + ` AND q.teacher_id = $1 ORDER BY q.created_at DESC`
@@ -72,15 +73,23 @@ func (s *QuestService) List(ctx context.Context, userID uuid.UUID, role string) 
 }
 
 func (s *QuestService) Get(ctx context.Context, id uuid.UUID) (*model.LearningQuest, error) {
+	return s.getQuest(ctx, id, false)
+}
+
+func (s *QuestService) getQuest(ctx context.Context, id uuid.UUID, includeAnswer bool) (*model.LearningQuest, error) {
 	var q model.LearningQuest
+	answerSelect := "NULL::text"
+	if includeAnswer {
+		answerSelect = "q.answer"
+	}
 	err := s.db.QueryRow(ctx,
-		`SELECT q.id, q.teacher_id, q.classroom_id, r.name, q.title, q.topic, q.description, q.difficulty,
-		        q.question, q.hints, q.explanation, q.exp_reward, q.time_limit_minutes, q.status,
+		fmt.Sprintf(`SELECT q.id, q.teacher_id, q.classroom_id, r.name, q.title, q.topic, q.description, q.difficulty,
+		        q.question, %s, q.hints, q.explanation, q.exp_reward, q.time_limit_minutes, q.status,
 		        q.created_at, q.updated_at
 		 FROM learning_quests q
 		 LEFT JOIN rooms r ON r.id = q.classroom_id
-		 WHERE q.id = $1 AND q.deleted_at IS NULL`, id,
-	).Scan(&q.ID, &q.TeacherID, &q.ClassroomID, &q.ClassroomName, &q.Title, &q.Topic, &q.Description, &q.Difficulty, &q.Question, &q.Hints, &q.Explanation, &q.ExpReward, &q.TimeLimitMinutes, &q.Status, &q.CreatedAt, &q.UpdatedAt)
+		 WHERE q.id = $1 AND q.deleted_at IS NULL`, answerSelect), id,
+	).Scan(&q.ID, &q.TeacherID, &q.ClassroomID, &q.ClassroomName, &q.Title, &q.Topic, &q.Description, &q.Difficulty, &q.Question, &q.Answer, &q.Hints, &q.Explanation, &q.ExpReward, &q.TimeLimitMinutes, &q.Status, &q.CreatedAt, &q.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -126,6 +135,11 @@ func (s *QuestService) Create(ctx context.Context, teacherID uuid.UUID, req mode
 }
 
 func (s *QuestService) Submit(ctx context.Context, studentID, questID uuid.UUID, answer string) (*model.QuestAttempt, error) {
+	answer = strings.TrimSpace(answer)
+	if answer == "" {
+		return nil, fmt.Errorf("answer is required")
+	}
+
 	// Check if already attempted
 	var existingID uuid.UUID
 	err := s.db.QueryRow(ctx,
@@ -135,7 +149,7 @@ func (s *QuestService) Submit(ctx context.Context, studentID, questID uuid.UUID,
 	}
 
 	// Get quest details for scoring
-	quest, err := s.Get(ctx, questID)
+	quest, err := s.getQuest(ctx, questID, true)
 	if err != nil {
 		return nil, err
 	}
@@ -161,7 +175,7 @@ func (s *QuestService) Submit(ctx context.Context, studentID, questID uuid.UUID,
 			feedback = *graded.Feedback
 		}
 		expEarned = graded.ExpEarned
-	} else if quest.Answer != nil && answer == *quest.Answer {
+	} else if quest.Answer != nil && answersEquivalent(*quest.Answer, answer) {
 		isCorrect = true
 		score = 100
 		feedback = "Correct! Well done!"

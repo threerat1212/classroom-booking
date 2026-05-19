@@ -29,3 +29,74 @@ func TestAIChatSessionTitleFallsBackForBlankMessage(t *testing.T) {
 		t.Fatalf("expected fallback title, got %q", got)
 	}
 }
+
+func TestAnswersEquivalentNormalizesText(t *testing.T) {
+	if !answersEquivalent("Gravity (downward) and Normal force (upward)", "gravity downward and normal force upward") {
+		t.Fatal("expected normalized text answers to match")
+	}
+}
+
+func TestAnswersEquivalentAcceptsNumericOnlyAnswerWithWords(t *testing.T) {
+	if !answersEquivalent("56", "The answer is 56.") {
+		t.Fatal("expected numeric-only answer to match when student includes words")
+	}
+}
+
+func TestAnswersEquivalentAcceptsCommaFormattedNumber(t *testing.T) {
+	if !answersEquivalent("1,245.0", "1245") {
+		t.Fatal("expected comma-formatted numeric answer to match")
+	}
+}
+
+func TestAnswersEquivalentDoesNotDropRequiredText(t *testing.T) {
+	if answersEquivalent("1.6 m/s² east", "1.6") {
+		t.Fatal("expected required unit/direction text to prevent numeric-only match")
+	}
+}
+
+func TestQuestExpForScoreIsServerControlled(t *testing.T) {
+	cases := []struct {
+		score     int
+		maxExp    int
+		attempted bool
+		want      int
+	}{
+		{score: 100, maxExp: 25, attempted: true, want: 25},
+		{score: 79, maxExp: 25, attempted: true, want: 12},
+		{score: 30, maxExp: 25, attempted: true, want: 2},
+		{score: 0, maxExp: 25, attempted: true, want: 0},
+		{score: 100, maxExp: 25, attempted: false, want: 0},
+	}
+
+	for _, tc := range cases {
+		if got := questExpForScore(tc.score, tc.maxExp, tc.attempted); got != tc.want {
+			t.Fatalf("questExpForScore(%d, %d, %v) = %d, want %d", tc.score, tc.maxExp, tc.attempted, got, tc.want)
+		}
+	}
+}
+
+func TestNormalizeGeneratedQuestsOrdersAndClampsDifficultySettings(t *testing.T) {
+	input := []generatedQuestPayload{
+		{Difficulty: "expert", Title: "Expert", Question: "Q4", Answer: "A4", Hints: []string{"h1"}, Explanation: "E4", ExpReward: 999, TimeLimitMinutes: 999},
+		{Difficulty: "easy", Title: "Easy", Question: "Q1", Answer: "A1", Hints: []string{"h1", "h2"}, Explanation: "E1"},
+		{Difficulty: "hard", Title: "Hard", Question: "Q3", Answer: "A3", Hints: []string{"h1", "h2"}, Explanation: "E3"},
+		{Difficulty: "medium", Title: "Medium", Question: "Q2", Answer: "A2", Hints: []string{"h1", "h2"}, Explanation: "E2"},
+	}
+
+	quests, err := normalizeGeneratedQuests(input)
+	if err != nil {
+		t.Fatalf("normalizeGeneratedQuests returned error: %v", err)
+	}
+
+	for i, difficulty := range questDifficultyOrder {
+		if quests[i].Difficulty != difficulty {
+			t.Fatalf("quest %d difficulty = %s, want %s", i, quests[i].Difficulty, difficulty)
+		}
+	}
+	if quests[3].ExpReward != 80 || quests[3].TimeLimitMinutes != 20 {
+		t.Fatalf("expected expert settings to be server-controlled, got exp=%d time=%d", quests[3].ExpReward, quests[3].TimeLimitMinutes)
+	}
+	if len(quests[3].Hints) != 2 {
+		t.Fatalf("expected hints to be padded to 2, got %d", len(quests[3].Hints))
+	}
+}
