@@ -61,6 +61,13 @@ func New(cfg *config.Config, h *handler.Handlers) *gin.Engine {
 			rooms.DELETE("/:id", middleware.RequireRoles("admin"), h.Room.Delete)
 		}
 
+		classrooms := protected.Group("/classrooms")
+		{
+			classrooms.GET("", h.Classroom.List)
+			classrooms.POST("", middleware.RequireRoles("teacher", "admin"), h.Classroom.Create)
+			classrooms.POST("/join", middleware.RequireRoles("student"), h.Classroom.Join)
+		}
+
 		bookings := protected.Group("/bookings")
 		{
 			bookings.GET("", h.Booking.List)

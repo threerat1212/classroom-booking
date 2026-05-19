@@ -9,6 +9,7 @@ type Handlers struct {
 	Auth         *AuthHandler
 	User         *UserHandler
 	Room         *RoomHandler
+	Classroom    *ClassroomHandler
 	Booking      *BookingHandler
 	Assignment   *AssignmentHandler
 	Submission   *SubmissionHandler
@@ -26,6 +27,7 @@ func NewHandlers(services *service.Services, cfg *config.Config) *Handlers {
 		Auth:         NewAuthHandler(services.Auth, services.User, cfg),
 		User:         NewUserHandler(services.User),
 		Room:         NewRoomHandler(services.Room),
+		Classroom:    NewClassroomHandler(services.Classroom),
 		Booking:      NewBookingHandler(services.Booking),
 		Assignment:   NewAssignmentHandler(services.Assignment),
 		Submission:   NewSubmissionHandler(services.Submission),

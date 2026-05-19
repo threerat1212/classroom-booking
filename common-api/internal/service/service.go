@@ -23,6 +23,7 @@ type Services struct {
 	Auth         *AuthService
 	User         *UserService
 	Room         *RoomService
+	Classroom    *ClassroomService
 	Booking      *BookingService
 	Assignment   *AssignmentService
 	Submission   *SubmissionService
@@ -40,6 +41,7 @@ func NewServices(db *pgxpool.Pool, cfg *config.Config) *Services {
 		Auth:         NewAuthService(db, cfg),
 		User:         NewUserService(db),
 		Room:         NewRoomService(db),
+		Classroom:    NewClassroomService(db),
 		Booking:      NewBookingService(db),
 		Assignment:   NewAssignmentService(db),
 		Submission:   NewSubmissionService(db),

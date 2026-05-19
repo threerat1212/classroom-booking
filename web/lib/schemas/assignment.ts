@@ -7,7 +7,7 @@ export const createAssignmentSchema = z.object({
   assignment_type: z.enum(['individual', 'group']),
   max_score: z.coerce.number().int().min(0, 'Score must be at least 0').optional(),
   due_date: z.string().optional(),
-  status: z.enum(['draft', 'published', 'archived']),
+  status: z.enum(['draft', 'published', 'closed']),
 })
 
 export const updateAssignmentSchema = createAssignmentSchema.partial()

@@ -24,11 +24,11 @@ import {
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { createAssignment } from '@/lib/api/assignments'
-import { listRooms } from '@/lib/api/rooms'
+import { listClassrooms } from '@/lib/api/classrooms'
 import { createAssignmentSchema, type CreateAssignmentInput } from '@/lib/schemas/assignment'
-import { roomKeys } from '@/lib/query/keys'
 import { apiErrorMessage } from '@/lib/http/client'
 import { toast } from 'sonner'
+import Link from 'next/link'
 
 const TYPES = [
   { value: 'individual', label: 'Individual' },
@@ -38,15 +38,15 @@ const TYPES = [
 const STATUSES = [
   { value: 'draft', label: 'Draft' },
   { value: 'published', label: 'Published' },
-  { value: 'archived', label: 'Archived' },
+  { value: 'closed', label: 'Closed' },
 ] as const
 
 export default function NewAssignmentPage() {
   const router = useRouter()
 
-  const { data: rooms } = useQuery({
-    queryKey: roomKeys.lists(),
-    queryFn: listRooms,
+  const { data: classrooms, isLoading: classroomsLoading } = useQuery({
+    queryKey: ['classrooms'],
+    queryFn: listClassrooms,
   })
 
   const form = useForm<CreateAssignmentInput>({
@@ -205,21 +205,30 @@ export default function NewAssignmentPage() {
             name="room_id"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Room (optional)</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value ?? ''}>
+                <FormLabel>Classroom (optional)</FormLabel>
+                <Select
+                  onValueChange={(value) => field.onChange(value === 'none' ? undefined : value)}
+                  value={field.value ?? 'none'}
+                >
                   <FormControl>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select a room" />
+                      <SelectValue placeholder="Select a classroom" />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {rooms?.data.map((r) => (
-                      <SelectItem key={r.id} value={r.id}>
-                        {r.name}
+                    <SelectItem value="none">No classroom</SelectItem>
+                    {classrooms?.data.map((classroom) => (
+                      <SelectItem key={classroom.id} value={classroom.id}>
+                        {classroom.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                {!classroomsLoading && !classrooms?.data.length && (
+                  <p className="text-xs text-slate-500">
+                    No classrooms yet. <Link href="/classrooms" className="text-blue-400 hover:text-blue-300">Create one first.</Link>
+                  </p>
+                )}
                 <FormMessage />
               </FormItem>
             )}

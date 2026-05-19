@@ -2,10 +2,13 @@ package service
 
 import (
 	"context"
+	"errors"
+	"fmt"
 
 	"classroom-api/internal/model"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -15,10 +18,33 @@ type AssignmentService struct {
 
 func NewAssignmentService(db *pgxpool.Pool) *AssignmentService { return &AssignmentService{db: db} }
 
-func (s *AssignmentService) List(ctx context.Context) ([]*model.Assignment, error) {
+func (s *AssignmentService) List(ctx context.Context, userID, role string) ([]*model.Assignment, error) {
+	uid, err := uuid.Parse(userID)
+	if err != nil {
+		return nil, err
+	}
+
+	where := `deleted_at IS NULL`
+	args := []interface{}{}
+	switch role {
+	case "admin":
+	case "teacher":
+		where += ` AND teacher_id = $1`
+		args = append(args, uid)
+	case "student":
+		where += ` AND status = 'published' AND EXISTS (
+			SELECT 1 FROM classroom_members cm
+			WHERE cm.room_id = assignments.room_id
+			  AND cm.student_id = $1
+		)`
+		args = append(args, uid)
+	default:
+		return []*model.Assignment{}, nil
+	}
+
 	rows, err := s.db.Query(ctx,
-		`SELECT id, teacher_id, room_id, title, description, assignment_type, max_score, due_date, status, created_at, updated_at
-		 FROM assignments WHERE deleted_at IS NULL ORDER BY created_at DESC`)
+		fmt.Sprintf(`SELECT id, teacher_id, room_id, title, description, assignment_type, max_score, due_date, status, created_at, updated_at
+		 FROM assignments WHERE %s ORDER BY created_at DESC`, where), args...)
 	if err != nil {
 		return nil, err
 	}
@@ -46,7 +72,7 @@ func (s *AssignmentService) Get(ctx context.Context, id uuid.UUID) (*model.Assig
 	return &a, nil
 }
 
-func (s *AssignmentService) Create(ctx context.Context, req model.CreateAssignmentRequest, teacherID string) (*model.Assignment, error) {
+func (s *AssignmentService) Create(ctx context.Context, req model.CreateAssignmentRequest, teacherID, role string) (*model.Assignment, error) {
 	tid, err := uuid.Parse(teacherID)
 	if err != nil {
 		return nil, err
@@ -55,6 +81,9 @@ func (s *AssignmentService) Create(ctx context.Context, req model.CreateAssignme
 	if req.RoomID != nil && *req.RoomID != "" {
 		p, err := uuid.Parse(*req.RoomID)
 		if err != nil {
+			return nil, err
+		}
+		if err := s.validateAssignmentClassroom(ctx, p, tid, role); err != nil {
 			return nil, err
 		}
 		rid = &p
@@ -70,6 +99,28 @@ func (s *AssignmentService) Create(ctx context.Context, req model.CreateAssignme
 		return nil, err
 	}
 	return &a, nil
+}
+
+func (s *AssignmentService) validateAssignmentClassroom(ctx context.Context, roomID, teacherID uuid.UUID, role string) error {
+	var roomType string
+	var ownerID *uuid.UUID
+	err := s.db.QueryRow(ctx,
+		`SELECT room_type, teacher_id FROM rooms WHERE id = $1 AND deleted_at IS NULL`,
+		roomID,
+	).Scan(&roomType, &ownerID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return model.ErrNotFound
+	}
+	if err != nil {
+		return err
+	}
+	if roomType != "classroom" {
+		return fmt.Errorf("%w: selected room must be a classroom", model.ErrValidation)
+	}
+	if role != "admin" && (ownerID == nil || *ownerID != teacherID) {
+		return fmt.Errorf("%w: classroom is not owned by this teacher", model.ErrForbidden)
+	}
+	return nil
 }
 
 func (s *AssignmentService) Update(ctx context.Context, id uuid.UUID, req model.UpdateAssignmentRequest) (*model.Assignment, error) {

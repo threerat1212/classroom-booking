@@ -46,6 +46,7 @@ const navSections: NavSection[] = [
   {
     title: 'Academic',
     items: [
+      { href: '/classrooms', label: 'Classrooms', icon: BookOpen, roles: ['teacher', 'admin'] },
       { href: '/assignments', label: 'Assignments', icon: ClipboardList, roles: ['teacher', 'admin'] },
       { href: '/teacher/quests', label: 'Learning Quests', icon: Zap, roles: ['teacher', 'admin'] },
       { href: '/attendance', label: 'Attendance', icon: Users, roles: ['teacher', 'admin'] },
@@ -56,6 +57,7 @@ const navSections: NavSection[] = [
     title: 'Student',
     items: [
       { href: '/student/dashboard', label: 'My Dashboard', icon: Home, roles: ['student'] },
+      { href: '/classrooms', label: 'My Classrooms', icon: BookOpen, roles: ['student'] },
       { href: '/student/assignments', label: 'My Assignments', icon: BookOpen, roles: ['student'] },
       { href: '/student/quests', label: 'Learning Quests', icon: Zap, roles: ['student'] },
       { href: '/student/leaderboard', label: 'Leaderboard', icon: Trophy, roles: ['student'] },

@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"errors"
+
 	"classroom-api/internal/model"
 	"classroom-api/internal/service"
 	"classroom-api/pkg/response"
@@ -18,7 +20,10 @@ func NewAssignmentHandler(svc *service.AssignmentService) *AssignmentHandler {
 }
 
 func (h *AssignmentHandler) List(c *gin.Context) {
-	items, err := h.service.List(c.Request.Context())
+	userID, _ := c.Get("userID")
+	role, _ := c.Get("role")
+
+	items, err := h.service.List(c.Request.Context(), userID.(string), role.(string))
 	if err != nil {
 		response.InternalError(c, err.Error())
 		return
@@ -47,7 +52,20 @@ func (h *AssignmentHandler) Create(c *gin.Context) {
 		return
 	}
 	userID, _ := c.Get("userID")
-	item, err := h.service.Create(c.Request.Context(), req, userID.(string))
+	role, _ := c.Get("role")
+	item, err := h.service.Create(c.Request.Context(), req, userID.(string), role.(string))
+	if errors.Is(err, model.ErrNotFound) {
+		response.NotFound(c, "classroom")
+		return
+	}
+	if errors.Is(err, model.ErrValidation) {
+		response.BadRequest(c, "VALIDATION_ERROR", err.Error())
+		return
+	}
+	if errors.Is(err, model.ErrForbidden) {
+		response.Forbidden(c, err.Error())
+		return
+	}
 	if err != nil {
 		response.InternalError(c, err.Error())
 		return

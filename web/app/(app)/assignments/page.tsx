@@ -70,9 +70,9 @@ export default function AssignmentsPage() {
           className="h-9 rounded-lg border border-white/10 bg-white/5 px-2 text-sm text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
         >
           <option value="" className="bg-slate-900 text-slate-200">All Status</option>
-          <option value="active" className="bg-slate-900 text-slate-200">Active</option>
-          <option value="inactive" className="bg-slate-900 text-slate-200">Inactive</option>
           <option value="draft" className="bg-slate-900 text-slate-200">Draft</option>
+          <option value="published" className="bg-slate-900 text-slate-200">Published</option>
+          <option value="closed" className="bg-slate-900 text-slate-200">Closed</option>
         </select>
       </FilterBar>
       <DataTable

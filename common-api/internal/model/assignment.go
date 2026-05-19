@@ -12,7 +12,7 @@ type Assignment struct {
 	RoomID         *uuid.UUID `json:"room_id,omitempty"`
 	Title          string     `json:"title"`
 	Description    *string    `json:"description,omitempty"`
-	AssignmentType string    `json:"assignment_type"`
+	AssignmentType string     `json:"assignment_type"`
 	MaxScore       *int       `json:"max_score,omitempty"`
 	DueDate        *time.Time `json:"due_date,omitempty"`
 	Status         string     `json:"status"`
@@ -27,7 +27,7 @@ type CreateAssignmentRequest struct {
 	AssignmentType string  `json:"assignment_type" binding:"required,oneof=individual group"`
 	MaxScore       *int    `json:"max_score,omitempty"`
 	DueDate        *string `json:"due_date,omitempty"`
-	Status         string  `json:"status" binding:"required,oneof=draft published archived"`
+	Status         string  `json:"status" binding:"required,oneof=draft published closed"`
 }
 
 type UpdateAssignmentRequest struct {
@@ -37,5 +37,5 @@ type UpdateAssignmentRequest struct {
 	AssignmentType *string `json:"assignment_type,omitempty" binding:"omitempty,oneof=individual group"`
 	MaxScore       *int    `json:"max_score,omitempty"`
 	DueDate        *string `json:"due_date,omitempty"`
-	Status         *string `json:"status,omitempty" binding:"omitempty,oneof=draft published archived"`
+	Status         *string `json:"status,omitempty" binding:"omitempty,oneof=draft published closed"`
 }
