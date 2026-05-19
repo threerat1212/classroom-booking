@@ -21,7 +21,7 @@ const (
 	defaultAIProvider     = "openrouter"
 	defaultAIBaseURL      = "https://openrouter.ai/api/v1/chat/completions"
 	defaultAIModel        = "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free"
-	defaultAIGradingModel = "meta-llama/llama-3.3-70b-instruct:free"
+	defaultAIGradingModel = "arcee-ai/trinity-large-thinking:free"
 )
 
 func (s *AIService) Chat(ctx context.Context, userID uuid.UUID, sessionID *uuid.UUID, message string) (*model.AIChatResponse, error) {

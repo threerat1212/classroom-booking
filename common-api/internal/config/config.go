@@ -30,7 +30,7 @@ func Load() *Config {
 	viper.SetDefault("AI_PROVIDER", "openrouter")
 	viper.SetDefault("AI_BASE_URL", "https://openrouter.ai/api/v1/chat/completions")
 	viper.SetDefault("AI_MODEL", "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free")
-	viper.SetDefault("AI_GRADING_MODEL", "meta-llama/llama-3.3-70b-instruct:free")
+	viper.SetDefault("AI_GRADING_MODEL", "arcee-ai/trinity-large-thinking:free")
 	viper.SetDefault("AI_APP_NAME", "Classroom MS AI Tutor")
 
 	viper.AddConfigPath(".")

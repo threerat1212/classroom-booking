@@ -30,7 +30,7 @@ services:
       - key: AI_MODEL
         value: nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free
       - key: AI_GRADING_MODEL
-        value: meta-llama/llama-3.3-70b-instruct:free
+        value: arcee-ai/trinity-large-thinking:free
       - key: AI_APP_NAME
         value: Classroom MS AI Tutor
     healthCheckPath: /health
