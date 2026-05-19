@@ -88,12 +88,19 @@ func (s *AssignmentService) Create(ctx context.Context, req model.CreateAssignme
 		}
 		rid = &p
 	}
+
+	maxScore := req.MaxScore
+	if maxScore == nil {
+		defaultScore := 100
+		maxScore = &defaultScore
+	}
+
 	var a model.Assignment
 	err = s.db.QueryRow(ctx,
 		`INSERT INTO assignments (teacher_id, room_id, title, description, assignment_type, max_score, due_date, status)
 		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		 RETURNING id, teacher_id, room_id, title, description, assignment_type, max_score, due_date, status, created_at, updated_at`,
-		tid, rid, req.Title, req.Description, req.AssignmentType, req.MaxScore, req.DueDate, req.Status,
+		tid, rid, req.Title, req.Description, req.AssignmentType, maxScore, req.DueDate, req.Status,
 	).Scan(&a.ID, &a.TeacherID, &a.RoomID, &a.Title, &a.Description, &a.AssignmentType, &a.MaxScore, &a.DueDate, &a.Status, &a.CreatedAt, &a.UpdatedAt)
 	if err != nil {
 		return nil, err

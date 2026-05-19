@@ -56,7 +56,7 @@ export default function NewAssignmentPage() {
       title: '',
       description: '',
       assignment_type: 'individual',
-      max_score: undefined,
+      max_score: 100,
       due_date: '',
       status: 'draft',
     },
