@@ -1,5 +1,6 @@
 export const ACCESS_TOKEN_KEY = 'access_token'
 export const USER_KEY = 'stored_user'
+export const USER_CHANGED_EVENT = 'stored_user_changed'
 
 export interface StoredUser {
   id: string
@@ -90,11 +91,13 @@ export function getStoredUser(): StoredUser | null {
 export function setStoredUser(user: StoredUser): void {
   if (typeof window === 'undefined') return
   localStorage.setItem(USER_KEY, JSON.stringify(user))
+  window.dispatchEvent(new CustomEvent<StoredUser>(USER_CHANGED_EVENT, { detail: user }))
 }
 
 export function clearStoredUser(): void {
   if (typeof window === 'undefined') return
   localStorage.removeItem(USER_KEY)
+  window.dispatchEvent(new CustomEvent<StoredUser | null>(USER_CHANGED_EVENT, { detail: null }))
 }
 
 export function clearSession(): void {

@@ -1,12 +1,32 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { getStoredUser, setStoredUser, clearSession, StoredUser } from '@/lib/auth/session'
+import { getStoredUser, setStoredUser, clearSession, StoredUser, USER_CHANGED_EVENT } from '@/lib/auth/session'
 import { apiFetch } from '@/lib/http/client'
+
+function normalizeUser(user: StoredUser): StoredUser {
+  return {
+    id: user.id,
+    email: user.email,
+    full_name: user.full_name,
+    role: user.role,
+    xp: user.xp,
+    level: user.level,
+    rank_title: user.rank_title,
+  }
+}
 
 export function useCurrentUser() {
   const [user, setUser] = useState<StoredUser | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+
+  const refreshUser = useCallback(async () => {
+    const res = await apiFetch<{ data: StoredUser }>('/api/v1/auth/me')
+    const nextUser = normalizeUser(res.data)
+    setStoredUser(nextUser)
+    setUser(nextUser)
+    return nextUser
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -14,26 +34,21 @@ export function useCurrentUser() {
     if (u) {
       setUser(u)
       setIsLoading(false)
-      return
     }
 
-    apiFetch<{ data: StoredUser }>('/api/v1/auth/me')
-      .then((res) => {
+    const handleUserChange = (event: Event) => {
+      const nextUser = (event as CustomEvent<StoredUser | null>).detail
+      setUser(nextUser)
+    }
+    window.addEventListener(USER_CHANGED_EVENT, handleUserChange)
+
+    refreshUser()
+      .then((nextUser) => {
         if (cancelled) return
-        const nextUser = {
-          id: res.data.id,
-          email: res.data.email,
-          full_name: res.data.full_name,
-          role: res.data.role,
-          xp: res.data.xp,
-          level: res.data.level,
-          rank_title: res.data.rank_title,
-        }
-        setStoredUser(nextUser)
         setUser(nextUser)
       })
       .catch(() => {
-        if (!cancelled) setUser(null)
+        if (!cancelled && !u) setUser(null)
       })
       .finally(() => {
         if (!cancelled) setIsLoading(false)
@@ -41,8 +56,9 @@ export function useCurrentUser() {
 
     return () => {
       cancelled = true
+      window.removeEventListener(USER_CHANGED_EVENT, handleUserChange)
     }
-  }, [])
+  }, [refreshUser])
 
   const signOut = useCallback(() => {
     clearSession()
@@ -56,6 +72,7 @@ export function useCurrentUser() {
     role: user?.role ?? null,
     isAuthenticated: !!user,
     isLoading,
+    refreshUser,
     signOut,
   }
 }

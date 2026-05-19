@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Zap, Clock, Lightbulb, Send, ArrowLeft, CheckCircle, XCircle, Sparkles, Trophy, Star } from 'lucide-react'
 import { apiFetch } from '@/lib/http/client'
 import { useQuery } from '@tanstack/react-query'
+import { useCurrentUser } from '@/hooks/useCurrentUser'
 
 interface Quest {
   id: string
@@ -40,6 +41,7 @@ export default function QuestDetailPage() {
   const [showHints, setShowHints] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [result, setResult] = useState<AttemptResult | null>(null)
+  const { refreshUser } = useCurrentUser()
 
   const { data: quest, isLoading } = useQuery({
     queryKey: ['quest', id],
@@ -59,6 +61,9 @@ export default function QuestDetailPage() {
         body: JSON.stringify({ quest_id: id, answer: answer.trim() }),
       })
       setResult(res.data)
+      if (res.data.exp_earned > 0) {
+        await refreshUser().catch(() => undefined)
+      }
     } catch (err: any) {
       alert(err?.message || 'Submit failed')
     } finally {

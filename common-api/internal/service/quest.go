@@ -196,7 +196,10 @@ func (s *QuestService) Submit(ctx context.Context, studentID, questID uuid.UUID,
 	// Award XP
 	if expEarned > 0 {
 		userSvc := NewUserService(s.db)
-		_, _ = userSvc.AddXP(ctx, studentID, expEarned, "quest_completed", fmt.Sprintf("Quest: %s (Score: %d%%)", quest.Title, score), "quest", &questID)
+		if _, err := userSvc.AddXP(ctx, studentID, expEarned, "quest_completed", fmt.Sprintf("Quest: %s (Score: %d%%)", quest.Title, score), "quest", &questID); err != nil {
+			attempt.ExpEarned = 0
+			_, _ = s.db.Exec(ctx, `UPDATE quest_attempts SET exp_earned = 0 WHERE id = $1`, attempt.ID)
+		}
 	}
 
 	return &attempt, nil

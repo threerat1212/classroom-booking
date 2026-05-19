@@ -186,7 +186,20 @@ func (s *UserService) AddXP(ctx context.Context, userID uuid.UUID, amount int, a
 	newLevel := LevelFromXp(newXp)
 	newRank := RankTitleFromLevel(newLevel)
 
-	// insert xp history
+	// update user first so a history-table issue cannot silently block rewards.
+	var u model.User
+	err = s.db.QueryRow(ctx,
+		`UPDATE users SET xp = $2, level = $3, rank_title = $4, updated_at = now()
+		 WHERE id = $1 AND deleted_at IS NULL
+		 RETURNING id, email, full_name, role, student_id, employee_id, department, phone, avatar_url, status, xp, level, rank_title, last_login_at, created_at, updated_at`,
+		userID, newXp, newLevel, newRank,
+	).Scan(&u.ID, &u.Email, &u.FullName, &u.Role, &u.StudentID, &u.EmployeeID, &u.Department, &u.Phone, &u.AvatarURL, &u.Status, &u.XP, &u.Level, &u.RankTitle, &u.LastLogin, &u.CreatedAt, &u.UpdatedAt)
+	if err != nil {
+		return nil, err
+	}
+
+	// insert xp history after the reward is applied; history is useful but not
+	// allowed to prevent the student from receiving earned XP.
 	if refID != nil {
 		_, err = s.db.Exec(ctx,
 			`INSERT INTO xp_history (user_id, action, xp_amount, description, reference_type, reference_id) VALUES ($1, $2, $3, $4, $5, $6)`,
@@ -197,19 +210,7 @@ func (s *UserService) AddXP(ctx context.Context, userID uuid.UUID, amount int, a
 			userID, action, amount, description, refType)
 	}
 	if err != nil {
-		return nil, err
-	}
-
-	// update user
-	var u model.User
-	err = s.db.QueryRow(ctx,
-		`UPDATE users SET xp = $2, level = $3, rank_title = $4, updated_at = now()
-		 WHERE id = $1 AND deleted_at IS NULL
-		 RETURNING id, email, full_name, role, student_id, employee_id, department, phone, avatar_url, status, xp, level, rank_title, last_login_at, created_at, updated_at`,
-		userID, newXp, newLevel, newRank,
-	).Scan(&u.ID, &u.Email, &u.FullName, &u.Role, &u.StudentID, &u.EmployeeID, &u.Department, &u.Phone, &u.AvatarURL, &u.Status, &u.XP, &u.Level, &u.RankTitle, &u.LastLogin, &u.CreatedAt, &u.UpdatedAt)
-	if err != nil {
-		return nil, err
+		return &u, nil
 	}
 	return &u, nil
 }
