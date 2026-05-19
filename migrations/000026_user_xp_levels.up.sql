@@ -25,12 +25,12 @@ UPDATE users SET xp = 280, level = 3, rank_title = 'Apprentice' WHERE id = '4444
 -- Seed XP history for demo data
 INSERT INTO xp_history (id, user_id, action, xp_amount, description, reference_type, created_at)
 VALUES
-    ('xp000001-0001-0001-0001-000000000001', '33333333-3333-3333-3333-333333333333', 'submission_graded', 85, 'Calculus I assignment graded: 85.50/100', 'submission', now() - interval '2 days'),
-    ('xp000001-0001-0001-0001-000000000002', '33333333-3333-3333-3333-333333333333', 'submission_graded', 92, 'English essay graded: 92.00/100', 'submission', now() - interval '3 days'),
-    ('xp000001-0001-0001-0001-000000000003', '33333333-3333-3333-3333-333333333333', 'submission_submitted', 10, 'Physics assignment submitted', 'submission', now() - interval '1 day'),
-    ('xp000001-0001-0001-0001-000000000004', '33333333-3333-3333-3333-333333333333', 'attendance_present', 5, 'Present at Calculus I class', 'attendance', now() - interval '3 days'),
-    ('xp000001-0001-0001-0001-000000000005', '33333333-3333-3333-3333-333333333333', 'attendance_present', 5, 'Present at Calculus I class', 'attendance', now() - interval '1 day'),
-    ('xp000001-0001-0001-0001-000000000006', '33333333-3333-3333-3333-333333333333', 'attendance_late', 2, 'Late for Physics class', 'attendance', now() - interval '2 days'),
-    ('xp000001-0001-0001-0001-000000000007', '33333333-3333-3333-3333-333333333333', 'badge_earned', 50, 'Earned Early Bird badge', 'badge', now() - interval '2 days'),
-    ('xp000001-0001-0001-0001-000000000008', '44444444-4444-4444-4444-444444444444', 'submission_graded', 78, 'Calculus I assignment graded: 78.00/100', 'submission', now() - interval '2 days'),
-    ('xp000001-0001-0001-0001-000000000009', '44444444-4444-4444-4444-444444444444', 'attendance_present', 5, 'Present at Calculus I class', 'attendance', now() - interval '1 day');
+    ('a5000001-0001-0001-0001-000000000001', '33333333-3333-3333-3333-333333333333', 'submission_graded', 85, 'Calculus I assignment graded: 85.50/100', 'submission', now() - interval '2 days'),
+    ('a5000001-0001-0001-0001-000000000002', '33333333-3333-3333-3333-333333333333', 'submission_graded', 92, 'English essay graded: 92.00/100', 'submission', now() - interval '3 days'),
+    ('a5000001-0001-0001-0001-000000000003', '33333333-3333-3333-3333-333333333333', 'submission_submitted', 10, 'Physics assignment submitted', 'submission', now() - interval '1 day'),
+    ('a5000001-0001-0001-0001-000000000004', '33333333-3333-3333-3333-333333333333', 'attendance_present', 5, 'Present at Calculus I class', 'attendance', now() - interval '3 days'),
+    ('a5000001-0001-0001-0001-000000000005', '33333333-3333-3333-3333-333333333333', 'attendance_present', 5, 'Present at Calculus I class', 'attendance', now() - interval '1 day'),
+    ('a5000001-0001-0001-0001-000000000006', '33333333-3333-3333-3333-333333333333', 'attendance_late', 2, 'Late for Physics class', 'attendance', now() - interval '2 days'),
+    ('a5000001-0001-0001-0001-000000000007', '33333333-3333-3333-3333-333333333333', 'badge_earned', 50, 'Earned Early Bird badge', 'badge', now() - interval '2 days'),
+    ('a5000001-0001-0001-0001-000000000008', '44444444-4444-4444-4444-444444444444', 'submission_graded', 78, 'Calculus I assignment graded: 78.00/100', 'submission', now() - interval '2 days'),
+    ('a5000001-0001-0001-0001-000000000009', '44444444-4444-4444-4444-444444444444', 'attendance_present', 5, 'Present at Calculus I class', 'attendance', now() - interval '1 day');
