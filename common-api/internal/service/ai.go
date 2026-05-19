@@ -124,7 +124,7 @@ Student Context:
 }
 
 func (s *AIService) doGLMRequest(ctx context.Context, messages []model.GLMMessage) (string, error) {
-	glmReq := model.GLMRequest{Model: "google/gemini-2.0-flash-exp:free", Messages: messages}
+	glmReq := model.GLMRequest{Model: "glm-4", Messages: messages}
 	body, _ := json.Marshal(glmReq)
 
 	for attempt := 0; attempt < 4; attempt++ {
