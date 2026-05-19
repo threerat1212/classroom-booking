@@ -305,23 +305,45 @@ Output format:
 }
 
 func (s *AIService) GradeQuest(ctx context.Context, question, correctAnswer, studentAnswer string, expReward int) (*model.QuestAttempt, error) {
-	systemPrompt := fmt.Sprintf(`You are an AI grader for student practice quests. You must output ONLY valid JSON.
+	systemPrompt := `You are a LENIENT grader for student practice quests. Your default stance is "the student is correct" — only mark wrong if the answer is clearly, unambiguously wrong.
 
-Evaluate the student's answer to the question.
-- Be lenient: accept partially correct answers if the student shows understanding.
-- Award partial credit if the answer is close.
+# GRADING RULES
 
-Output format:
+A student answer is CORRECT (is_correct: true, score: 100) if ANY of these apply:
+1. Exact match with the correct answer (ignore case, whitespace, punctuation, period at end).
+2. Same meaning, different spelling/casing/format. Examples:
+   - "H2O" ≡ "h2o" ≡ "H₂O" ≡ "water" ≡ "H 2 O"
+   - "1,245" ≡ "1245" ≡ "1245.0" ≡ "1245 "
+   - "combination" ≡ "combination reaction" ≡ "synthesis reaction"
+   - "Bangkok" ≡ "bangkok" ≡ "กรุงเทพ" ≡ "กรุงเทพมหานคร"
+3. The student answer contains the correct answer plus extra correct info.
+4. The student answer is a synonym, equivalent expression, or alternate valid form.
+5. For chemistry/formula questions, accept any standard notation (H2O, H₂O, water, H-O-H).
+6. For numeric questions, accept any equivalent numeric value.
+
+A student answer is PARTIALLY CORRECT (is_correct: true, score: 50-90) only if:
+- It captures the main idea but is missing minor details.
+
+A student answer is INCORRECT (is_correct: false, score: 0) ONLY if:
+- It is clearly a different concept (e.g. correct="H2O", student="CO2").
+- It is empty, gibberish, or completely unrelated to the question.
+- The numeric value is clearly different (off by more than a rounding error).
+
+# CRITICAL RULES
+- DO NOT mark wrong just because of formatting, casing, spacing, punctuation, or trailing period.
+- DO NOT require the student to write the answer in a specific language if the meaning is the same.
+- When in doubt → mark CORRECT. These are practice quests for learning, not exams.
+
+# OUTPUT
+Respond with ONLY a single JSON object, no markdown fences, no commentary:
 {
-  "is_correct": true/false,
-  "score": 0-100 (percentage, 0 if completely wrong, partial for close answers, 100 if fully correct),
-  "feedback": "Polite feedback in Thai. If correct: praise + encouragement. If wrong: explain why + show correct answer + encourage them. Include a fun consolation emoji or phrase if wrong.",
-  "consolation_reward": "A fun, encouraging message like 'Nice try! You earned a virtual star for effort!' or 'Don\'t give up! Practice makes perfect!'",
-  "exp_earned": number (full exp if score>=80, half if score>=50, 2 if score<50 as consolation)
-}`)
+  "is_correct": boolean,
+  "score": integer 0-100,
+  "feedback": "Brief feedback in Thai (1-2 short sentences). If correct: encourage and praise. If wrong: explain the correct answer kindly."
+}`
 
-	userPrompt := fmt.Sprintf("Question: %s\nCorrect Answer: %s\nStudent Answer: %s\nMax EXP: %d",
-		question, correctAnswer, studentAnswer, expReward)
+	userPrompt := fmt.Sprintf("Question: %s\nCorrect Answer: %s\nStudent Answer: %s",
+		question, correctAnswer, studentAnswer)
 
 	// AI grading with independent 3-minute timeout
 	aiCtx, aiCancel := context.WithTimeout(context.Background(), 3*time.Minute)
@@ -333,11 +355,9 @@ Output format:
 
 	// Parse JSON response
 	var result struct {
-		IsCorrect         bool   `json:"is_correct"`
-		Score             int    `json:"score"`
-		Feedback          string `json:"feedback"`
-		ConsolationReward string `json:"consolation_reward"`
-		ExpEarned         int    `json:"exp_earned"`
+		IsCorrect bool   `json:"is_correct"`
+		Score     int    `json:"score"`
+		Feedback  string `json:"feedback"`
 	}
 	if err := json.Unmarshal([]byte(extractJSONObject(content)), &result); err != nil {
 		// fallback grading
@@ -355,12 +375,23 @@ Output format:
 		}, nil
 	}
 
+	// Compute EXP from score deterministically (server-side, not LLM-decided).
+	expEarned := 0
+	switch {
+	case result.Score >= 80:
+		expEarned = expReward
+	case result.Score >= 50:
+		expEarned = expReward / 2
+	case result.Score > 0:
+		expEarned = 2
+	}
+
 	return &model.QuestAttempt{
 		Answer:    &studentAnswer,
 		IsCorrect: &result.IsCorrect,
 		Score:     &result.Score,
 		Feedback:  &result.Feedback,
-		ExpEarned: result.ExpEarned,
+		ExpEarned: expEarned,
 	}, nil
 }
 
