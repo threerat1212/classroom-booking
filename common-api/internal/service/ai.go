@@ -23,6 +23,10 @@ const (
 )
 
 func (s *AIService) Chat(ctx context.Context, userID uuid.UUID, sessionID *uuid.UUID, message string) (*model.AIChatResponse, error) {
+	// Use independent context with 3-minute timeout for AI call to avoid HTTP request timeout cancellation
+	aiCtx, aiCancel := context.WithTimeout(context.Background(), 3*time.Minute)
+	defer aiCancel()
+
 	// Get or create session
 	var sid uuid.UUID
 	if sessionID != nil {
@@ -101,7 +105,7 @@ Student Context:
 	}
 	messages = append(messages, history...)
 
-	reply, err := s.doAIRequest(ctx, messages)
+	reply, err := s.doAIRequest(aiCtx, messages)
 	if err != nil {
 		return nil, err
 	}
@@ -241,7 +245,10 @@ Output format:
   ]
 }`
 
-	content, err := s.callAI(ctx, systemPrompt, fmt.Sprintf("Create practice quests for the topic: %s", topic))
+	// AI generation with independent 3-minute timeout
+	aiCtx, aiCancel := context.WithTimeout(context.Background(), 3*time.Minute)
+	defer aiCancel()
+	content, err := s.callAI(aiCtx, systemPrompt, fmt.Sprintf("Create practice quests for the topic: %s", topic))
 	if err != nil {
 		return nil, err
 	}
@@ -299,11 +306,15 @@ Output format:
 	userPrompt := fmt.Sprintf("Question: %s\nCorrect Answer: %s\nStudent Answer: %s\nMax EXP: %d",
 		question, correctAnswer, studentAnswer, expReward)
 
-	content, err := s.callAI(ctx, systemPrompt, userPrompt)
+	// AI grading with independent 3-minute timeout
+	aiCtx, aiCancel := context.WithTimeout(context.Background(), 3*time.Minute)
+	defer aiCancel()
+	content, err := s.callAI(aiCtx, systemPrompt, userPrompt)
 	if err != nil {
 		return nil, err
 	}
 
+	// Parse JSON response
 	var result struct {
 		IsCorrect         bool   `json:"is_correct"`
 		Score             int    `json:"score"`
@@ -366,7 +377,7 @@ type GeminiPart struct {
 }
 
 type GeminiRequest struct {
-	Contents         []GeminiContent        `json:"contents"`
+	Contents         []GeminiContent         `json:"contents"`
 	GenerationConfig *GeminiGenerationConfig `json:"generationConfig,omitempty"`
 }
 
@@ -675,6 +686,6 @@ func NewAIService(db *pgxpool.Pool, cfg *config.Config) *AIService {
 		model:      modelName,
 		appName:    strings.TrimSpace(cfg.AIAppName),
 		siteURL:    strings.TrimSpace(cfg.AISiteURL),
-		httpClient: &http.Client{Timeout: 120 * time.Second},
+		httpClient: &http.Client{Timeout: 180 * time.Second},
 	}
 }
