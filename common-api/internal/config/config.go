@@ -18,6 +18,7 @@ type Config struct {
 	AIAPIKey          string `mapstructure:"AI_API_KEY"`
 	AIBaseURL         string `mapstructure:"AI_BASE_URL"`
 	AIModel           string `mapstructure:"AI_MODEL"`
+	AIGradingModel    string `mapstructure:"AI_GRADING_MODEL"`
 	AIAppName         string `mapstructure:"AI_APP_NAME"`
 	AISiteURL         string `mapstructure:"AI_SITE_URL"`
 	GLMAPIKey         string `mapstructure:"GLM_API_KEY"` // legacy fallback
@@ -29,6 +30,7 @@ func Load() *Config {
 	viper.SetDefault("AI_PROVIDER", "openrouter")
 	viper.SetDefault("AI_BASE_URL", "https://openrouter.ai/api/v1/chat/completions")
 	viper.SetDefault("AI_MODEL", "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free")
+	viper.SetDefault("AI_GRADING_MODEL", "meta-llama/llama-3.3-70b-instruct:free")
 	viper.SetDefault("AI_APP_NAME", "Classroom MS AI Tutor")
 
 	viper.AddConfigPath(".")
@@ -49,6 +51,7 @@ func Load() *Config {
 	_ = viper.BindEnv("AI_API_KEY")
 	_ = viper.BindEnv("AI_BASE_URL")
 	_ = viper.BindEnv("AI_MODEL")
+	_ = viper.BindEnv("AI_GRADING_MODEL")
 	_ = viper.BindEnv("AI_APP_NAME")
 	_ = viper.BindEnv("AI_SITE_URL")
 	_ = viper.BindEnv("GLM_API_KEY")

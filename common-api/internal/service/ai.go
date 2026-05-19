@@ -18,9 +18,10 @@ import (
 )
 
 const (
-	defaultAIProvider = "openrouter"
-	defaultAIBaseURL  = "https://openrouter.ai/api/v1/chat/completions"
-	defaultAIModel    = "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free"
+	defaultAIProvider     = "openrouter"
+	defaultAIBaseURL      = "https://openrouter.ai/api/v1/chat/completions"
+	defaultAIModel        = "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free"
+	defaultAIGradingModel = "meta-llama/llama-3.3-70b-instruct:free"
 )
 
 func (s *AIService) Chat(ctx context.Context, userID uuid.UUID, sessionID *uuid.UUID, message string) (*model.AIChatResponse, error) {
@@ -106,7 +107,7 @@ Student Context:
 	}
 	messages = append(messages, history...)
 
-	reply, err := s.doAIRequest(aiCtx, messages)
+	reply, err := s.doAIRequest(aiCtx, s.model, messages)
 	if err != nil {
 		return nil, err
 	}
@@ -151,7 +152,7 @@ func truncateRunes(value string, max int) string {
 	return value
 }
 
-func (s *AIService) doAIRequest(ctx context.Context, messages []model.ChatCompletionMessage) (string, error) {
+func (s *AIService) doAIRequest(ctx context.Context, modelName string, messages []model.ChatCompletionMessage) (string, error) {
 	if strings.TrimSpace(s.apiKey) == "" {
 		return "", fmt.Errorf("AI_API_KEY is not configured")
 	}
@@ -160,8 +161,12 @@ func (s *AIService) doAIRequest(ctx context.Context, messages []model.ChatComple
 		return s.doGeminiRequest(ctx, messages)
 	}
 
+	if modelName == "" {
+		modelName = s.model
+	}
+
 	aiReq := model.ChatCompletionRequest{
-		Model:       s.model,
+		Model:       modelName,
 		Messages:    messages,
 		Temperature: 0.3, // lower temp for more reliable structured output
 	}
@@ -230,12 +235,14 @@ func (s *AIService) doAIRequest(ctx context.Context, messages []model.ChatComple
 	return "", fmt.Errorf("AI กำลัง busy มาก กรุณารอสักครู่แล้วลองใหม่ (rate limit)")
 }
 
-func (s *AIService) callAI(ctx context.Context, systemPrompt, userPrompt string) (string, error) {
+// callAI sends a system+user prompt using the model named in `modelName`.
+// Pass "" to use the default generation model (s.model).
+func (s *AIService) callAI(ctx context.Context, modelName, systemPrompt, userPrompt string) (string, error) {
 	messages := []model.ChatCompletionMessage{
 		{Role: "system", Content: systemPrompt},
 		{Role: "user", Content: userPrompt},
 	}
-	return s.doAIRequest(ctx, messages)
+	return s.doAIRequest(ctx, modelName, messages)
 }
 
 func (s *AIService) GenerateQuests(ctx context.Context, topic string, teacherID, classroomID uuid.UUID) ([]*model.LearningQuest, error) {
@@ -261,7 +268,8 @@ Output format:
 	// AI generation with independent 3-minute timeout
 	aiCtx, aiCancel := context.WithTimeout(context.Background(), 3*time.Minute)
 	defer aiCancel()
-	content, err := s.callAI(aiCtx, systemPrompt, fmt.Sprintf("Create practice quests for the topic: %s", topic))
+	// Quest generation: use the generation model (reasoning model is good for crafting questions)
+	content, err := s.callAI(aiCtx, s.model, systemPrompt, fmt.Sprintf("Create practice quests for the topic: %s", topic))
 	if err != nil {
 		return nil, err
 	}
@@ -352,7 +360,8 @@ Respond with ONLY a single JSON object, no markdown fences, no commentary:
 	// AI grading with independent 3-minute timeout
 	aiCtx, aiCancel := context.WithTimeout(context.Background(), 3*time.Minute)
 	defer aiCancel()
-	content, err := s.callAI(aiCtx, systemPrompt, userPrompt)
+	// Grading: use the grading model (fast instruct model; avoid reasoning overthink)
+	content, err := s.callAI(aiCtx, s.gradingModel, systemPrompt, userPrompt)
 	if err != nil {
 		return nil, err
 	}
@@ -758,14 +767,15 @@ func (s *AIService) ListMessages(ctx context.Context, sessionID, userID uuid.UUI
 }
 
 type AIService struct {
-	db         *pgxpool.Pool
-	provider   string
-	apiKey     string
-	baseURL    string
-	model      string
-	appName    string
-	siteURL    string
-	httpClient *http.Client
+	db           *pgxpool.Pool
+	provider     string
+	apiKey       string
+	baseURL      string
+	model        string // default model: chat, quest generation
+	gradingModel string // dedicated grading model (lighter/faster instruct)
+	appName      string
+	siteURL      string
+	httpClient   *http.Client
 }
 
 func NewAIService(db *pgxpool.Pool, cfg *config.Config) *AIService {
@@ -781,15 +791,20 @@ func NewAIService(db *pgxpool.Pool, cfg *config.Config) *AIService {
 	if modelName == "" {
 		modelName = defaultAIModel
 	}
+	gradingModel := strings.TrimSpace(cfg.AIGradingModel)
+	if gradingModel == "" {
+		gradingModel = defaultAIGradingModel
+	}
 
 	return &AIService{
-		db:         db,
-		provider:   strings.ToLower(provider),
-		apiKey:     strings.TrimSpace(cfg.AIAPIKey),
-		baseURL:    baseURL,
-		model:      modelName,
-		appName:    strings.TrimSpace(cfg.AIAppName),
-		siteURL:    strings.TrimSpace(cfg.AISiteURL),
-		httpClient: &http.Client{Timeout: 180 * time.Second},
+		db:           db,
+		provider:     strings.ToLower(provider),
+		apiKey:       strings.TrimSpace(cfg.AIAPIKey),
+		baseURL:      baseURL,
+		model:        modelName,
+		gradingModel: gradingModel,
+		appName:      strings.TrimSpace(cfg.AIAppName),
+		siteURL:      strings.TrimSpace(cfg.AISiteURL),
+		httpClient:   &http.Client{Timeout: 300 * time.Second},
 	}
 }
