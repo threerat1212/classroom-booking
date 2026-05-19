@@ -22,15 +22,15 @@ services:
       - key: TEACHER_INVITE_CODE
         sync: false
       - key: AI_PROVIDER
-        value: openrouter
+        value: xiaomi
       - key: AI_API_KEY
         sync: false
       - key: AI_BASE_URL
-        value: https://openrouter.ai/api/v1/chat/completions
+        value: https://token-plan-sgp.xiaomimimo.com/v1/chat/completions
       - key: AI_MODEL
-        value: nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free
+        value: mimo-v2.5-pro
       - key: AI_GRADING_MODEL
-        value: arcee-ai/trinity-large-thinking:free
+        value: mimo-v2.5-pro
       - key: AI_APP_NAME
         value: Classroom MS AI Tutor
     healthCheckPath: /health
