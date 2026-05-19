@@ -258,6 +258,33 @@ type generatedQuestPayload struct {
 	TimeLimitMinutes int      `json:"time_limit_minutes"`
 }
 
+func (q *generatedQuestPayload) UnmarshalJSON(data []byte) error {
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+
+	q.Difficulty = firstJSONString(raw, "difficulty", "level")
+	q.Title = firstJSONString(raw, "title", "name")
+	q.Question = firstJSONString(raw, "question", "prompt", "task", "problem")
+	q.Answer = firstJSONString(raw, "answer", "correct_answer", "correctAnswer", "final_answer", "solution")
+	q.Explanation = firstJSONString(raw, "explanation", "explain", "rationale", "reasoning", "solution_explanation")
+	q.Hints = firstJSONStringArray(raw, "hints", "hint")
+	q.ExpReward = firstJSONInt(raw, "exp_reward", "expReward", "xp", "reward")
+	q.TimeLimitMinutes = firstJSONInt(raw, "time_limit_minutes", "timeLimitMinutes", "time_limit", "minutes")
+
+	if len(q.Hints) == 0 {
+		if hint1 := firstJSONString(raw, "hint1", "hint_1"); hint1 != "" {
+			q.Hints = append(q.Hints, hint1)
+		}
+		if hint2 := firstJSONString(raw, "hint2", "hint_2"); hint2 != "" {
+			q.Hints = append(q.Hints, hint2)
+		}
+	}
+
+	return nil
+}
+
 type questDifficultySpec struct {
 	expReward        int
 	timeLimitMinutes int
@@ -272,11 +299,12 @@ var questDifficultySpecs = map[string]questDifficultySpec{
 	"expert": {expReward: 80, timeLimitMinutes: 20},
 }
 
-func normalizeGeneratedQuests(input []generatedQuestPayload) ([]generatedQuestPayload, error) {
+func normalizeGeneratedQuests(input []generatedQuestPayload, topic string) ([]generatedQuestPayload, error) {
 	byDifficulty := make(map[string]generatedQuestPayload, len(questDifficultySpecs))
+	topic = cleanGeneratedText(topic, 90)
 
 	for _, q := range input {
-		difficulty := strings.ToLower(strings.TrimSpace(q.Difficulty))
+		difficulty := normalizeQuestDifficulty(q.Difficulty)
 		spec, ok := questDifficultySpecs[difficulty]
 		if !ok {
 			continue
@@ -294,7 +322,14 @@ func normalizeGeneratedQuests(input []generatedQuestPayload) ([]generatedQuestPa
 		q.ExpReward = spec.expReward
 		q.TimeLimitMinutes = spec.timeLimitMinutes
 
-		if q.Title == "" || q.Question == "" || q.Answer == "" || q.Explanation == "" {
+		if q.Title == "" {
+			q.Title = defaultQuestTitle(topic, difficulty)
+		}
+		if q.Explanation == "" && q.Answer != "" {
+			q.Explanation = fmt.Sprintf("คำตอบที่ถูกคือ %s", q.Answer)
+		}
+
+		if q.Question == "" || q.Answer == "" {
 			return nil, fmt.Errorf("AI response included an incomplete %s quest", difficulty)
 		}
 
@@ -316,6 +351,108 @@ func normalizeGeneratedQuests(input []generatedQuestPayload) ([]generatedQuestPa
 	}
 
 	return quests, nil
+}
+
+func normalizeQuestDifficulty(value string) string {
+	normalized := strings.ToLower(strings.TrimSpace(value))
+	normalized = strings.Trim(normalized, " :-_")
+	switch normalized {
+	case "easy", "ง่าย", "ระดับง่าย":
+		return "easy"
+	case "medium", "ปานกลาง", "กลาง", "ระดับปานกลาง":
+		return "medium"
+	case "hard", "ยาก", "ระดับยาก":
+		return "hard"
+	case "expert", "ยากมาก", "ท้าทาย", "เชี่ยวชาญ", "ระดับยากมาก":
+		return "expert"
+	default:
+		return normalized
+	}
+}
+
+func firstJSONString(raw map[string]json.RawMessage, keys ...string) string {
+	for _, key := range keys {
+		value, ok := raw[key]
+		if !ok {
+			continue
+		}
+
+		var s string
+		if err := json.Unmarshal(value, &s); err == nil {
+			return strings.TrimSpace(s)
+		}
+
+		var n json.Number
+		if err := json.Unmarshal(value, &n); err == nil {
+			return n.String()
+		}
+	}
+	return ""
+}
+
+func firstJSONStringArray(raw map[string]json.RawMessage, keys ...string) []string {
+	for _, key := range keys {
+		value, ok := raw[key]
+		if !ok {
+			continue
+		}
+
+		var items []string
+		if err := json.Unmarshal(value, &items); err == nil {
+			return items
+		}
+
+		var single string
+		if err := json.Unmarshal(value, &single); err == nil && strings.TrimSpace(single) != "" {
+			return []string{single}
+		}
+	}
+	return nil
+}
+
+func firstJSONInt(raw map[string]json.RawMessage, keys ...string) int {
+	for _, key := range keys {
+		value, ok := raw[key]
+		if !ok {
+			continue
+		}
+
+		var i int
+		if err := json.Unmarshal(value, &i); err == nil {
+			return i
+		}
+
+		var f float64
+		if err := json.Unmarshal(value, &f); err == nil {
+			return int(f)
+		}
+
+		var s string
+		if err := json.Unmarshal(value, &s); err == nil {
+			var parsed int
+			if _, err := fmt.Sscanf(strings.TrimSpace(s), "%d", &parsed); err == nil {
+				return parsed
+			}
+		}
+	}
+	return 0
+}
+
+func defaultQuestTitle(topic, difficulty string) string {
+	labels := map[string]string{
+		"easy":   "Easy",
+		"medium": "Medium",
+		"hard":   "Hard",
+		"expert": "Expert",
+	}
+	label := labels[difficulty]
+	if label == "" {
+		label = "Practice"
+	}
+	if topic == "" {
+		return label + " Quest"
+	}
+	return fmt.Sprintf("%s - %s", topic, label)
 }
 
 func normalizeGeneratedHints(hints []string) []string {
@@ -397,7 +534,7 @@ Required output shape:
 		return nil, fmt.Errorf("failed to parse AI response: %w", err)
 	}
 
-	normalized, err := normalizeGeneratedQuests(result.Quests)
+	normalized, err := normalizeGeneratedQuests(result.Quests, topic)
 	if err != nil {
 		return nil, err
 	}

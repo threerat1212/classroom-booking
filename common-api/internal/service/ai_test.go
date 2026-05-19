@@ -1,6 +1,7 @@
 package service
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 	"unicode/utf8"
@@ -83,7 +84,7 @@ func TestNormalizeGeneratedQuestsOrdersAndClampsDifficultySettings(t *testing.T)
 		{Difficulty: "medium", Title: "Medium", Question: "Q2", Answer: "A2", Hints: []string{"h1", "h2"}, Explanation: "E2"},
 	}
 
-	quests, err := normalizeGeneratedQuests(input)
+	quests, err := normalizeGeneratedQuests(input, "Fractions")
 	if err != nil {
 		t.Fatalf("normalizeGeneratedQuests returned error: %v", err)
 	}
@@ -98,5 +99,51 @@ func TestNormalizeGeneratedQuestsOrdersAndClampsDifficultySettings(t *testing.T)
 	}
 	if len(quests[3].Hints) != 2 {
 		t.Fatalf("expected hints to be padded to 2, got %d", len(quests[3].Hints))
+	}
+}
+
+func TestNormalizeGeneratedQuestsFillsOptionalText(t *testing.T) {
+	input := []generatedQuestPayload{
+		{Difficulty: "ง่าย", Question: "Q1", Answer: "A1"},
+		{Difficulty: "medium", Question: "Q2", Answer: "A2"},
+		{Difficulty: "hard", Question: "Q3", Answer: "A3"},
+		{Difficulty: "expert", Question: "Q4", Answer: "A4"},
+	}
+
+	quests, err := normalizeGeneratedQuests(input, "เรื่องสารเคมี ม.4")
+	if err != nil {
+		t.Fatalf("normalizeGeneratedQuests returned error: %v", err)
+	}
+
+	if quests[0].Title == "" {
+		t.Fatal("expected missing title to be filled")
+	}
+	if quests[0].Explanation == "" {
+		t.Fatal("expected missing explanation to be filled")
+	}
+}
+
+func TestGeneratedQuestPayloadAcceptsProviderAliases(t *testing.T) {
+	payload := []byte(`{
+		"level":"easy",
+		"name":"Alias title",
+		"prompt":"What is H2O?",
+		"correct_answer":"water",
+		"hint":"Think of a common liquid.",
+		"solution_explanation":"H2O is water.",
+		"xp":"99",
+		"minutes":7
+	}`)
+
+	var quest generatedQuestPayload
+	if err := json.Unmarshal(payload, &quest); err != nil {
+		t.Fatalf("failed to unmarshal alias payload: %v", err)
+	}
+
+	if quest.Difficulty != "easy" || quest.Title != "Alias title" || quest.Question != "What is H2O?" || quest.Answer != "water" {
+		t.Fatalf("unexpected alias parse result: %+v", quest)
+	}
+	if len(quest.Hints) != 1 || quest.Hints[0] != "Think of a common liquid." {
+		t.Fatalf("unexpected hints: %+v", quest.Hints)
 	}
 }
