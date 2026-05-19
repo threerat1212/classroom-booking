@@ -38,10 +38,7 @@ func (s *AIService) Chat(ctx context.Context, userID uuid.UUID, sessionID *uuid.
 		}
 	} else {
 		// create new session with title from first message
-		title := message
-		if len(title) > 50 {
-			title = title[:50] + "..."
-		}
+		title := aiChatSessionTitle(message)
 		err := s.db.QueryRow(ctx,
 			`INSERT INTO ai_chat_sessions (user_id, title) VALUES ($1, $2) RETURNING id`,
 			userID, title).Scan(&sid)
@@ -124,6 +121,29 @@ Student Context:
 		SessionID: sid,
 		Message:   reply,
 	}, nil
+}
+
+func aiChatSessionTitle(message string) string {
+	title := strings.TrimSpace(strings.ToValidUTF8(message, ""))
+	if title == "" {
+		return "New chat"
+	}
+	return truncateRunes(title, 50)
+}
+
+func truncateRunes(value string, max int) string {
+	if max <= 0 {
+		return ""
+	}
+
+	count := 0
+	for idx := range value {
+		if count == max {
+			return value[:idx] + "..."
+		}
+		count++
+	}
+	return value
 }
 
 func (s *AIService) doAIRequest(ctx context.Context, messages []model.ChatCompletionMessage) (string, error) {
