@@ -14,7 +14,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-const glmEndpoint = "https://open.bigmodel.cn/api/paas/v4/chat/completions"
+const glmEndpoint = "https://api.z.ai/api/paas/v4/chat/completions"
 
 func (s *AIService) Chat(ctx context.Context, userID uuid.UUID, sessionID *uuid.UUID, message string) (*model.AIChatResponse, error) {
 	// Get or create session
@@ -124,7 +124,7 @@ Student Context:
 }
 
 func (s *AIService) doGLMRequest(ctx context.Context, messages []model.GLMMessage) (string, error) {
-	glmReq := model.GLMRequest{Model: "glm-4", Messages: messages}
+	glmReq := model.GLMRequest{Model: "glm-5.1", Messages: messages}
 	body, _ := json.Marshal(glmReq)
 
 	for attempt := 0; attempt < 4; attempt++ {
