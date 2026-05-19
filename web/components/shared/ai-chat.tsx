@@ -65,12 +65,17 @@ export function AIChatWidget() {
       }
       setMessages((prev) => [...prev, assistantMsg])
     } catch (err: any) {
+      const msg = err?.message || ''
+      const isRateLimit = msg.includes('rate limit') || msg.includes('busy') || msg.includes('429')
+      const errorContent = isRateLimit
+        ? '⏳ AI กำลังยุ่งมากในขณะนี้ กรุณารอ 10-20 วินาทีแล้วถามใหม่ครับ'
+        : 'ขออภัย เกิดข้อผิดพลาด: ' + msg
       setMessages((prev) => [
         ...prev,
         {
           id: 'error' + Date.now(),
           role: 'assistant',
-          content: 'ขออภัย เกิดข้อผิดพลาด: ' + (err?.message || 'ไม่สามารถติดต่อ AI ได้'),
+          content: errorContent,
           created_at: new Date().toISOString(),
         },
       ])

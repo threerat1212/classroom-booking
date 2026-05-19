@@ -101,36 +101,10 @@ Student Context:
 	}
 	messages = append(messages, history...)
 
-	// Call GLM API
-	glmReq := model.GLMRequest{
-		Model:    "glm-5",
-		Messages: messages,
-	}
-	body, _ := json.Marshal(glmReq)
-
-	httpReq, _ := http.NewRequestWithContext(ctx, "POST", glmEndpoint, bytes.NewReader(body))
-	httpReq.Header.Set("Authorization", "Bearer "+s.apiKey)
-	httpReq.Header.Set("Content-Type", "application/json")
-
-	resp, err := s.httpClient.Do(httpReq)
+	reply, err := s.doGLMRequest(ctx, messages)
 	if err != nil {
-		return nil, fmt.Errorf("failed to call GLM API: %w", err)
+		return nil, err
 	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("GLM API returned status %d", resp.StatusCode)
-	}
-
-	var glmResp model.GLMResponse
-	if err := json.NewDecoder(resp.Body).Decode(&glmResp); err != nil {
-		return nil, fmt.Errorf("failed to decode GLM response: %w", err)
-	}
-	if len(glmResp.Choices) == 0 {
-		return nil, fmt.Errorf("no response from GLM")
-	}
-
-	reply := glmResp.Choices[0].Message.Content
 
 	// Store assistant message
 	_, err = s.db.Exec(ctx,
@@ -149,36 +123,62 @@ Student Context:
 	}, nil
 }
 
+func (s *AIService) doGLMRequest(ctx context.Context, messages []model.GLMMessage) (string, error) {
+	glmReq := model.GLMRequest{Model: "glm-5", Messages: messages}
+	body, _ := json.Marshal(glmReq)
+
+	for attempt := 0; attempt < 4; attempt++ {
+		if attempt > 0 {
+			backoff := time.Duration(1<<uint(attempt-1)) * time.Second // 1s, 2s, 4s
+			select {
+			case <-time.After(backoff):
+			case <-ctx.Done():
+				return "", fmt.Errorf("GLM API: context cancelled during retry")
+			}
+		}
+
+		httpReq, _ := http.NewRequestWithContext(ctx, "POST", glmEndpoint, bytes.NewReader(body))
+		httpReq.Header.Set("Authorization", "Bearer "+s.apiKey)
+		httpReq.Header.Set("Content-Type", "application/json")
+
+		resp, err := s.httpClient.Do(httpReq)
+		if err != nil {
+			continue
+		}
+
+		if resp.StatusCode == http.StatusOK {
+			var glmResp model.GLMResponse
+			if err := json.NewDecoder(resp.Body).Decode(&glmResp); err != nil {
+				resp.Body.Close()
+				return "", fmt.Errorf("failed to decode GLM response: %w", err)
+			}
+			resp.Body.Close()
+			if len(glmResp.Choices) == 0 {
+				return "", fmt.Errorf("no response from GLM")
+			}
+			return glmResp.Choices[0].Message.Content, nil
+		}
+
+		_ = resp.Body.Close()
+
+		// 429 = rate limit, 5xx = server error → retry
+		if resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode >= 500 {
+			continue
+		}
+
+		// 4xx client errors (except 429) → don't retry
+		return "", fmt.Errorf("GLM API returned status %d", resp.StatusCode)
+	}
+
+	return "", fmt.Errorf("AI กำลัง busy มาก กรุณารอสักครู่แล้วลองใหม่ (rate limit)")
+}
+
 func (s *AIService) callGLM(ctx context.Context, systemPrompt, userPrompt string) (string, error) {
 	messages := []model.GLMMessage{
 		{Role: "system", Content: systemPrompt},
 		{Role: "user", Content: userPrompt},
 	}
-	glmReq := model.GLMRequest{Model: "glm-5", Messages: messages}
-	body, _ := json.Marshal(glmReq)
-
-	httpReq, _ := http.NewRequestWithContext(ctx, "POST", glmEndpoint, bytes.NewReader(body))
-	httpReq.Header.Set("Authorization", "Bearer "+s.apiKey)
-	httpReq.Header.Set("Content-Type", "application/json")
-
-	resp, err := s.httpClient.Do(httpReq)
-	if err != nil {
-		return "", fmt.Errorf("failed to call GLM API: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("GLM API returned status %d", resp.StatusCode)
-	}
-
-	var glmResp model.GLMResponse
-	if err := json.NewDecoder(resp.Body).Decode(&glmResp); err != nil {
-		return "", fmt.Errorf("failed to decode GLM response: %w", err)
-	}
-	if len(glmResp.Choices) == 0 {
-		return "", fmt.Errorf("no response from GLM")
-	}
-	return glmResp.Choices[0].Message.Content, nil
+	return s.doGLMRequest(ctx, messages)
 }
 
 func (s *AIService) GenerateQuests(ctx context.Context, topic string, teacherID uuid.UUID) ([]*model.LearningQuest, error) {
