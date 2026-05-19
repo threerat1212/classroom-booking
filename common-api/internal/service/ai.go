@@ -19,7 +19,7 @@ import (
 const (
 	defaultAIProvider = "openrouter"
 	defaultAIBaseURL  = "https://openrouter.ai/api/v1/chat/completions"
-	defaultAIModel    = "z-ai/glm-4.5-air:free"
+	defaultAIModel    = "google/gemini-2.0-flash-exp:free"
 )
 
 func (s *AIService) Chat(ctx context.Context, userID uuid.UUID, sessionID *uuid.UUID, message string) (*model.AIChatResponse, error) {
@@ -149,6 +149,10 @@ func truncateRunes(value string, max int) string {
 func (s *AIService) doAIRequest(ctx context.Context, messages []model.ChatCompletionMessage) (string, error) {
 	if strings.TrimSpace(s.apiKey) == "" {
 		return "", fmt.Errorf("AI_API_KEY is not configured")
+	}
+
+	if s.provider == "google" {
+		return s.doGeminiRequest(ctx, messages)
 	}
 
 	aiReq := model.ChatCompletionRequest{Model: s.model, Messages: messages}
@@ -348,6 +352,111 @@ func extractJSONObject(content string) string {
 		return trimmed[start : end+1]
 	}
 	return trimmed
+}
+
+// --- Gemini (Google AI) support ---
+
+type GeminiContent struct {
+	Role  string       `json:"role"`
+	Parts []GeminiPart `json:"parts"`
+}
+
+type GeminiPart struct {
+	Text string `json:"text"`
+}
+
+type GeminiRequest struct {
+	Contents         []GeminiContent        `json:"contents"`
+	GenerationConfig *GeminiGenerationConfig `json:"generationConfig,omitempty"`
+}
+
+type GeminiGenerationConfig struct {
+	Temperature     float64 `json:"temperature,omitempty"`
+	MaxOutputTokens int     `json:"maxOutputTokens,omitempty"`
+}
+
+type GeminiResponse struct {
+	Candidates []struct {
+		Content struct {
+			Parts []struct {
+				Text string `json:"text"`
+			} `json:"parts"`
+		} `json:"content"`
+		FinishReason string `json:"finishReason"`
+	} `json:"candidates"`
+}
+
+func (s *AIService) doGeminiRequest(ctx context.Context, messages []model.ChatCompletionMessage) (string, error) {
+	var contents []GeminiContent
+	for _, m := range messages {
+		role := m.Role
+		if role == "system" {
+			role = "user"
+		}
+		contents = append(contents, GeminiContent{
+			Role:  role,
+			Parts: []GeminiPart{{Text: m.Content}},
+		})
+	}
+
+	reqBody := GeminiRequest{
+		Contents: contents,
+		GenerationConfig: &GeminiGenerationConfig{
+			Temperature:     0.7,
+			MaxOutputTokens: 4096,
+		},
+	}
+	body, err := json.Marshal(reqBody)
+	if err != nil {
+		return "", fmt.Errorf("failed to encode Gemini request: %w", err)
+	}
+
+	url := fmt.Sprintf("%s?key=%s", s.baseURL, s.apiKey)
+
+	for attempt := 0; attempt < 4; attempt++ {
+		if attempt > 0 {
+			backoff := time.Duration(1<<uint(attempt-1)) * time.Second
+			select {
+			case <-time.After(backoff):
+			case <-ctx.Done():
+				return "", fmt.Errorf("AI request cancelled during retry")
+			}
+		}
+
+		httpReq, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(body))
+		if err != nil {
+			continue
+		}
+		httpReq.Header.Set("Content-Type", "application/json")
+
+		resp, err := s.httpClient.Do(httpReq)
+		if err != nil {
+			continue
+		}
+
+		if resp.StatusCode == http.StatusOK {
+			var geminiResp GeminiResponse
+			if err := json.NewDecoder(resp.Body).Decode(&geminiResp); err != nil {
+				resp.Body.Close()
+				return "", fmt.Errorf("failed to decode Gemini response: %w", err)
+			}
+			resp.Body.Close()
+			if len(geminiResp.Candidates) == 0 || len(geminiResp.Candidates[0].Content.Parts) == 0 {
+				return "", fmt.Errorf("no response from Gemini")
+			}
+			return geminiResp.Candidates[0].Content.Parts[0].Text, nil
+		}
+
+		_ = resp.Body.Close()
+
+		if resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode >= 500 {
+			continue
+		}
+
+		return "", fmt.Errorf("Gemini API returned status %d", resp.StatusCode)
+	}
+
+	return "", fmt.Errorf("Gemini API กำลัง busy มาก กรุณารอสักครู่แล้วลองใหม่")
 }
 
 func (s *AIService) buildStudentContext(ctx context.Context, userID uuid.UUID) (string, error) {
@@ -566,6 +675,6 @@ func NewAIService(db *pgxpool.Pool, cfg *config.Config) *AIService {
 		model:      modelName,
 		appName:    strings.TrimSpace(cfg.AIAppName),
 		siteURL:    strings.TrimSpace(cfg.AISiteURL),
-		httpClient: &http.Client{Timeout: 30 * time.Second},
+		httpClient: &http.Client{Timeout: 120 * time.Second},
 	}
 }

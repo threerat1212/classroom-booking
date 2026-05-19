@@ -28,7 +28,7 @@ func Load() *Config {
 	viper.SetDefault("UPLOAD_DIR", "./uploads")
 	viper.SetDefault("AI_PROVIDER", "openrouter")
 	viper.SetDefault("AI_BASE_URL", "https://openrouter.ai/api/v1/chat/completions")
-	viper.SetDefault("AI_MODEL", "z-ai/glm-4.5-air:free")
+	viper.SetDefault("AI_MODEL", "google/gemini-2.0-flash-exp:free")
 	viper.SetDefault("AI_APP_NAME", "Classroom MS AI Tutor")
 
 	viper.AddConfigPath(".")

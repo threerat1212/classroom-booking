@@ -28,7 +28,7 @@ services:
       - key: AI_BASE_URL
         value: https://openrouter.ai/api/v1/chat/completions
       - key: AI_MODEL
-        value: z-ai/glm-4.5-air:free
+        value: google/gemini-2.0-flash-exp:free
       - key: AI_APP_NAME
         value: Classroom MS AI Tutor
     healthCheckPath: /health
