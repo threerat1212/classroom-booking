@@ -163,8 +163,7 @@ func (s *AIService) doAIRequest(ctx context.Context, messages []model.ChatComple
 	aiReq := model.ChatCompletionRequest{
 		Model:       s.model,
 		Messages:    messages,
-		MaxTokens:   8000, // generous budget: reasoning models spend tokens on thinking before the JSON answer
-		Temperature: 0.3,  // lower temp for more reliable structured output
+		Temperature: 0.3, // lower temp for more reliable structured output
 	}
 	body, err := json.Marshal(aiReq)
 	if err != nil {
