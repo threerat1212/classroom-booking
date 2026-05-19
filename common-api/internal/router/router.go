@@ -40,6 +40,8 @@ func New(cfg *config.Config, h *handler.Handlers) *gin.Engine {
 	protected := api.Group("")
 	protected.Use(middleware.AuthMiddleware(cfg.JWTSecret))
 	{
+		protected.GET("/auth/me", h.Auth.Me)
+
 		users := protected.Group("/users")
 		users.Use(middleware.RequireRoles("admin", "teacher"))
 		{

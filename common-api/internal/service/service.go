@@ -48,7 +48,7 @@ func NewServices(db *pgxpool.Pool, cfg *config.Config) *Services {
 		Notification: NewNotificationService(db),
 		Badge:        NewBadgeService(db),
 		Export:       NewExportService(db),
-		AI:           NewAIService(db, cfg.GLMAPIKey),
+		AI:           NewAIService(db, cfg),
 		Quest:        NewQuestService(db),
 	}
 	svcs.Quest.SetAI(svcs.AI)

@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 )
 
@@ -131,6 +132,23 @@ func (h *AuthHandler) GoogleLogin(c *gin.Context) {
 		ExpiresIn:    tokens.ExpiresIn,
 		User:         user,
 	})
+}
+
+func (h *AuthHandler) Me(c *gin.Context) {
+	userID, _ := c.Get("userID")
+	id, err := uuid.Parse(userID.(string))
+	if err != nil {
+		response.BadRequest(c, "VALIDATION_ERROR", "invalid user id")
+		return
+	}
+
+	user, err := h.userService.Get(c.Request.Context(), id)
+	if err != nil {
+		response.NotFound(c, "user")
+		return
+	}
+
+	response.OK(c, user)
 }
 
 func (h *AuthHandler) Logout(c *gin.Context) {

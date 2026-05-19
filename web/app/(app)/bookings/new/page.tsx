@@ -6,6 +6,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { DateTimePicker } from '@/components/ui/date-time-picker'
 import {
   Form,
   FormField,
@@ -166,11 +167,10 @@ export default function NewBookingPage() {
                 <FormItem>
                   <FormLabel>Start Time</FormLabel>
                   <FormControl>
-                    <Input
-                      type="datetime-local"
-                      {...field}
-                      onClick={(e) => { (e.currentTarget as any).showPicker?.() }}
-                      className="cursor-pointer"
+                    <DateTimePicker
+                      value={field.value}
+                      onChange={field.onChange}
+                      onBlur={field.onBlur}
                     />
                   </FormControl>
                   <FormMessage />
@@ -185,11 +185,10 @@ export default function NewBookingPage() {
                 <FormItem>
                   <FormLabel>End Time</FormLabel>
                   <FormControl>
-                    <Input
-                      type="datetime-local"
-                      {...field}
-                      onClick={(e) => { (e.currentTarget as any).showPicker?.() }}
-                      className="cursor-pointer"
+                    <DateTimePicker
+                      value={field.value}
+                      onChange={field.onChange}
+                      onBlur={field.onBlur}
                     />
                   </FormControl>
                   <FormMessage />

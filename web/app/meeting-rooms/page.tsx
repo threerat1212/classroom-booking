@@ -139,7 +139,11 @@ export default function MeetingRoomsPage() {
 
   const openPicker = (ref: React.RefObject<HTMLInputElement>) => {
     if (ref.current && 'showPicker' in ref.current) {
-      (ref.current as any).showPicker()
+      try {
+        ;(ref.current as any).showPicker()
+      } catch {
+        // Some browsers reject showPicker when the click is replayed or automated.
+      }
     }
   }
 

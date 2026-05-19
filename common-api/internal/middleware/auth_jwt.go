@@ -12,20 +12,29 @@ import (
 func AuthMiddleware(secret string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
+		tokenString := ""
+
 		if authHeader == "" {
-			response.Unauthorized(c, "missing authorization header")
+			if cookieToken, err := c.Cookie("access_token"); err == nil {
+				tokenString = cookieToken
+			}
+		} else {
+			parts := strings.SplitN(authHeader, " ", 2)
+			if len(parts) != 2 || strings.ToLower(parts[0]) != "bearer" {
+				response.Unauthorized(c, "invalid authorization header format")
+				c.Abort()
+				return
+			}
+			tokenString = parts[1]
+		}
+
+		if tokenString == "" {
+			response.Unauthorized(c, "missing authorization token")
 			c.Abort()
 			return
 		}
 
-		parts := strings.SplitN(authHeader, " ", 2)
-		if len(parts) != 2 || strings.ToLower(parts[0]) != "bearer" {
-			response.Unauthorized(c, "invalid authorization header format")
-			c.Abort()
-			return
-		}
-
-		claims, err := auth.ParseAccessToken(parts[1], secret)
+		claims, err := auth.ParseAccessToken(tokenString, secret)
 		if err != nil {
 			response.Unauthorized(c, "invalid or expired token")
 			c.Abort()

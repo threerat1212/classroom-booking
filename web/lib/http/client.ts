@@ -1,3 +1,5 @@
+import { getAccessToken, setAccessToken } from '@/lib/auth/session'
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
 
 export class ApiError extends Error {
@@ -27,6 +29,25 @@ export function isConflict(err: unknown): boolean {
 
 export interface FetchOptions extends RequestInit {
   userRole?: string
+  skipAuthRefresh?: boolean
+}
+
+async function refreshAccessToken(): Promise<string | null> {
+  const res = await fetch(`${API_BASE}/api/v1/auth/refresh`, {
+    method: 'POST',
+    credentials: 'include',
+  })
+
+  if (!res.ok) return null
+
+  const body = await res.json().catch(() => null) as { data?: { access_token?: string } } | null
+  const token = body?.data?.access_token
+  if (!token) return null
+
+  setAccessToken(token)
+  document.cookie = `access_token=${token}; path=/; max-age=86400`
+
+  return token
 }
 
 export async function apiFetch<T>(path: string, opts: FetchOptions = {}): Promise<T> {
@@ -37,7 +58,7 @@ export async function apiFetch<T>(path: string, opts: FetchOptions = {}): Promis
     headers.set('Content-Type', 'application/json')
   }
 
-  const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null
+  const token = typeof window !== 'undefined' ? getAccessToken() : null
   if (token) {
     headers.set('Authorization', `Bearer ${token}`)
   }
@@ -47,6 +68,23 @@ export async function apiFetch<T>(path: string, opts: FetchOptions = {}): Promis
     headers,
     credentials: 'include',
   })
+
+  if (res.status === 401 && !opts.skipAuthRefresh) {
+    const refreshedToken = await refreshAccessToken()
+    if (refreshedToken) {
+      const retryHeaders = new Headers(opts.headers)
+      if (!retryHeaders.has('Content-Type') && opts.body && typeof opts.body === 'string') {
+        retryHeaders.set('Content-Type', 'application/json')
+      }
+      retryHeaders.set('Authorization', `Bearer ${refreshedToken}`)
+
+      return apiFetch<T>(path, {
+        ...opts,
+        headers: retryHeaders,
+        skipAuthRefresh: true,
+      })
+    }
+  }
 
   if (res.status === 204) {
     return undefined as T

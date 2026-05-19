@@ -23,6 +23,14 @@ interface Room {
   name: string
 }
 
+type ApiList<T> = T[] | { data?: T[] | null } | null | undefined
+
+function asList<T>(value: ApiList<T>): T[] {
+  if (Array.isArray(value)) return value
+  if (Array.isArray(value?.data)) return value.data
+  return []
+}
+
 const statusColors: Record<string, string> = {
   pending: 'bg-amber-500/15 text-amber-400 border-amber-500/20',
   approved: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20',
@@ -36,13 +44,28 @@ function formatHour(h: number) {
   return `${h.toString().padStart(2, '0')}:00`
 }
 
+function formatMonthYear(date: Date) {
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'long',
+    year: 'numeric',
+  }).format(date)
+}
+
+function formatBookingTime(date: Date) {
+  return new Intl.DateTimeFormat('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date)
+}
+
 function useBookings() {
   return useQuery({
     queryKey: bookingKeys.lists(),
     queryFn: async () => {
       const res = await apiFetch<{ data: Booking[] | null }>('/api/v1/bookings')
-      return Array.isArray(res.data) ? res.data : []
+      return res
     },
+    select: asList<Booking>,
   })
 }
 
@@ -51,8 +74,9 @@ function useRooms() {
     queryKey: roomKeys.lists(),
     queryFn: async () => {
       const res = await apiFetch<{ data: Room[] | null }>('/api/v1/rooms')
-      return res.data || []
+      return res
     },
+    select: asList<Room>,
   })
 }
 
@@ -85,14 +109,15 @@ function MonthView({
   bookings: Booking[]
 }) {
   const days = getMonthGrid(date)
-  const monthName = date.toLocaleString('default', { month: 'long', year: 'numeric' })
+  const monthName = formatMonthYear(date)
+  const safeBookings = asList(bookings)
 
   const bookingsForDay = (day: Date) => {
     const start = new Date(day)
     start.setHours(0, 0, 0, 0)
     const end = new Date(day)
     end.setHours(23, 59, 59, 999)
-    return bookings.filter((b) => {
+    return safeBookings.filter((b) => {
       const bs = new Date(b.start_time)
       return bs >= start && bs <= end
     })
@@ -145,6 +170,8 @@ export default function CalendarPage() {
   const { data: rooms, isLoading: roomsLoading } = useRooms()
   const [currentDate, setCurrentDate] = useState(new Date())
   const [view, setView] = useState<'month' | 'week' | 'day'>('month')
+  const safeBookings = asList(bookings)
+  const safeRooms = asList(rooms)
 
   const startOfWeek = new Date(currentDate)
   startOfWeek.setDate(currentDate.getDate() - currentDate.getDay())
@@ -181,8 +208,7 @@ export default function CalendarPage() {
     start.setHours(0, 0, 0, 0)
     const end = new Date(day)
     end.setHours(23, 59, 59, 999)
-    if (!Array.isArray(bookings)) return []
-    return bookings.filter((b) => {
+    return safeBookings.filter((b) => {
       const bs = new Date(b.start_time)
       return bs >= start && bs <= end
     })
@@ -224,7 +250,7 @@ export default function CalendarPage() {
       </div>
 
       {view === 'month' ? (
-        <MonthView date={currentDate} bookings={bookings ?? []} />
+        <MonthView date={currentDate} bookings={safeBookings} />
       ) : view === 'week' ? (
         <div className="grid grid-cols-7 gap-2">
           {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
@@ -258,8 +284,8 @@ export default function CalendarPage() {
       ) : (
         <DayView
           date={currentDate}
-          bookings={bookings ?? []}
-          rooms={rooms ?? []}
+          bookings={safeBookings}
+          rooms={safeRooms}
           isLoading={isLoading}
         />
       )}
@@ -278,12 +304,14 @@ function DayView({
   rooms: Room[]
   isLoading: boolean
 }) {
+  const safeBookings = asList(bookings)
+  const safeRooms = asList(rooms)
   const start = new Date(date)
   start.setHours(0, 0, 0, 0)
   const end = new Date(date)
   end.setHours(23, 59, 59, 999)
 
-  const dayBookings = bookings.filter((b) => {
+  const dayBookings = safeBookings.filter((b) => {
     const bs = new Date(b.start_time)
     return bs >= start && bs <= end
   })
@@ -308,11 +336,11 @@ function DayView({
   return (
     <div className="overflow-x-auto">
       <div className="min-w-[600px] rounded-lg border border-white/10 bg-white/5">
-        <div className="grid border-b border-white/10" style={{ gridTemplateColumns: `80px repeat(${rooms.length}, minmax(140px, 1fr))` }}>
+        <div className="grid border-b border-white/10" style={{ gridTemplateColumns: `80px repeat(${safeRooms.length}, minmax(140px, 1fr))` }}>
           <div className="border-r border-white/10 px-3 py-2 text-xs font-medium uppercase text-slate-400">
             Time
           </div>
-          {rooms.map((room) => (
+          {safeRooms.map((room) => (
             <div key={room.id} className="border-r border-white/10 px-3 py-2 text-center text-xs font-medium uppercase text-slate-400 last:border-r-0">
               {room.name}
             </div>
@@ -323,12 +351,12 @@ function DayView({
           <div
             key={hour}
             className="grid border-b border-white/10 last:border-b-0"
-            style={{ gridTemplateColumns: `80px repeat(${rooms.length}, minmax(140px, 1fr))` }}
+            style={{ gridTemplateColumns: `80px repeat(${safeRooms.length}, minmax(140px, 1fr))` }}
           >
             <div className="flex items-center border-r border-white/10 px-3 py-2 text-xs font-medium text-slate-400">
               {formatHour(hour)}
             </div>
-            {rooms.map((room) => {
+            {safeRooms.map((room) => {
               const slotBookings = getBookingsForRoomAndHour(room.id, hour)
               return (
                 <div key={room.id} className="relative border-r border-white/10 p-1 last:border-r-0 min-h-[60px]">
@@ -339,8 +367,8 @@ function DayView({
                     >
                       <div className="truncate">{b.title}</div>
                       <div className="text-[10px] opacity-80">
-                        {new Date(b.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} -{' '}
-                        {new Date(b.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        {formatBookingTime(new Date(b.start_time))} -{' '}
+                        {formatBookingTime(new Date(b.end_time))}
                       </div>
                     </div>
                   ))}

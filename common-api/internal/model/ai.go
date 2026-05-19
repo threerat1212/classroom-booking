@@ -32,20 +32,20 @@ type AIChatMessage struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
-type GLMMessage struct {
+type ChatCompletionMessage struct {
 	Role    string `json:"role"`
 	Content string `json:"content"`
 }
 
-type GLMRequest struct {
-	Model    string       `json:"model"`
-	Messages []GLMMessage `json:"messages"`
+type ChatCompletionRequest struct {
+	Model    string                  `json:"model"`
+	Messages []ChatCompletionMessage `json:"messages"`
 }
 
-type GLMChoice struct {
-	Message GLMMessage `json:"message"`
+type ChatCompletionChoice struct {
+	Message ChatCompletionMessage `json:"message"`
 }
 
-type GLMResponse struct {
-	Choices []GLMChoice `json:"choices"`
+type ChatCompletionResponse struct {
+	Choices []ChatCompletionChoice `json:"choices"`
 }

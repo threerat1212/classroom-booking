@@ -17,6 +17,25 @@ type BookingService struct {
 func NewBookingService(db *pgxpool.Pool) *BookingService { return &BookingService{db: db} }
 
 func (s *BookingService) List(ctx context.Context, q model.BookingListQuery) ([]*model.Booking, error) {
+	if q.Page <= 0 {
+		q.Page = 1
+	}
+	if q.Limit <= 0 {
+		q.Limit = 20
+	}
+	if q.Limit > 100 {
+		q.Limit = 100
+	}
+
+	var from any
+	if !q.From.IsZero() {
+		from = q.From
+	}
+	var to any
+	if !q.To.IsZero() {
+		to = q.To
+	}
+
 	rows, err := s.db.Query(ctx,
 		`SELECT id, room_id, requester_id, approver_id, title, description, purpose, start_time, end_time, status, rejection_reason, approved_at, created_at, updated_at, requester_name, requester_email, requester_phone
 		 FROM bookings
@@ -28,7 +47,7 @@ func (s *BookingService) List(ctx context.Context, q model.BookingListQuery) ([]
 		   AND (NULLIF($5, '')::uuid IS NULL OR requester_id = NULLIF($5, '')::uuid)
 		 ORDER BY start_time DESC
 		 LIMIT $6 OFFSET $7`,
-		q.RoomID, q.From, q.To, q.Status, q.Requester, q.Limit, (q.Page-1)*q.Limit)
+		q.RoomID, from, to, q.Status, q.Requester, q.Limit, (q.Page-1)*q.Limit)
 	if err != nil {
 		return nil, err
 	}

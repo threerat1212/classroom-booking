@@ -6,15 +6,21 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
+	"classroom-api/internal/config"
 	"classroom-api/internal/model"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-const glmEndpoint = "https://openrouter.ai/api/v1/chat/completions"
+const (
+	defaultAIProvider = "openrouter"
+	defaultAIBaseURL  = "https://openrouter.ai/api/v1/chat/completions"
+	defaultAIModel    = "z-ai/glm-4.5-air:free"
+)
 
 func (s *AIService) Chat(ctx context.Context, userID uuid.UUID, sessionID *uuid.UUID, message string) (*model.AIChatResponse, error) {
 	// Get or create session
@@ -58,25 +64,22 @@ func (s *AIService) Chat(ctx context.Context, userID uuid.UUID, sessionID *uuid.
 		contextStr = ""
 	}
 
-	// Build messages for GLM
-	messages := []model.GLMMessage{
+	messages := []model.ChatCompletionMessage{
 		{
 			Role: "system",
-			Content: `You are a helpful AI tutor assistant for a classroom management system. You can only answer questions related to:
-- The student's assignments and homework
-- The student's grades and scores
-- The student's attendance records (present, late, absent)
-- Study materials and lessons
-- General study tips and encouragement
+			Content: `You are an AI tutor inside a school classroom management system.
 
-You MUST NOT answer questions about:
-- Politics, religion, or controversial topics
-- Personal matters outside school
-- Anything unrelated to education or the student's academic progress
+Answer in Thai by default. Be friendly, concise, and student-safe.
 
-If asked about something outside these topics, politely decline and redirect to academic topics.
+You may answer only about:
+- The student's pending assignments, submissions, due dates, grades, attendance, XP/learning progress, and class study questions.
+- How to start solving a problem, hints, learning steps, and encouragement.
 
-When answering about specific data, be precise and reference actual records.
+For problem-solving questions, guide the student step by step. Do not immediately dump the final answer unless the student explicitly asks for the final answer or the system context contains an official answer.
+
+For grade questions, use the actual records in Student Context. If there is no official final grade scale, say it is an estimate from available scores.
+
+If the question is outside school or academic progress, politely redirect back to learning topics.
 
 Student Context:
 ` + contextStr,
@@ -91,17 +94,17 @@ Student Context:
 	}
 	defer rows.Close()
 
-	var history []model.GLMMessage
+	var history []model.ChatCompletionMessage
 	for rows.Next() {
-		var m model.GLMMessage
+		var m model.ChatCompletionMessage
 		if err := rows.Scan(&m.Role, &m.Content); err != nil {
 			continue
 		}
-		history = append([]model.GLMMessage{m}, history...)
+		history = append([]model.ChatCompletionMessage{m}, history...)
 	}
 	messages = append(messages, history...)
 
-	reply, err := s.doGLMRequest(ctx, messages)
+	reply, err := s.doAIRequest(ctx, messages)
 	if err != nil {
 		return nil, err
 	}
@@ -123,23 +126,38 @@ Student Context:
 	}, nil
 }
 
-func (s *AIService) doGLMRequest(ctx context.Context, messages []model.GLMMessage) (string, error) {
-	glmReq := model.GLMRequest{Model: "z-ai/glm-4.5-air:free", Messages: messages}
-	body, _ := json.Marshal(glmReq)
+func (s *AIService) doAIRequest(ctx context.Context, messages []model.ChatCompletionMessage) (string, error) {
+	if strings.TrimSpace(s.apiKey) == "" {
+		return "", fmt.Errorf("AI_API_KEY is not configured")
+	}
+
+	aiReq := model.ChatCompletionRequest{Model: s.model, Messages: messages}
+	body, err := json.Marshal(aiReq)
+	if err != nil {
+		return "", fmt.Errorf("failed to encode AI request: %w", err)
+	}
 
 	for attempt := 0; attempt < 4; attempt++ {
 		if attempt > 0 {
-			backoff := time.Duration(1<<uint(attempt-1)) * time.Second // 1s, 2s, 4s
+			backoff := time.Duration(1<<uint(attempt-1)) * time.Second
 			select {
 			case <-time.After(backoff):
 			case <-ctx.Done():
-				return "", fmt.Errorf("GLM API: context cancelled during retry")
+				return "", fmt.Errorf("AI request cancelled during retry")
 			}
 		}
 
-		httpReq, _ := http.NewRequestWithContext(ctx, "POST", glmEndpoint, bytes.NewReader(body))
+		httpReq, _ := http.NewRequestWithContext(ctx, "POST", s.baseURL, bytes.NewReader(body))
 		httpReq.Header.Set("Authorization", "Bearer "+s.apiKey)
 		httpReq.Header.Set("Content-Type", "application/json")
+		if s.provider == "openrouter" {
+			if s.siteURL != "" {
+				httpReq.Header.Set("HTTP-Referer", s.siteURL)
+			}
+			if s.appName != "" {
+				httpReq.Header.Set("X-Title", s.appName)
+			}
+		}
 
 		resp, err := s.httpClient.Do(httpReq)
 		if err != nil {
@@ -147,38 +165,36 @@ func (s *AIService) doGLMRequest(ctx context.Context, messages []model.GLMMessag
 		}
 
 		if resp.StatusCode == http.StatusOK {
-			var glmResp model.GLMResponse
-			if err := json.NewDecoder(resp.Body).Decode(&glmResp); err != nil {
+			var aiResp model.ChatCompletionResponse
+			if err := json.NewDecoder(resp.Body).Decode(&aiResp); err != nil {
 				resp.Body.Close()
-				return "", fmt.Errorf("failed to decode GLM response: %w", err)
+				return "", fmt.Errorf("failed to decode AI response: %w", err)
 			}
 			resp.Body.Close()
-			if len(glmResp.Choices) == 0 {
-				return "", fmt.Errorf("no response from GLM")
+			if len(aiResp.Choices) == 0 {
+				return "", fmt.Errorf("no response from AI provider")
 			}
-			return glmResp.Choices[0].Message.Content, nil
+			return aiResp.Choices[0].Message.Content, nil
 		}
 
 		_ = resp.Body.Close()
 
-		// 429 = rate limit, 5xx = server error → retry
 		if resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode >= 500 {
 			continue
 		}
 
-		// 4xx client errors (except 429) → don't retry
-		return "", fmt.Errorf("GLM API returned status %d", resp.StatusCode)
+		return "", fmt.Errorf("AI provider returned status %d", resp.StatusCode)
 	}
 
 	return "", fmt.Errorf("AI กำลัง busy มาก กรุณารอสักครู่แล้วลองใหม่ (rate limit)")
 }
 
-func (s *AIService) callGLM(ctx context.Context, systemPrompt, userPrompt string) (string, error) {
-	messages := []model.GLMMessage{
+func (s *AIService) callAI(ctx context.Context, systemPrompt, userPrompt string) (string, error) {
+	messages := []model.ChatCompletionMessage{
 		{Role: "system", Content: systemPrompt},
 		{Role: "user", Content: userPrompt},
 	}
-	return s.doGLMRequest(ctx, messages)
+	return s.doAIRequest(ctx, messages)
 }
 
 func (s *AIService) GenerateQuests(ctx context.Context, topic string, teacherID uuid.UUID) ([]*model.LearningQuest, error) {
@@ -201,7 +217,7 @@ Output format:
   ]
 }`
 
-	content, err := s.callGLM(ctx, systemPrompt, fmt.Sprintf("Create practice quests for the topic: %s", topic))
+	content, err := s.callAI(ctx, systemPrompt, fmt.Sprintf("Create practice quests for the topic: %s", topic))
 	if err != nil {
 		return nil, err
 	}
@@ -219,37 +235,23 @@ Output format:
 			TimeLimitMinutes int      `json:"time_limit_minutes"`
 		} `json:"quests"`
 	}
-	if err := json.Unmarshal([]byte(content), &result); err != nil {
+	if err := json.Unmarshal([]byte(extractJSONObject(content)), &result); err != nil {
 		return nil, fmt.Errorf("failed to parse AI response: %w", err)
 	}
 
 	quests := make([]*model.LearningQuest, 0, len(result.Quests))
 	for _, q := range result.Quests {
-		var id uuid.UUID
+		var quest model.LearningQuest
 		err := s.db.QueryRow(ctx,
 			`INSERT INTO learning_quests (teacher_id, title, topic, description, difficulty, question, answer, hints, explanation, exp_reward, time_limit_minutes, status)
 			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'active')
-			 RETURNING id, title, topic, description, difficulty, exp_reward, time_limit_minutes, status, created_at, updated_at`,
+			 RETURNING id, teacher_id, title, topic, description, difficulty, question, answer, hints, explanation, exp_reward, time_limit_minutes, status, created_at, updated_at`,
 			teacherID, q.Title, topic, "AI-generated practice quest", q.Difficulty, q.Question, q.Answer, q.Hints, q.Explanation, q.ExpReward, q.TimeLimitMinutes,
-		).Scan(&id, &q.Title, &topic, &q.Title, &q.Difficulty, &q.ExpReward, &q.TimeLimitMinutes, &q.Title, &q.Title, &q.Title)
+		).Scan(&quest.ID, &quest.TeacherID, &quest.Title, &quest.Topic, &quest.Description, &quest.Difficulty, &quest.Question, &quest.Answer, &quest.Hints, &quest.Explanation, &quest.ExpReward, &quest.TimeLimitMinutes, &quest.Status, &quest.CreatedAt, &quest.UpdatedAt)
 		if err != nil {
 			continue
 		}
-		quests = append(quests, &model.LearningQuest{
-			ID:               id,
-			TeacherID:        teacherID,
-			Title:            q.Title,
-			Topic:            topic,
-			Description:      "AI-generated practice quest",
-			Difficulty:       q.Difficulty,
-			Question:         q.Question,
-			Answer:           &q.Answer,
-			Hints:            q.Hints,
-			Explanation:      &q.Explanation,
-			ExpReward:        q.ExpReward,
-			TimeLimitMinutes: &q.TimeLimitMinutes,
-			Status:           "active",
-		})
+		quests = append(quests, &quest)
 	}
 	return quests, nil
 }
@@ -273,7 +275,7 @@ Output format:
 	userPrompt := fmt.Sprintf("Question: %s\nCorrect Answer: %s\nStudent Answer: %s\nMax EXP: %d",
 		question, correctAnswer, studentAnswer, expReward)
 
-	content, err := s.callGLM(ctx, systemPrompt, userPrompt)
+	content, err := s.callAI(ctx, systemPrompt, userPrompt)
 	if err != nil {
 		return nil, err
 	}
@@ -285,7 +287,7 @@ Output format:
 		ConsolationReward string `json:"consolation_reward"`
 		ExpEarned         int    `json:"exp_earned"`
 	}
-	if err := json.Unmarshal([]byte(content), &result); err != nil {
+	if err := json.Unmarshal([]byte(extractJSONObject(content)), &result); err != nil {
 		// fallback grading
 		isCorrect := studentAnswer == correctAnswer
 		score := 0
@@ -312,8 +314,23 @@ Output format:
 
 func strPtr(s string) *string { return &s }
 
+func extractJSONObject(content string) string {
+	trimmed := strings.TrimSpace(content)
+	if strings.HasPrefix(trimmed, "```") {
+		trimmed = strings.TrimPrefix(trimmed, "```json")
+		trimmed = strings.TrimPrefix(trimmed, "```")
+		trimmed = strings.TrimSuffix(trimmed, "```")
+		trimmed = strings.TrimSpace(trimmed)
+	}
+	start := strings.Index(trimmed, "{")
+	end := strings.LastIndex(trimmed, "}")
+	if start >= 0 && end > start {
+		return trimmed[start : end+1]
+	}
+	return trimmed
+}
+
 func (s *AIService) buildStudentContext(ctx context.Context, userID uuid.UUID) (string, error) {
-	// Get assignments
 	assignRows, err := s.db.Query(ctx,
 		`SELECT a.title, a.status, a.due_date, a.max_score,
 			 s.status as sub_status, s.score, s.submitted_at
@@ -327,8 +344,10 @@ func (s *AIService) buildStudentContext(ctx context.Context, userID uuid.UUID) (
 	defer assignRows.Close()
 
 	var assignments []string
+	pendingCount := 0
 	for assignRows.Next() {
-		var title, aStatus, subStatus string
+		var title, aStatus string
+		var subStatus *string
 		var dueDate *time.Time
 		var maxScore float64
 		var score *float64
@@ -337,13 +356,27 @@ func (s *AIService) buildStudentContext(ctx context.Context, userID uuid.UUID) (
 			continue
 		}
 		status := "pending"
-		if subStatus != "" {
-			status = subStatus
+		if subStatus != nil && *subStatus != "" {
+			status = *subStatus
 		}
-		assignments = append(assignments, fmt.Sprintf("- %s (Status: %s, Max: %.0f)", title, status, maxScore))
+		if status == "pending" || status == "draft" {
+			pendingCount++
+		}
+		due := "no due date"
+		if dueDate != nil {
+			due = dueDate.Format("2006-01-02 15:04")
+		}
+		scoreText := "not graded"
+		if score != nil {
+			scoreText = fmt.Sprintf("%.2f / %.0f", *score, maxScore)
+		}
+		submitted := "not submitted"
+		if submittedAt != nil {
+			submitted = submittedAt.Format("2006-01-02 15:04")
+		}
+		assignments = append(assignments, fmt.Sprintf("- %s (assignment status: %s, submission status: %s, due: %s, score: %s, submitted: %s)", title, aStatus, status, due, scoreText, submitted))
 	}
 
-	// Get attendance summary
 	var present, late, absent int
 	_ = s.db.QueryRow(ctx,
 		`SELECT
@@ -352,45 +385,83 @@ func (s *AIService) buildStudentContext(ctx context.Context, userID uuid.UUID) (
 			COALESCE(SUM(CASE WHEN status = 'absent' THEN 1 ELSE 0 END), 0)
 		 FROM attendance_records WHERE student_id = $1 AND deleted_at IS NULL`, userID).Scan(&present, &late, &absent)
 
-	// Get grades summary
 	var avgScore float64
 	var gradeCount int
 	_ = s.db.QueryRow(ctx,
-		`SELECT COALESCE(AVG(score), 0), COUNT(*) FROM grades WHERE student_id = $1 AND deleted_at IS NULL`, userID).Scan(&avgScore, &gradeCount)
+		`SELECT COALESCE(AVG(CASE WHEN max_score > 0 THEN score / max_score * 100 ELSE score END), 0), COUNT(*)
+		 FROM grades WHERE student_id = $1 AND deleted_at IS NULL`, userID).Scan(&avgScore, &gradeCount)
+
+	gradeRows, err := s.db.Query(ctx,
+		`SELECT item_type, score, max_score, feedback, created_at
+		 FROM grades
+		 WHERE student_id = $1 AND deleted_at IS NULL
+		 ORDER BY created_at DESC
+		 LIMIT 10`, userID)
+	if err != nil {
+		return "", err
+	}
+	defer gradeRows.Close()
+
+	var grades []string
+	for gradeRows.Next() {
+		var itemType string
+		var score, maxScore float64
+		var feedback *string
+		var createdAt time.Time
+		if err := gradeRows.Scan(&itemType, &score, &maxScore, &feedback, &createdAt); err != nil {
+			continue
+		}
+		feedbackText := ""
+		if feedback != nil && *feedback != "" {
+			feedbackText = fmt.Sprintf(", feedback: %s", *feedback)
+		}
+		grades = append(grades, fmt.Sprintf("- %s: %.2f / %.0f on %s%s", itemType, score, maxScore, createdAt.Format("2006-01-02"), feedbackText))
+	}
 
 	ctxStr := fmt.Sprintf(`Current Assignments:
 %s
 
+Assignment Summary:
+- Pending or draft submissions: %d
+
 Attendance Summary:
 - Present: %d
 - Late: %d
 - Absent: %d
 
 Grade Summary:
-- Average Score: %.2f
+- Estimated Average: %.2f%%
 - Total Graded Items: %d
-`, "", present, late, absent, avgScore, gradeCount)
+%s
+`, "No published assignments found.", pendingCount, present, late, absent, avgScore, gradeCount, formatContextSection("Recent Grades:", grades))
 
 	if len(assignments) > 0 {
-		assignStr := ""
-		for _, a := range assignments {
-			assignStr += a + "\n"
-		}
 		ctxStr = fmt.Sprintf(`Current Assignments:
 %s
 
+Assignment Summary:
+- Pending or draft submissions: %d
+
 Attendance Summary:
 - Present: %d
 - Late: %d
 - Absent: %d
 
 Grade Summary:
-- Average Score: %.2f
+- Estimated Average: %.2f%%
 - Total Graded Items: %d
-`, assignStr, present, late, absent, avgScore, gradeCount)
+%s
+`, strings.Join(assignments, "\n"), pendingCount, present, late, absent, avgScore, gradeCount, formatContextSection("Recent Grades:", grades))
 	}
 
 	return ctxStr, nil
+}
+
+func formatContextSection(title string, lines []string) string {
+	if len(lines) == 0 {
+		return title + "\n- none"
+	}
+	return title + "\n" + strings.Join(lines, "\n")
 }
 
 func (s *AIService) ListSessions(ctx context.Context, userID uuid.UUID) ([]*model.AIChatSession, error) {
@@ -444,14 +515,37 @@ func (s *AIService) ListMessages(ctx context.Context, sessionID, userID uuid.UUI
 
 type AIService struct {
 	db         *pgxpool.Pool
+	provider   string
 	apiKey     string
+	baseURL    string
+	model      string
+	appName    string
+	siteURL    string
 	httpClient *http.Client
 }
 
-func NewAIService(db *pgxpool.Pool, apiKey string) *AIService {
+func NewAIService(db *pgxpool.Pool, cfg *config.Config) *AIService {
+	provider := strings.TrimSpace(cfg.AIProvider)
+	if provider == "" {
+		provider = defaultAIProvider
+	}
+	baseURL := strings.TrimSpace(cfg.AIBaseURL)
+	if baseURL == "" {
+		baseURL = defaultAIBaseURL
+	}
+	modelName := strings.TrimSpace(cfg.AIModel)
+	if modelName == "" {
+		modelName = defaultAIModel
+	}
+
 	return &AIService{
 		db:         db,
-		apiKey:     apiKey,
+		provider:   strings.ToLower(provider),
+		apiKey:     strings.TrimSpace(cfg.AIAPIKey),
+		baseURL:    baseURL,
+		model:      modelName,
+		appName:    strings.TrimSpace(cfg.AIAppName),
+		siteURL:    strings.TrimSpace(cfg.AISiteURL),
 		httpClient: &http.Client{Timeout: 30 * time.Second},
 	}
 }

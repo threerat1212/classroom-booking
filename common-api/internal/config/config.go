@@ -13,12 +13,22 @@ type Config struct {
 	APIPort          string `mapstructure:"API_PORT"`
 	UploadDir        string `mapstructure:"UPLOAD_DIR"`
 	GoogleClientID   string `mapstructure:"GOOGLE_CLIENT_ID"`
-	GLMAPIKey        string `mapstructure:"GLM_API_KEY"`
+	AIProvider       string `mapstructure:"AI_PROVIDER"`
+	AIAPIKey         string `mapstructure:"AI_API_KEY"`
+	AIBaseURL        string `mapstructure:"AI_BASE_URL"`
+	AIModel          string `mapstructure:"AI_MODEL"`
+	AIAppName        string `mapstructure:"AI_APP_NAME"`
+	AISiteURL        string `mapstructure:"AI_SITE_URL"`
+	GLMAPIKey        string `mapstructure:"GLM_API_KEY"` // legacy fallback
 }
 
 func Load() *Config {
 	viper.SetDefault("API_PORT", "8080")
 	viper.SetDefault("UPLOAD_DIR", "./uploads")
+	viper.SetDefault("AI_PROVIDER", "openrouter")
+	viper.SetDefault("AI_BASE_URL", "https://openrouter.ai/api/v1/chat/completions")
+	viper.SetDefault("AI_MODEL", "z-ai/glm-4.5-air:free")
+	viper.SetDefault("AI_APP_NAME", "Classroom MS AI Tutor")
 
 	viper.AddConfigPath(".")
 	viper.SetConfigName(".env")
@@ -33,6 +43,12 @@ func Load() *Config {
 	_ = viper.BindEnv("PORT")
 	_ = viper.BindEnv("GOOGLE_CLIENT_ID")
 	_ = viper.BindEnv("UPLOAD_DIR")
+	_ = viper.BindEnv("AI_PROVIDER")
+	_ = viper.BindEnv("AI_API_KEY")
+	_ = viper.BindEnv("AI_BASE_URL")
+	_ = viper.BindEnv("AI_MODEL")
+	_ = viper.BindEnv("AI_APP_NAME")
+	_ = viper.BindEnv("AI_SITE_URL")
 	_ = viper.BindEnv("GLM_API_KEY")
 
 	if err := viper.ReadInConfig(); err != nil {
@@ -57,6 +73,9 @@ func Load() *Config {
 	}
 	if cfg.JWTRefreshSecret == "" {
 		cfg.JWTRefreshSecret = cfg.JWTSecret
+	}
+	if cfg.AIAPIKey == "" && cfg.GLMAPIKey != "" {
+		cfg.AIAPIKey = cfg.GLMAPIKey
 	}
 
 	return &cfg
