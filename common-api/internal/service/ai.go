@@ -23,7 +23,7 @@ import (
 const (
 	defaultAIProvider = "openrouter"
 	defaultAIBaseURL  = "https://openrouter.ai/api/v1/chat/completions"
-	defaultAIModel    = "deepseek/deepseek-v4-flash:free"
+	defaultAIModel    = "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free"
 )
 
 func (s *AIService) Chat(ctx context.Context, userID uuid.UUID, sessionID *uuid.UUID, message string) (*model.AIChatResponse, error) {

@@ -33,7 +33,7 @@ services:
       AI_PROVIDER: ${AI_PROVIDER:-openrouter}
       AI_API_KEY: ${AI_API_KEY:-}
       AI_BASE_URL: ${AI_BASE_URL:-https://openrouter.ai/api/v1/chat/completions}
-      AI_MODEL: ${AI_MODEL:-deepseek/deepseek-v4-flash:free}
+      AI_MODEL: ${AI_MODEL:-nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free}
       AI_APP_NAME: ${AI_APP_NAME:-Classroom MS AI Tutor}
       AI_SITE_URL: ${AI_SITE_URL:-http://localhost:3000}
     ports:

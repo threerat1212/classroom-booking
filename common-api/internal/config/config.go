@@ -28,7 +28,7 @@ func Load() *Config {
 	viper.SetDefault("UPLOAD_DIR", "./uploads")
 	viper.SetDefault("AI_PROVIDER", "openrouter")
 	viper.SetDefault("AI_BASE_URL", "https://openrouter.ai/api/v1/chat/completions")
-	viper.SetDefault("AI_MODEL", "deepseek/deepseek-v4-flash:free")
+	viper.SetDefault("AI_MODEL", "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free")
 	viper.SetDefault("AI_APP_NAME", "Classroom MS AI Tutor")
 
 	viper.AddConfigPath(".")
