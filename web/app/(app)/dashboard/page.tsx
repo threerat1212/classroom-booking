@@ -16,7 +16,9 @@ interface User {
   role: string
 }
 
-function useDashboardStats() {
+function useDashboardStats(role: string | null) {
+  const canReadUsers = role === 'admin' || role === 'teacher'
+
   return useQueries({
     queries: [
       {
@@ -38,6 +40,7 @@ function useDashboardStats() {
         queryKey: userKeys.lists(),
         queryFn: async () => apiFetch<{ data: User[] }>('/api/v1/users'),
         select: (res: { data: User[] }) => res.data.filter((u) => u.role === 'student').length,
+        enabled: canReadUsers,
       },
     ],
   })
@@ -105,8 +108,8 @@ const QUICK_ACTIONS = [
 ]
 
 export default function DashboardPage() {
-  const stats = useDashboardStats()
   const { role } = useCurrentUser()
+  const stats = useDashboardStats(role)
 
   const visibleActions = QUICK_ACTIONS.filter((a) => !role || a.roles.includes(role))
 

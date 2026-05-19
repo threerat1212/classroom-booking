@@ -1,0 +1,13 @@
+common-api/
+migrations/
+pg/
+pgdata/
+uploads/
+.playwright-cli/
+node_modules/
+web/node_modules/
+web/.next/
+web/out/
+*.backup
+*.zip
+*.log

@@ -45,6 +45,7 @@ Thumbs.db
 dist/
 build/
 coverage/
+.playwright-cli/
 
 # ====== Uploads (runtime) ======
 uploads/
