@@ -362,9 +362,61 @@ func extractJSONObject(content string) string {
 	start := strings.Index(trimmed, "{")
 	end := strings.LastIndex(trimmed, "}")
 	if start >= 0 && end > start {
-		return trimmed[start : end+1]
+		trimmed = trimmed[start : end+1]
 	}
-	return trimmed
+	return sanitizeJSONControlChars(trimmed)
+}
+
+// sanitizeJSONControlChars escapes raw control characters that appear inside
+// JSON string literals. LLMs frequently return JSON with literal newlines or
+// tabs inside string values, which violates the JSON spec and trips
+// encoding/json. This walks the byte stream, tracking whether we're inside a
+// string literal, and replaces raw control bytes with their escape sequences.
+func sanitizeJSONControlChars(s string) string {
+	var b strings.Builder
+	b.Grow(len(s))
+	inString := false
+	escaped := false
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if !inString {
+			if c == '"' {
+				inString = true
+			}
+			b.WriteByte(c)
+			continue
+		}
+		if escaped {
+			b.WriteByte(c)
+			escaped = false
+			continue
+		}
+		switch c {
+		case '\\':
+			b.WriteByte(c)
+			escaped = true
+		case '"':
+			b.WriteByte(c)
+			inString = false
+		case '\n':
+			b.WriteString(`\n`)
+		case '\r':
+			b.WriteString(`\r`)
+		case '\t':
+			b.WriteString(`\t`)
+		case '\b':
+			b.WriteString(`\b`)
+		case '\f':
+			b.WriteString(`\f`)
+		default:
+			if c < 0x20 {
+				fmt.Fprintf(&b, `\u%04x`, c)
+			} else {
+				b.WriteByte(c)
+			}
+		}
+	}
+	return b.String()
 }
 
 // --- Gemini (Google AI) support ---
