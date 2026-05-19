@@ -6,9 +6,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
+	"regexp"
+	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
 	"classroom-api/internal/config"
 	"classroom-api/internal/model"
@@ -152,7 +156,7 @@ func truncateRunes(value string, max int) string {
 	return value
 }
 
-func (s *AIService) doAIRequest(ctx context.Context, modelName string, messages []model.ChatCompletionMessage) (string, error) {
+func (s *AIService) doAIRequest(ctx context.Context, modelName string, messages []model.ChatCompletionMessage, responseFormat ...*model.ResponseFormat) (string, error) {
 	if strings.TrimSpace(s.apiKey) == "" {
 		return "", fmt.Errorf("AI_API_KEY is not configured")
 	}
@@ -169,6 +173,9 @@ func (s *AIService) doAIRequest(ctx context.Context, modelName string, messages 
 		Model:       modelName,
 		Messages:    messages,
 		Temperature: 0.3, // lower temp for more reliable structured output
+	}
+	if s.provider != "google" && len(responseFormat) > 0 && responseFormat[0] != nil {
+		aiReq.ResponseFormat = responseFormat[0]
 	}
 	body, err := json.Marshal(aiReq)
 	if err != nil {
@@ -245,19 +252,87 @@ func (s *AIService) callAI(ctx context.Context, modelName, systemPrompt, userPro
 	return s.doAIRequest(ctx, modelName, messages)
 }
 
-func (s *AIService) GenerateQuests(ctx context.Context, topic string, teacherID, classroomID uuid.UUID) ([]*model.LearningQuest, error) {
-	systemPrompt := `You are an educational AI that creates practice quests for students. You must output ONLY valid JSON.
+var numericRegex = regexp.MustCompile(`[-+]?\d*\.?\d+`)
 
-Create 4 quests (easy, medium, hard, expert) for the given topic. Each quest must have:
+func normalizeAnswer(s string) string {
+	s = strings.ToLower(strings.TrimSpace(s))
+	var b strings.Builder
+	var lastRune rune
+	for _, r := range s {
+		if unicode.IsLetter(r) || unicode.IsNumber(r) || unicode.IsSpace(r) {
+			if unicode.IsSpace(r) && unicode.IsSpace(lastRune) {
+				continue
+			}
+			b.WriteRune(r)
+			lastRune = r
+		} else if r == '-' || r == '+' || r == '.' {
+			b.WriteRune(r)
+			lastRune = r
+		}
+	}
+	return strings.TrimSpace(b.String())
+}
+
+func extractNumber(s string) (float64, bool) {
+	s = strings.TrimSpace(s)
+	if v, err := strconv.ParseFloat(s, 64); err == nil {
+		return v, true
+	}
+	match := numericRegex.FindString(s)
+	if match != "" {
+		if v, err := strconv.ParseFloat(match, 64); err == nil {
+			return v, true
+		}
+	}
+	return 0, false
+}
+
+func wordOverlapScore(a, b string) float64 {
+	wordsA := strings.Fields(a)
+	wordsB := strings.Fields(b)
+	if len(wordsA) == 0 || len(wordsB) == 0 {
+		return 0
+	}
+	setA := make(map[string]bool, len(wordsA))
+	for _, w := range wordsA {
+		setA[w] = true
+	}
+	common := 0
+	for _, w := range wordsB {
+		if setA[w] {
+			common++
+		}
+	}
+	denom := len(wordsA) + len(wordsB)
+	if denom == 0 {
+		return 0
+	}
+	return float64(2*common) / float64(denom)
+}
+
+func makeGradedAttempt(answer string, isCorrect bool, score int, feedback string, expEarned int) *model.QuestAttempt {
+	return &model.QuestAttempt{
+		Answer:    &answer,
+		IsCorrect: &isCorrect,
+		Score:     &score,
+		Feedback:  &feedback,
+		ExpEarned: expEarned,
+	}
+}
+
+func (s *AIService) GenerateQuests(ctx context.Context, topic string, teacherID, classroomID uuid.UUID) ([]*model.LearningQuest, error) {
+	systemPrompt := `You are an educational AI that creates practice quests for students. You must output ONLY valid JSON. No markdown, no explanations outside JSON.
+
+Create exactly 4 quests (easy, medium, hard, expert) for the given topic. Each quest must have:
 - title: short title (Thai or English is fine)
 - question: the actual question
-- answer: correct answer (short)
+- answer: correct answer (short, specific)
 - hints: array of 2 hint strings
 - explanation: explanation of the answer
 - exp_reward: number (easy=10, medium=25, hard=50, expert=80)
 - time_limit_minutes: number (easy=5, medium=10, hard=15, expert=20)
 
-Output format:
+Output strict JSON format:
 {
   "quests": [
     {"difficulty":"easy","title":"...","question":"...","answer":"...","hints":["...","..."],"explanation":"...","exp_reward":10,"time_limit_minutes":5},
@@ -265,16 +340,25 @@ Output format:
   ]
 }`
 
-	// AI generation with independent 3-minute timeout
 	aiCtx, aiCancel := context.WithTimeout(context.Background(), 3*time.Minute)
 	defer aiCancel()
-	// Quest generation: use the generation model (reasoning model is good for crafting questions)
-	content, err := s.callAI(aiCtx, s.model, systemPrompt, fmt.Sprintf("Create practice quests for the topic: %s", topic))
+
+	messages := []model.ChatCompletionMessage{
+		{Role: "system", Content: systemPrompt},
+		{Role: "user", Content: fmt.Sprintf("Create practice quests for the topic: %s", topic)},
+	}
+
+	var content string
+	var err error
+	if s.provider == "google" {
+		content, err = s.doGeminiRequest(aiCtx, messages)
+	} else {
+		content, err = s.doAIRequest(aiCtx, s.model, messages, &model.ResponseFormat{Type: "json_object"})
+	}
 	if err != nil {
 		return nil, err
 	}
 
-	// Parse JSON response
 	var result struct {
 		Quests []struct {
 			Difficulty       string   `json:"difficulty"`
@@ -287,12 +371,20 @@ Output format:
 			TimeLimitMinutes int      `json:"time_limit_minutes"`
 		} `json:"quests"`
 	}
-	if err := json.Unmarshal([]byte(extractJSONObject(content)), &result); err != nil {
+	jsonStr := extractJSONObject(content)
+	if jsonStr == "" {
+		return nil, fmt.Errorf("AI did not return valid JSON")
+	}
+	if err := json.Unmarshal([]byte(jsonStr), &result); err != nil {
 		preview := content
 		if len(preview) > 300 {
 			preview = preview[:300] + "..."
 		}
 		return nil, fmt.Errorf("failed to parse AI response: %w (raw: %s)", err, preview)
+	}
+
+	if len(result.Quests) != 4 {
+		return nil, fmt.Errorf("AI returned %d quests instead of 4", len(result.Quests))
 	}
 
 	quests := make([]*model.LearningQuest, 0, len(result.Quests))
@@ -309,10 +401,46 @@ Output format:
 		}
 		quests = append(quests, &quest)
 	}
+	if len(quests) == 0 {
+		return nil, fmt.Errorf("failed to save any quests to database")
+	}
 	return quests, nil
 }
 
 func (s *AIService) GradeQuest(ctx context.Context, question, correctAnswer, studentAnswer string, expReward int) (*model.QuestAttempt, error) {
+	correctAnswer = strings.TrimSpace(correctAnswer)
+	studentAnswer = strings.TrimSpace(studentAnswer)
+
+	// 1. Algorithmic grading for simple answers (fast, deterministic, no AI cost)
+	caNorm := normalizeAnswer(correctAnswer)
+	saNorm := normalizeAnswer(studentAnswer)
+	if caNorm != "" && saNorm != "" {
+		// Numeric comparison
+		correctNum, correctIsNum := extractNumber(correctAnswer)
+		studentNum, studentIsNum := extractNumber(studentAnswer)
+		if correctIsNum && studentIsNum {
+			if math.Abs(studentNum-correctNum) < 0.0001 {
+				return makeGradedAttempt(studentAnswer, true, 100, "ถูกต้อง! เก่งมาก!", expReward), nil
+			}
+			fb := fmt.Sprintf("ยังไม่ถูกต้องนะ คำตอบที่ถูกต้องคือ %.0f", correctNum)
+			return makeGradedAttempt(studentAnswer, false, 0, fb, 2), nil
+		}
+
+		// Short text comparison
+		if len(caNorm) < 200 && len(saNorm) < 200 {
+			if caNorm == saNorm {
+				return makeGradedAttempt(studentAnswer, true, 100, "ถูกต้อง! เก่งมาก!", expReward), nil
+			}
+			similarity := wordOverlapScore(caNorm, saNorm)
+			if similarity >= 0.85 {
+				return makeGradedAttempt(studentAnswer, true, 100, "ถูกต้อง! คำตอบของคุณมีความหมายถูกต้อง", expReward), nil
+			} else if similarity >= 0.5 {
+				return makeGradedAttempt(studentAnswer, false, 50, "ใกล้เคียงแล้ว! ลองตรวจสอบรายละเอียดอีกครั้งนะ", expReward/2), nil
+			}
+		}
+	}
+
+	// 2. AI grading for complex/open-ended answers
 	systemPrompt := `You are a LENIENT grader for student practice quests. Your default stance is "the student is correct" — only mark wrong if the answer is clearly, unambiguously wrong.
 
 # GRADING RULES
@@ -357,7 +485,6 @@ Respond with ONLY a single JSON object, no markdown fences, no commentary:
 	userPrompt := fmt.Sprintf("Question: %s\nCorrect Answer: %s\nStudent Answer: %s",
 		question, correctAnswer, studentAnswer)
 
-	// AI grading with independent 3-minute timeout
 	aiCtx, aiCancel := context.WithTimeout(context.Background(), 3*time.Minute)
 	defer aiCancel()
 	// Grading: use the grading model (fast instruct model; avoid reasoning overthink)
@@ -374,18 +501,12 @@ Respond with ONLY a single JSON object, no markdown fences, no commentary:
 	}
 	if err := json.Unmarshal([]byte(extractJSONObject(content)), &result); err != nil {
 		// fallback grading
-		isCorrect := studentAnswer == correctAnswer
+		isCorrect := strings.EqualFold(saNorm, caNorm)
 		score := 0
 		if isCorrect {
 			score = 100
 		}
-		return &model.QuestAttempt{
-			Answer:    &studentAnswer,
-			IsCorrect: &isCorrect,
-			Score:     &score,
-			Feedback:  strPtr("Simple match grading used."),
-			ExpEarned: 0,
-		}, nil
+		return makeGradedAttempt(studentAnswer, isCorrect, score, "ระบบตรวจแบบง่าย: คำตอบไม่ตรงกัน", 0), nil
 	}
 
 	// Compute EXP from score deterministically (server-side, not LLM-decided).
@@ -414,6 +535,7 @@ func extractJSONObject(content string) string {
 	trimmed := strings.TrimSpace(content)
 	if strings.HasPrefix(trimmed, "```") {
 		trimmed = strings.TrimPrefix(trimmed, "```json")
+		trimmed = strings.TrimPrefix(trimmed, "```JSON")
 		trimmed = strings.TrimPrefix(trimmed, "```")
 		trimmed = strings.TrimSuffix(trimmed, "```")
 		trimmed = strings.TrimSpace(trimmed)
@@ -422,6 +544,8 @@ func extractJSONObject(content string) string {
 	end := strings.LastIndex(trimmed, "}")
 	if start >= 0 && end > start {
 		trimmed = trimmed[start : end+1]
+	} else {
+		return ""
 	}
 	return sanitizeJSONControlChars(trimmed)
 }

@@ -37,11 +37,16 @@ type ChatCompletionMessage struct {
 	Content string `json:"content"`
 }
 
+type ResponseFormat struct {
+	Type string `json:"type"`
+}
+
 type ChatCompletionRequest struct {
-	Model       string                  `json:"model"`
-	Messages    []ChatCompletionMessage `json:"messages"`
-	MaxTokens   int                     `json:"max_tokens,omitempty"`
-	Temperature float64                 `json:"temperature,omitempty"`
+	Model          string                  `json:"model"`
+	Messages       []ChatCompletionMessage `json:"messages"`
+	MaxTokens      int                     `json:"max_tokens,omitempty"`
+	Temperature    float64                 `json:"temperature,omitempty"`
+	ResponseFormat *ResponseFormat         `json:"response_format,omitempty"`
 }
 
 type ChatCompletionChoice struct {
