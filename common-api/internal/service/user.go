@@ -21,7 +21,7 @@ func LevelFromXp(xp int) int {
 	if xp <= 0 {
 		return 1
 	}
-	L := (1 + math.Sqrt(1+float64(xp)/25.0)) / 2.0
+	L := (1 + math.Sqrt(1+float64(xp)*0.08)) / 2.0
 	return int(L)
 }
 
@@ -55,6 +55,49 @@ type UserService struct {
 }
 
 func NewUserService(db *pgxpool.Pool) *UserService { return &UserService{db: db} }
+
+var levelUnlockRules = []model.LevelUnlock{
+	{Level: 1, Title: "Easy / Medium Quests", Description: "Start practice quests, hints, XP, and leaderboard ranking.", Category: "quests"},
+	{Level: 2, Title: "Hard Quests + Daily Quest", Description: "Unlock harder practice and a daily review target.", Category: "quests"},
+	{Level: 3, Title: "Expert Quests + Badge Cabinet", Description: "Unlock expert quests and collectible achievement badges.", Category: "quests"},
+	{Level: 5, Title: "Profile Title & Frame", Description: "Unlock cosmetic profile titles and avatar frames.", Category: "cosmetic"},
+	{Level: 7, Title: "Challenge Mode", Description: "Timed streak challenges for extra practice.", Category: "challenge"},
+	{Level: 10, Title: "Weekly Boss Quest", Description: "A weekly class challenge with higher XP rewards.", Category: "challenge"},
+	{Level: 15, Title: "Streak Rewards", Description: "Bonus badges for consistent study streaks.", Category: "rewards"},
+	{Level: 20, Title: "Peer Challenge", Description: "Challenge classmates on the same quest set.", Category: "social"},
+	{Level: 30, Title: "Master Quest", Description: "Long-form mastery quests for major topics.", Category: "mastery"},
+	{Level: 40, Title: "Seasonal Leaderboard", Description: "Compete in seasonal rankings and rare badges.", Category: "season"},
+	{Level: 50, Title: "Legend Hall of Fame", Description: "Legend title, profile effect, and hall of fame visibility.", Category: "legend"},
+}
+
+func unlocksForLevel(level int) []model.LevelUnlock {
+	unlocks := make([]model.LevelUnlock, 0, len(levelUnlockRules))
+	for _, unlock := range levelUnlockRules {
+		unlock.Unlocked = level >= unlock.Level
+		unlocks = append(unlocks, unlock)
+	}
+	return unlocks
+}
+
+func (s *UserService) LevelProgress(ctx context.Context, userID uuid.UUID) (*model.LevelProgress, error) {
+	user, err := s.Get(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	level := LevelFromXp(user.XP)
+	rank := RankTitleFromLevel(level)
+	if user.RankTitle != nil && *user.RankTitle != "" {
+		rank = *user.RankTitle
+	}
+	return &model.LevelProgress{
+		Level:          level,
+		XP:             user.XP,
+		RankTitle:      rank,
+		CurrentLevelXP: XpForLevel(level),
+		NextLevelXP:    XpForLevel(level + 1),
+		Unlocks:        unlocksForLevel(level),
+	}, nil
+}
 
 func (s *UserService) List(ctx context.Context) ([]*model.User, error) {
 	rows, err := s.db.Query(ctx,

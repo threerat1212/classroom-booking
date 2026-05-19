@@ -13,6 +13,7 @@ type Grade struct {
 	ItemID    uuid.UUID  `json:"item_id"`
 	Score     int        `json:"score"`
 	MaxScore  int        `json:"max_score"`
+	GradeCode *string    `json:"grade_code,omitempty"`
 	Feedback  *string    `json:"feedback,omitempty"`
 	GradedBy  *uuid.UUID `json:"graded_by,omitempty"`
 	CreatedAt time.Time  `json:"created_at"`
@@ -25,5 +26,6 @@ type UpsertGradeRequest struct {
 	ItemID    string `json:"item_id" binding:"required,uuid"`
 	Score     int    `json:"score" binding:"required,min=0"`
 	MaxScore  int    `json:"max_score" binding:"required,min=1"`
+	GradeCode string `json:"grade_code,omitempty"`
 	Feedback  string `json:"feedback,omitempty"`
 }

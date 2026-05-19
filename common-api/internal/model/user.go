@@ -25,6 +25,23 @@ type User struct {
 	UpdatedAt  time.Time  `json:"updated_at"`
 }
 
+type LevelUnlock struct {
+	Level       int    `json:"level"`
+	Title       string `json:"title"`
+	Description string `json:"description"`
+	Category    string `json:"category"`
+	Unlocked    bool   `json:"unlocked"`
+}
+
+type LevelProgress struct {
+	Level          int           `json:"level"`
+	XP             int           `json:"xp"`
+	RankTitle      string        `json:"rank_title"`
+	CurrentLevelXP int           `json:"current_level_xp"`
+	NextLevelXP    int           `json:"next_level_xp"`
+	Unlocks        []LevelUnlock `json:"unlocks"`
+}
+
 type LoginRequest struct {
 	Email    string `json:"email" binding:"required,email"`
 	Password string `json:"password" binding:"required,min=6"`

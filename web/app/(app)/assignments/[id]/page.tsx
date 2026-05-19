@@ -3,14 +3,16 @@
 import { useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, Trash2, Send, MessageSquare, Calendar, Award, MapPin, AlignLeft } from 'lucide-react'
+import { ArrowLeft, Trash2, Send, MessageSquare, Calendar, Award, MapPin, AlignLeft, Download, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { getAssignment, deleteAssignment } from '@/lib/api/assignments'
+import { downloadAssignmentGradebook, getAssignment, deleteAssignment, listAssignmentGradebook } from '@/lib/api/assignments'
+import { gradeSubmission } from '@/lib/api/submissions'
 import { assignmentKeys } from '@/lib/query/keys'
 import { apiErrorMessage } from '@/lib/http/client'
+import { useCurrentUser } from '@/hooks/useCurrentUser'
 import { toast } from 'sonner'
 
 interface Comment {
@@ -25,6 +27,11 @@ export default function AssignmentDetailPage() {
   const params = useParams()
   const id = params.id as string
   const qc = useQueryClient()
+  const { role } = useCurrentUser()
+  const canGrade = role === 'teacher' || role === 'admin'
+  const [scoreDrafts, setScoreDrafts] = useState<Record<string, string>>({})
+  const [feedbackDrafts, setFeedbackDrafts] = useState<Record<string, string>>({})
+  const [gradeCodeDrafts, setGradeCodeDrafts] = useState<Record<string, string>>({})
 
   const { data: assignment, isLoading } = useQuery({
     queryKey: assignmentKeys.detail(id),
@@ -42,6 +49,27 @@ export default function AssignmentDetailPage() {
     onError: (err) => toast.error(apiErrorMessage(err)),
   })
 
+  const gradebookQuery = useQuery({
+    queryKey: ['assignment-gradebook', id],
+    queryFn: async () => (await listAssignmentGradebook(id)).data ?? [],
+    enabled: !!id && canGrade,
+  })
+
+  const gradeMutation = useMutation({
+    mutationFn: ({ submissionId, score, feedback, gradeCode }: { submissionId: string; score: number; feedback?: string; gradeCode?: string }) =>
+      gradeSubmission(submissionId, {
+        score,
+        feedback,
+        grade_code: gradeCode || undefined,
+      }),
+    onSuccess: () => {
+      toast.success('Score saved')
+      qc.invalidateQueries({ queryKey: ['assignment-gradebook', id] })
+      qc.invalidateQueries({ queryKey: ['grades'] })
+    },
+    onError: (err) => toast.error(apiErrorMessage(err)),
+  })
+
   const [comments, setComments] = useState<Comment[]>([])
   const [newComment, setNewComment] = useState('')
 
@@ -55,6 +83,20 @@ export default function AssignmentDetailPage() {
     }
     setComments((prev) => [...prev, comment])
     setNewComment('')
+  }
+
+  const handleExport = async () => {
+    try {
+      const blob = await downloadAssignmentGradebook(id)
+      const url = URL.createObjectURL(blob)
+      const anchor = document.createElement('a')
+      anchor.href = url
+      anchor.download = `${assignment?.data?.title || 'assignment'}-gradebook.xlsx`
+      anchor.click()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      toast.error(apiErrorMessage(err))
+    }
   }
 
   if (isLoading) {
@@ -152,6 +194,117 @@ export default function AssignmentDetailPage() {
               )}
             </dl>
           </div>
+
+          {canGrade && (
+            <div className="rounded-lg border border-white/10 bg-white/5 p-6">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-lg font-semibold text-white">Gradebook</h2>
+                  <p className="mt-1 text-sm text-slate-400">Assignment scores and final grade codes</p>
+                </div>
+                <Button variant="outline" onClick={handleExport}>
+                  <Download className="mr-2 h-4 w-4" />
+                  Export Excel
+                </Button>
+              </div>
+
+              <div className="mt-4 overflow-x-auto">
+                <table className="w-full min-w-[760px] text-left text-sm">
+                  <thead className="text-xs uppercase text-slate-500">
+                    <tr className="border-b border-white/10">
+                      <th className="py-2 pr-3">Student</th>
+                      <th className="py-2 pr-3">Status</th>
+                      <th className="py-2 pr-3">Score</th>
+                      <th className="py-2 pr-3">Grade</th>
+                      <th className="py-2 pr-3">Feedback</th>
+                      <th className="py-2 pr-3" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {gradebookQuery.isLoading ? (
+                      <tr>
+                        <td colSpan={6} className="py-8 text-center text-slate-400">
+                          <Loader2 className="mx-auto h-5 w-5 animate-spin" />
+                        </td>
+                      </tr>
+                    ) : (gradebookQuery.data ?? []).length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="py-8 text-center text-slate-400">No students or submissions yet</td>
+                      </tr>
+                    ) : (
+                      (gradebookQuery.data ?? []).map((row) => {
+                        const key = row.submission_id ?? row.student_id
+                        const scoreValue = scoreDrafts[key] ?? (row.score?.toString() ?? '')
+                        const feedbackValue = feedbackDrafts[key] ?? (row.feedback ?? '')
+                        const gradeValue = gradeCodeDrafts[key] ?? row.grade_code
+                        const canSave = !!row.submission_id && scoreValue !== ''
+                        return (
+                          <tr key={key} className="border-b border-white/5 align-top">
+                            <td className="py-3 pr-3">
+                              <p className="font-medium text-white">{row.student_name}</p>
+                              <p className="text-xs text-slate-500">{row.student_email}</p>
+                            </td>
+                            <td className="py-3 pr-3 text-slate-300">{row.status}</td>
+                            <td className="py-3 pr-3">
+                              <Input
+                                type="number"
+                                min={0}
+                                max={row.max_score}
+                                value={scoreValue}
+                                onChange={(event) => setScoreDrafts((prev) => ({ ...prev, [key]: event.target.value }))}
+                                disabled={!row.submission_id}
+                                className="h-9 w-24"
+                              />
+                              <p className="mt-1 text-xs text-slate-500">/ {row.max_score}</p>
+                            </td>
+                            <td className="py-3 pr-3">
+                              <select
+                                value={gradeValue}
+                                onChange={(event) => setGradeCodeDrafts((prev) => ({ ...prev, [key]: event.target.value }))}
+                                disabled={!row.submission_id}
+                                className="h-9 rounded-md border border-white/10 bg-slate-950/60 px-2 text-sm text-white"
+                              >
+                                {['ร', '0', '1', '1.5', '2', '2.5', '3', '3.5', '4'].map((grade) => (
+                                  <option key={grade} value={grade}>{grade}</option>
+                                ))}
+                              </select>
+                            </td>
+                            <td className="py-3 pr-3">
+                              <Input
+                                value={feedbackValue}
+                                onChange={(event) => setFeedbackDrafts((prev) => ({ ...prev, [key]: event.target.value }))}
+                                disabled={!row.submission_id}
+                                placeholder="Feedback"
+                                className="h-9 min-w-[180px]"
+                              />
+                            </td>
+                            <td className="py-3 pr-3">
+                              <Button
+                                size="sm"
+                                disabled={!canSave || gradeMutation.isPending}
+                                onClick={() => row.submission_id && gradeMutation.mutate({
+                                  submissionId: row.submission_id,
+                                  score: Number(scoreValue),
+                                  feedback: feedbackValue,
+                                  gradeCode: gradeValue,
+                                })}
+                              >
+                                Save
+                              </Button>
+                            </td>
+                          </tr>
+                        )
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="mt-4 rounded-lg border border-white/10 bg-slate-950/40 p-3 text-xs text-slate-400">
+                ต่ำกว่า 50 = 0 หรือ ร, 50-54 = 1, 55-59 = 1.5, 60-64 = 2, 65-69 = 2.5, 70-74 = 3, 75-79 = 3.5, 80+ = 4
+              </div>
+            </div>
+          )}
 
           <div className="rounded-lg border border-white/10 bg-white/5 p-6">
             <h2 className="flex items-center gap-2 text-lg font-semibold text-white">

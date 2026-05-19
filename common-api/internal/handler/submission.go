@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"strings"
+
 	"classroom-api/internal/model"
 	"classroom-api/internal/service"
 	"classroom-api/pkg/response"
@@ -105,6 +107,10 @@ func (h *SubmissionHandler) Grade(c *gin.Context) {
 	userID, _ := c.Get("userID")
 	item, err := h.service.Grade(c.Request.Context(), id, req, userID.(string))
 	if err != nil {
+		if strings.Contains(err.Error(), "score cannot exceed") || strings.Contains(err.Error(), "invalid grade code") {
+			response.BadRequest(c, "VALIDATION_ERROR", err.Error())
+			return
+		}
 		response.NotFound(c, "submission")
 		return
 	}

@@ -17,7 +17,7 @@ func NewGradeService(db *pgxpool.Pool) *GradeService { return &GradeService{db: 
 
 func (s *GradeService) List(ctx context.Context, studentID *uuid.UUID) ([]*model.Grade, error) {
 	rows, err := s.db.Query(ctx,
-		`SELECT id, student_id, item_type, item_id, score, max_score, feedback, graded_by, created_at, updated_at
+		`SELECT id, student_id, item_type, item_id, score, max_score, grade_code, feedback, graded_by, created_at, updated_at
 		 FROM grades WHERE deleted_at IS NULL
 		   AND ($1::uuid IS NULL OR student_id = $1)
 		 ORDER BY created_at DESC`, studentID)
@@ -28,7 +28,7 @@ func (s *GradeService) List(ctx context.Context, studentID *uuid.UUID) ([]*model
 	items := make([]*model.Grade, 0)
 	for rows.Next() {
 		var g model.Grade
-		if err := rows.Scan(&g.ID, &g.StudentID, &g.ItemType, &g.ItemID, &g.Score, &g.MaxScore, &g.Feedback, &g.GradedBy, &g.CreatedAt, &g.UpdatedAt); err != nil {
+		if err := rows.Scan(&g.ID, &g.StudentID, &g.ItemType, &g.ItemID, &g.Score, &g.MaxScore, &g.GradeCode, &g.Feedback, &g.GradedBy, &g.CreatedAt, &g.UpdatedAt); err != nil {
 			return nil, err
 		}
 		items = append(items, &g)
@@ -39,9 +39,9 @@ func (s *GradeService) List(ctx context.Context, studentID *uuid.UUID) ([]*model
 func (s *GradeService) Get(ctx context.Context, id uuid.UUID) (*model.Grade, error) {
 	var g model.Grade
 	err := s.db.QueryRow(ctx,
-		`SELECT id, student_id, item_type, item_id, score, max_score, feedback, graded_by, created_at, updated_at
+		`SELECT id, student_id, item_type, item_id, score, max_score, grade_code, feedback, graded_by, created_at, updated_at
 		 FROM grades WHERE id = $1 AND deleted_at IS NULL`, id,
-	).Scan(&g.ID, &g.StudentID, &g.ItemType, &g.ItemID, &g.Score, &g.MaxScore, &g.Feedback, &g.GradedBy, &g.CreatedAt, &g.UpdatedAt)
+	).Scan(&g.ID, &g.StudentID, &g.ItemType, &g.ItemID, &g.Score, &g.MaxScore, &g.GradeCode, &g.Feedback, &g.GradedBy, &g.CreatedAt, &g.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -62,18 +62,23 @@ func (s *GradeService) Upsert(ctx context.Context, req model.UpsertGradeRequest,
 		return nil, err
 	}
 	var g model.Grade
+	gradeCode := req.GradeCode
+	if gradeCode == "" {
+		gradeCode = GradeCodeForScore(req.Score, req.MaxScore)
+	}
 	err = s.db.QueryRow(ctx,
-		`INSERT INTO grades (student_id, item_type, item_id, score, max_score, feedback, graded_by)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7)
+		`INSERT INTO grades (student_id, item_type, item_id, score, max_score, grade_code, feedback, graded_by)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		 ON CONFLICT (student_id, item_type, item_id) DO UPDATE SET
 		     score = EXCLUDED.score,
 		     max_score = EXCLUDED.max_score,
+		     grade_code = EXCLUDED.grade_code,
 		     feedback = EXCLUDED.feedback,
 		     graded_by = EXCLUDED.graded_by,
 		     updated_at = now()
-		 RETURNING id, student_id, item_type, item_id, score, max_score, feedback, graded_by, created_at, updated_at`,
-		sid, req.ItemType, iid, req.Score, req.MaxScore, req.Feedback, gb,
-	).Scan(&g.ID, &g.StudentID, &g.ItemType, &g.ItemID, &g.Score, &g.MaxScore, &g.Feedback, &g.GradedBy, &g.CreatedAt, &g.UpdatedAt)
+		 RETURNING id, student_id, item_type, item_id, score, max_score, grade_code, feedback, graded_by, created_at, updated_at`,
+		sid, req.ItemType, iid, req.Score, req.MaxScore, gradeCode, req.Feedback, gb,
+	).Scan(&g.ID, &g.StudentID, &g.ItemType, &g.ItemID, &g.Score, &g.MaxScore, &g.GradeCode, &g.Feedback, &g.GradedBy, &g.CreatedAt, &g.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}

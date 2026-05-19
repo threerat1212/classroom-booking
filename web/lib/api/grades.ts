@@ -7,6 +7,7 @@ export interface Grade {
   item_id: string
   score: number
   max_score: number
+  grade_code?: string
   feedback?: string
   graded_by?: string
   created_at: string
@@ -18,6 +19,7 @@ export interface UpsertGradePayload {
   item_id: string
   score: number
   max_score: number
+  grade_code?: string
   feedback?: string
 }
 

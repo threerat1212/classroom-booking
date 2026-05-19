@@ -1,8 +1,9 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { BookOpen, Copy, Loader2, Plus, Users } from 'lucide-react'
+import { ArrowRight, BookOpen, Copy, Loader2, Plus, Users } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -55,6 +56,13 @@ function ClassroomCard({ classroom, canCopyCode }: { classroom: Classroom; canCo
           <Copy className="h-4 w-4 text-slate-400" />
         </button>
       )}
+
+      <Button asChild variant="outline" className="mt-4 w-full justify-between">
+        <Link href={`/classrooms/${classroom.id}`}>
+          Open Classroom
+          <ArrowRight className="h-4 w-4" />
+        </Link>
+      </Button>
     </div>
   )
 }

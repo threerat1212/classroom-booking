@@ -99,3 +99,23 @@ func (h *UserHandler) Leaderboard(c *gin.Context) {
 	}
 	response.OK(c, users)
 }
+
+func (h *UserHandler) Unlocks(c *gin.Context) {
+	userIDStr, exists := c.Get("userID")
+	if !exists {
+		response.Unauthorized(c, "UNAUTHORIZED")
+		return
+	}
+	userID, err := uuid.Parse(userIDStr.(string))
+	if err != nil {
+		response.BadRequest(c, "VALIDATION_ERROR", "invalid user id")
+		return
+	}
+
+	progress, err := h.service.LevelProgress(c.Request.Context(), userID)
+	if err != nil {
+		response.NotFound(c, "user")
+		return
+	}
+	response.OK(c, progress)
+}

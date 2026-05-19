@@ -127,6 +127,54 @@ func (s *ClassroomService) Join(ctx context.Context, studentID string, req model
 	return s.GetForStudent(ctx, classroomID, sid)
 }
 
+func (s *ClassroomService) Get(ctx context.Context, classroomID uuid.UUID, userID, role string) (*model.Classroom, error) {
+	uid, err := uuid.Parse(userID)
+	if err != nil {
+		return nil, err
+	}
+
+	switch role {
+	case "admin":
+		items, err := s.queryClassrooms(ctx, `
+			SELECT r.id, r.name, r.code, r.capacity, r.description, r.teacher_id, u.full_name,
+			       r.join_code, COUNT(cm.student_id)::bigint AS student_count, NULL::timestamptz AS joined_at,
+			       r.created_at, r.updated_at
+			FROM rooms r
+			LEFT JOIN users u ON u.id = r.teacher_id
+			LEFT JOIN classroom_members cm ON cm.room_id = r.id
+			WHERE r.id = $1 AND r.deleted_at IS NULL AND r.room_type = 'classroom'
+			GROUP BY r.id, u.full_name`, classroomID)
+		if err != nil {
+			return nil, err
+		}
+		if len(items) == 0 {
+			return nil, model.ErrNotFound
+		}
+		return items[0], nil
+	case "teacher":
+		items, err := s.queryClassrooms(ctx, `
+			SELECT r.id, r.name, r.code, r.capacity, r.description, r.teacher_id, u.full_name,
+			       r.join_code, COUNT(cm.student_id)::bigint AS student_count, NULL::timestamptz AS joined_at,
+			       r.created_at, r.updated_at
+			FROM rooms r
+			LEFT JOIN users u ON u.id = r.teacher_id
+			LEFT JOIN classroom_members cm ON cm.room_id = r.id
+			WHERE r.id = $1 AND r.teacher_id = $2 AND r.deleted_at IS NULL AND r.room_type = 'classroom'
+			GROUP BY r.id, u.full_name`, classroomID, uid)
+		if err != nil {
+			return nil, err
+		}
+		if len(items) == 0 {
+			return nil, model.ErrNotFound
+		}
+		return items[0], nil
+	case "student":
+		return s.GetForStudent(ctx, classroomID, uid)
+	default:
+		return nil, model.ErrForbidden
+	}
+}
+
 func (s *ClassroomService) GetForStudent(ctx context.Context, classroomID, studentID uuid.UUID) (*model.Classroom, error) {
 	rows, err := s.db.Query(ctx, `
 		SELECT r.id, r.name, r.code, r.capacity, r.description, r.teacher_id, u.full_name,
@@ -155,6 +203,110 @@ func (s *ClassroomService) GetForStudent(ctx context.Context, classroomID, stude
 		return nil, model.ErrNotFound
 	}
 	return items[0], nil
+}
+
+func (s *ClassroomService) ListMaterials(ctx context.Context, classroomID uuid.UUID, userID, role string) ([]*model.LearningMaterial, error) {
+	if _, err := s.Get(ctx, classroomID, userID, role); err != nil {
+		return nil, err
+	}
+
+	publishedFilter := ""
+	if role == "student" {
+		publishedFilter = "AND is_published = true"
+	}
+
+	rows, err := s.db.Query(ctx, fmt.Sprintf(`
+		SELECT id, classroom_id, teacher_id, title, description, material_type, content, url,
+		       file_urls, sort_order, is_published, created_at, updated_at
+		FROM learning_materials
+		WHERE classroom_id = $1 AND deleted_at IS NULL %s
+		ORDER BY sort_order ASC, created_at DESC`, publishedFilter), classroomID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	items := make([]*model.LearningMaterial, 0)
+	for rows.Next() {
+		var item model.LearningMaterial
+		if err := rows.Scan(&item.ID, &item.ClassroomID, &item.TeacherID, &item.Title, &item.Description, &item.MaterialType, &item.Content, &item.URL, &item.FileURLs, &item.SortOrder, &item.IsPublished, &item.CreatedAt, &item.UpdatedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, &item)
+	}
+	return items, rows.Err()
+}
+
+func (s *ClassroomService) CreateMaterial(ctx context.Context, classroomID uuid.UUID, userID, role string, req model.CreateLearningMaterialRequest) (*model.LearningMaterial, error) {
+	uid, err := uuid.Parse(userID)
+	if err != nil {
+		return nil, err
+	}
+	classroom, err := s.Get(ctx, classroomID, userID, role)
+	if err != nil {
+		return nil, err
+	}
+	if role != "admin" && (classroom.TeacherID == nil || *classroom.TeacherID != uid) {
+		return nil, model.ErrForbidden
+	}
+
+	isPublished := true
+	if req.IsPublished != nil {
+		isPublished = *req.IsPublished
+	}
+	var description *string
+	if strings.TrimSpace(req.Description) != "" {
+		v := strings.TrimSpace(req.Description)
+		description = &v
+	}
+	var content *string
+	if strings.TrimSpace(req.Content) != "" {
+		v := strings.TrimSpace(req.Content)
+		content = &v
+	}
+	var url *string
+	if strings.TrimSpace(req.URL) != "" {
+		v := strings.TrimSpace(req.URL)
+		url = &v
+	}
+
+	var item model.LearningMaterial
+	err = s.db.QueryRow(ctx, `
+		INSERT INTO learning_materials (classroom_id, teacher_id, title, description, material_type, content, url, file_urls, sort_order, is_published)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+		RETURNING id, classroom_id, teacher_id, title, description, material_type, content, url, file_urls, sort_order, is_published, created_at, updated_at`,
+		classroomID, uid, strings.TrimSpace(req.Title), description, req.MaterialType, content, url, req.FileURLs, req.SortOrder, isPublished,
+	).Scan(&item.ID, &item.ClassroomID, &item.TeacherID, &item.Title, &item.Description, &item.MaterialType, &item.Content, &item.URL, &item.FileURLs, &item.SortOrder, &item.IsPublished, &item.CreatedAt, &item.UpdatedAt)
+	if err != nil {
+		return nil, err
+	}
+	return &item, nil
+}
+
+func (s *ClassroomService) DeleteMaterial(ctx context.Context, classroomID, materialID uuid.UUID, userID, role string) error {
+	uid, err := uuid.Parse(userID)
+	if err != nil {
+		return err
+	}
+	classroom, err := s.Get(ctx, classroomID, userID, role)
+	if err != nil {
+		return err
+	}
+	if role != "admin" && (classroom.TeacherID == nil || *classroom.TeacherID != uid) {
+		return model.ErrForbidden
+	}
+
+	tag, err := s.db.Exec(ctx, `
+		UPDATE learning_materials
+		SET deleted_at = now(), updated_at = now()
+		WHERE id = $1 AND classroom_id = $2 AND deleted_at IS NULL`, materialID, classroomID)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return model.ErrNotFound
+	}
+	return nil
 }
 
 func (s *ClassroomService) queryClassrooms(ctx context.Context, sql string, args ...interface{}) ([]*model.Classroom, error) {

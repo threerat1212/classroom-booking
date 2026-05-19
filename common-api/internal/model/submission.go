@@ -16,6 +16,7 @@ type Submission struct {
 	SubmittedAt  *time.Time `json:"submitted_at,omitempty"`
 	Status       string     `json:"status"`
 	Score        *int       `json:"score,omitempty"`
+	GradeCode    *string    `json:"grade_code,omitempty"`
 	Feedback     *string    `json:"feedback,omitempty"`
 	GradedBy     *uuid.UUID `json:"graded_by,omitempty"`
 	GradedAt     *time.Time `json:"graded_at,omitempty"`
@@ -37,6 +38,7 @@ type UpdateSubmissionRequest struct {
 }
 
 type GradeSubmissionRequest struct {
-	Score    int    `json:"score" binding:"required,min=0"`
-	Feedback string `json:"feedback,omitempty"`
+	Score     int     `json:"score" binding:"required,min=0"`
+	Feedback  string  `json:"feedback,omitempty"`
+	GradeCode *string `json:"grade_code,omitempty"`
 }

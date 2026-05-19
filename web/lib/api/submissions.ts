@@ -10,6 +10,7 @@ export interface Submission {
   submitted_at: string
   status: string
   score?: number
+  grade_code?: string
   feedback?: string
 }
 
@@ -29,6 +30,7 @@ export interface UpdateSubmissionPayload {
 export interface GradeSubmissionPayload {
   score: number
   feedback?: string
+  grade_code?: string
 }
 
 export function listSubmissions(assignmentId?: string, studentId?: string) {

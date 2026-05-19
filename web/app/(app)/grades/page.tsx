@@ -24,6 +24,7 @@ export default function GradesPage() {
           { key: 'student', header: 'Student', cell: (row) => <span className="font-mono text-xs">{row.student_id.slice(0, 8)}</span> },
           { key: 'item', header: 'Item', cell: (row) => `${row.item_type} (${row.item_id.slice(0, 8)})` },
           { key: 'score', header: 'Score', cell: (row) => `${row.score} / ${row.max_score}` },
+          { key: 'grade', header: 'Grade', cell: (row) => row.grade_code || '-' },
           { key: 'feedback', header: 'Feedback', cell: (row) => row.feedback || '-' },
         ]}
         data={data}

@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { DataTable } from '@/components/shared/data-table'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { apiFetch } from '@/lib/http/client'
@@ -35,7 +36,7 @@ export default function StudentAssignmentsPage() {
       </div>
       <DataTable
         columns={[
-          { key: 'title', header: 'Title', cell: (a) => <span className="font-medium">{a.title}</span> },
+          { key: 'title', header: 'Title', cell: (a) => <Link href={`/student/submissions/${a.id}`} className="font-medium text-blue-300 hover:text-blue-200">{a.title}</Link> },
           { key: 'type', header: 'Type', cell: (a) => a.assignment_type },
           { key: 'max_score', header: 'Max Score', cell: (a) => a.max_score ?? '-' },
           { key: 'due_date', header: 'Due Date', cell: (a) => a.due_date ? new Date(a.due_date).toLocaleDateString() : '-' },

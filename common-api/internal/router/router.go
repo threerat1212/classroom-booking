@@ -64,8 +64,12 @@ func New(cfg *config.Config, h *handler.Handlers) *gin.Engine {
 		classrooms := protected.Group("/classrooms")
 		{
 			classrooms.GET("", h.Classroom.List)
+			classrooms.GET("/:id", h.Classroom.Get)
 			classrooms.POST("", middleware.RequireRoles("teacher", "admin"), h.Classroom.Create)
 			classrooms.POST("/join", middleware.RequireRoles("student"), h.Classroom.Join)
+			classrooms.GET("/:id/materials", h.Classroom.ListMaterials)
+			classrooms.POST("/:id/materials", middleware.RequireRoles("teacher", "admin"), h.Classroom.CreateMaterial)
+			classrooms.DELETE("/:id/materials/:materialID", middleware.RequireRoles("teacher", "admin"), h.Classroom.DeleteMaterial)
 		}
 
 		bookings := protected.Group("/bookings")
@@ -83,6 +87,8 @@ func New(cfg *config.Config, h *handler.Handlers) *gin.Engine {
 		{
 			assignments.GET("", h.Assignment.List)
 			assignments.GET("/:id", h.Assignment.Get)
+			assignments.GET("/:id/gradebook", middleware.RequireRoles("teacher", "admin"), h.Assignment.Gradebook)
+			assignments.GET("/:id/gradebook.xlsx", middleware.RequireRoles("teacher", "admin"), h.Assignment.ExportGradebook)
 			assignments.POST("", middleware.RequireRoles("teacher", "admin"), h.Assignment.Create)
 			assignments.PUT("/:id", middleware.RequireRoles("teacher", "admin"), h.Assignment.Update)
 			assignments.DELETE("/:id", middleware.RequireRoles("teacher", "admin"), h.Assignment.Delete)
@@ -128,6 +134,7 @@ func New(cfg *config.Config, h *handler.Handlers) *gin.Engine {
 		}
 
 		protected.GET("/leaderboard", h.User.Leaderboard)
+		protected.GET("/unlocks", h.User.Unlocks)
 
 		quests := protected.Group("/quests")
 		{
