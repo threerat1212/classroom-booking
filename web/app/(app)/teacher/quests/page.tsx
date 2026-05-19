@@ -2,11 +2,11 @@
 
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Wand2, Plus, Zap, Star, Loader2, Trash2, RefreshCw } from 'lucide-react'
+import { Wand2, Plus, Zap, Star, Loader2, RefreshCw, Sparkles, Lock } from 'lucide-react'
 import { apiFetch } from '@/lib/http/client'
 import { useQuery, useMutation } from '@tanstack/react-query'
-import { useRouter } from 'next/navigation'
 import { listClassrooms, type Classroom } from '@/lib/api/classrooms'
+import { listTitles, type LearningTitle } from '@/lib/api/achievements'
 
 interface Quest {
   id: string
@@ -17,12 +17,27 @@ interface Quest {
   status: string
   classroom_id?: string
   classroom_name?: string
+  quest_kind?: 'standard' | 'special'
+  required_title_name?: string
+}
+
+const emptySpecialQuest = {
+  classroom_id: '',
+  required_title_code: '',
+  difficulty: 'medium',
+  title: '',
+  topic: '',
+  question: '',
+  answer: '',
+  hints: '',
+  explanation: '',
+  exp_reward: '35',
 }
 
 export default function TeacherQuestsPage() {
-  const router = useRouter()
   const [topic, setTopic] = useState('')
   const [classroomID, setClassroomID] = useState('')
+  const [specialQuest, setSpecialQuest] = useState(emptySpecialQuest)
   const [generating, setGenerating] = useState(false)
   const [error, setError] = useState('')
 
@@ -34,6 +49,14 @@ export default function TeacherQuestsPage() {
     },
   })
 
+  const { data: titles } = useQuery({
+    queryKey: ['title-catalog'],
+    queryFn: async () => {
+      const res = await listTitles()
+      return res.data
+    },
+  })
+
   const { data: quests, isLoading, refetch } = useQuery({
     queryKey: ['teacher-quests'],
     queryFn: async () => {
@@ -41,6 +64,8 @@ export default function TeacherQuestsPage() {
       return res.data
     },
   })
+
+  const selectedTitle = titles?.find((title) => title.code === specialQuest.required_title_code)
 
   const generateMutation = useMutation({
     mutationFn: async (input: { topic: string; classroom_id: string }) => {
@@ -61,6 +86,38 @@ export default function TeacherQuestsPage() {
     },
   })
 
+  const specialMutation = useMutation({
+    mutationFn: async () => {
+      const hints = specialQuest.hints
+        .split('\n')
+        .map((hint) => hint.trim())
+        .filter(Boolean)
+      const res = await apiFetch<{ data: Quest }>('/api/v1/quests', {
+        method: 'POST',
+        body: JSON.stringify({
+          classroom_id: specialQuest.classroom_id,
+          required_title_code: specialQuest.required_title_code,
+          quest_kind: 'special',
+          difficulty: specialQuest.difficulty,
+          title: specialQuest.title.trim(),
+          topic: specialQuest.topic.trim(),
+          question: specialQuest.question.trim(),
+          answer: specialQuest.answer.trim(),
+          hints,
+          explanation: specialQuest.explanation.trim(),
+          exp_reward: Number(specialQuest.exp_reward) || 35,
+          unlock_note: selectedTitle ? `ปลดล็อกด้วยฉายา ${selectedTitle.name}` : '',
+        }),
+      })
+      return res.data
+    },
+    onSuccess: () => {
+      setSpecialQuest(emptySpecialQuest)
+      refetch()
+    },
+    onError: (err: any) => setError(err?.message || 'Create special quest failed'),
+  })
+
   const handleGenerate = () => {
     if (!topic.trim()) return
     if (!classroomID) {
@@ -71,6 +128,14 @@ export default function TeacherQuestsPage() {
     setGenerating(true)
     generateMutation.mutate({ topic: topic.trim(), classroom_id: classroomID })
   }
+
+  const canCreateSpecial =
+    specialQuest.classroom_id &&
+    specialQuest.required_title_code &&
+    specialQuest.title.trim() &&
+    specialQuest.topic.trim() &&
+    specialQuest.question.trim() &&
+    specialQuest.answer.trim()
 
   const diffColor = (d: string) => {
     const map: Record<string, string> = {
@@ -86,10 +151,9 @@ export default function TeacherQuestsPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-white">Learning Quests</h1>
-        <p className="mt-1 text-sm text-slate-400">Create AI-generated practice quests for students</p>
+        <p className="mt-1 text-sm text-slate-400">Create AI practice quests and title-gated special quests</p>
       </div>
 
-      {/* AI Generator */}
       <div className="rounded-2xl border border-violet-500/20 bg-gradient-to-br from-violet-500/5 to-indigo-500/5 p-6">
         <div className="flex items-center gap-2">
           <Wand2 className="h-5 w-5 text-violet-400" />
@@ -104,7 +168,7 @@ export default function TeacherQuestsPage() {
             onChange={(e) => setClassroomID(e.target.value)}
             className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white focus:border-violet-500/50 focus:outline-none"
           >
-            <option value="" className="bg-slate-900">— Select classroom —</option>
+            <option value="" className="bg-slate-900">Select classroom</option>
             {classrooms?.map((c: Classroom) => (
               <option key={c.id} value={c.id} className="bg-slate-900">
                 {c.name} ({c.code})
@@ -138,7 +202,104 @@ export default function TeacherQuestsPage() {
         {error && <p className="mt-2 text-xs text-red-400">{error}</p>}
       </div>
 
-      {/* Quest List */}
+      <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-6">
+        <div className="flex items-center gap-2">
+          <Sparkles className="h-5 w-5 text-amber-300" />
+          <h2 className="text-sm font-semibold text-white">Special Quest</h2>
+        </div>
+        <div className="mt-4 grid gap-3 lg:grid-cols-2">
+          <select
+            value={specialQuest.classroom_id}
+            onChange={(e) => setSpecialQuest((prev) => ({ ...prev, classroom_id: e.target.value }))}
+            className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white focus:border-amber-500/50 focus:outline-none"
+          >
+            <option value="" className="bg-slate-900">Select classroom</option>
+            {classrooms?.map((c: Classroom) => (
+              <option key={c.id} value={c.id} className="bg-slate-900">
+                {c.name} ({c.code})
+              </option>
+            ))}
+          </select>
+          <select
+            value={specialQuest.required_title_code}
+            onChange={(e) => setSpecialQuest((prev) => ({ ...prev, required_title_code: e.target.value }))}
+            className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white focus:border-amber-500/50 focus:outline-none"
+          >
+            <option value="" className="bg-slate-900">Required title</option>
+            {titles?.map((title: LearningTitle) => (
+              <option key={title.code} value={title.code} className="bg-slate-900">
+                {title.name} · {title.rarity}
+              </option>
+            ))}
+          </select>
+          <input
+            value={specialQuest.title}
+            onChange={(e) => setSpecialQuest((prev) => ({ ...prev, title: e.target.value }))}
+            placeholder="Special quest title"
+            className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-slate-500 focus:border-amber-500/50 focus:outline-none"
+          />
+          <input
+            value={specialQuest.topic}
+            onChange={(e) => setSpecialQuest((prev) => ({ ...prev, topic: e.target.value }))}
+            placeholder="Topic"
+            className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-slate-500 focus:border-amber-500/50 focus:outline-none"
+          />
+          <select
+            value={specialQuest.difficulty}
+            onChange={(e) => setSpecialQuest((prev) => ({ ...prev, difficulty: e.target.value }))}
+            className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white focus:border-amber-500/50 focus:outline-none"
+          >
+            {['easy', 'medium', 'hard', 'expert'].map((difficulty) => (
+              <option key={difficulty} value={difficulty} className="bg-slate-900">{difficulty}</option>
+            ))}
+          </select>
+          <input
+            value={specialQuest.exp_reward}
+            onChange={(e) => setSpecialQuest((prev) => ({ ...prev, exp_reward: e.target.value }))}
+            placeholder="EXP"
+            className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-slate-500 focus:border-amber-500/50 focus:outline-none"
+          />
+          <textarea
+            value={specialQuest.question}
+            onChange={(e) => setSpecialQuest((prev) => ({ ...prev, question: e.target.value }))}
+            placeholder="Question"
+            rows={3}
+            className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-slate-500 focus:border-amber-500/50 focus:outline-none lg:col-span-2"
+          />
+          <textarea
+            value={specialQuest.answer}
+            onChange={(e) => setSpecialQuest((prev) => ({ ...prev, answer: e.target.value }))}
+            placeholder="Canonical answer"
+            rows={2}
+            className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-slate-500 focus:border-amber-500/50 focus:outline-none lg:col-span-2"
+          />
+          <textarea
+            value={specialQuest.hints}
+            onChange={(e) => setSpecialQuest((prev) => ({ ...prev, hints: e.target.value }))}
+            placeholder="Hints, one per line"
+            rows={2}
+            className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-slate-500 focus:border-amber-500/50 focus:outline-none"
+          />
+          <textarea
+            value={specialQuest.explanation}
+            onChange={(e) => setSpecialQuest((prev) => ({ ...prev, explanation: e.target.value }))}
+            placeholder="Explanation after submit"
+            rows={2}
+            className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-slate-500 focus:border-amber-500/50 focus:outline-none"
+          />
+        </div>
+        <div className="mt-4 flex justify-end">
+          <button
+            onClick={() => specialMutation.mutate()}
+            disabled={!canCreateSpecial || specialMutation.isPending}
+            className="flex items-center justify-center gap-2 rounded-xl bg-amber-500 px-5 py-2.5 text-sm font-semibold text-slate-950 transition-all hover:bg-amber-400 disabled:opacity-40"
+          >
+            {specialMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+            Create Special Quest
+          </button>
+        </div>
+      </div>
+
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-white">All Quests</h2>
@@ -157,7 +318,7 @@ export default function TeacherQuestsPage() {
           <div className="rounded-xl border border-white/10 bg-white/5 p-8 text-center">
             <Zap className="mx-auto h-8 w-8 text-slate-600" />
             <p className="mt-2 text-sm text-slate-400">No quests yet</p>
-            <p className="text-xs text-slate-500">Use the AI generator above to create quests!</p>
+            <p className="text-xs text-slate-500">Use the AI generator above to create quests.</p>
           </div>
         )}
 
@@ -171,21 +332,30 @@ export default function TeacherQuestsPage() {
           >
             <div className="flex items-center gap-3">
               <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${diffColor(quest.difficulty)}`}>
-                <Star className="h-3.5 w-3.5" />
+                {quest.quest_kind === 'special' ? <Sparkles className="h-3.5 w-3.5" /> : <Star className="h-3.5 w-3.5" />}
               </div>
               <div>
-                <p className="text-sm font-medium text-white">{quest.title}</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-sm font-medium text-white">{quest.title}</p>
+                  {quest.quest_kind === 'special' && (
+                    <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold uppercase text-amber-200">Special</span>
+                  )}
+                </div>
                 <p className="text-xs text-slate-400">
                   {quest.classroom_name && <span className="text-violet-400">{quest.classroom_name} · </span>}
                   {quest.topic} · {quest.difficulty} · +{quest.exp_reward} EXP
                 </p>
+                {quest.required_title_name && (
+                  <p className="mt-1 flex items-center gap-1 text-xs text-amber-200">
+                    <Lock className="h-3 w-3" />
+                    Requires {quest.required_title_name}
+                  </p>
+                )}
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase ${diffColor(quest.difficulty)}`}>
-                {quest.difficulty}
-              </span>
-            </div>
+            <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase ${diffColor(quest.difficulty)}`}>
+              {quest.difficulty}
+            </span>
           </motion.div>
         ))}
       </div>

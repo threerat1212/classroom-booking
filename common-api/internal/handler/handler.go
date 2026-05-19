@@ -20,6 +20,7 @@ type Handlers struct {
 	Export       *ExportHandler
 	AI           *AIHandler
 	Quest        *QuestHandler
+	Achievement  *AchievementHandler
 }
 
 func NewHandlers(services *service.Services, cfg *config.Config) *Handlers {
@@ -38,5 +39,6 @@ func NewHandlers(services *service.Services, cfg *config.Config) *Handlers {
 		Export:       NewExportHandler(services.Export),
 		AI:           NewAIHandler(services.AI),
 		Quest:        NewQuestHandler(services.Quest),
+		Achievement:  NewAchievementHandler(services.Achievement),
 	}
 }

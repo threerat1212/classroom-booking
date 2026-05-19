@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Zap, Clock, Lightbulb, Send, ArrowLeft, CheckCircle, XCircle, Sparkles, Trophy, Star } from 'lucide-react'
+import { Zap, Clock, Lightbulb, Send, ArrowLeft, CheckCircle, Sparkles, Star, Lock } from 'lucide-react'
 import { apiFetch } from '@/lib/http/client'
 import { useQuery } from '@tanstack/react-query'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
@@ -18,6 +18,9 @@ interface Quest {
   explanation?: string
   exp_reward: number
   time_limit_minutes?: number
+  quest_kind?: 'standard' | 'special'
+  required_title_name?: string
+  unlock_note?: string
 }
 
 interface AttemptResult {
@@ -99,8 +102,20 @@ export default function QuestDetailPage() {
             <span className={`inline-block rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${diff.color}`}>
               {diff.label}
             </span>
+            {quest.quest_kind === 'special' && (
+              <span className="ml-2 inline-flex items-center gap-1 rounded-full border border-violet-500/20 bg-violet-500/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-violet-300">
+                <Sparkles className="h-3 w-3" />
+                Special
+              </span>
+            )}
             <h1 className="mt-2 text-xl font-bold text-white">{quest.title}</h1>
             <p className="mt-0.5 text-sm text-slate-400">{quest.topic}</p>
+            {quest.required_title_name && (
+              <p className="mt-2 inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-300">
+                <Lock className="h-3.5 w-3.5 text-violet-300" />
+                {quest.required_title_name}
+              </p>
+            )}
           </div>
           <div className="flex items-center gap-3">
             {quest.time_limit_minutes && (

@@ -136,6 +136,13 @@ func New(cfg *config.Config, h *handler.Handlers) *gin.Engine {
 		protected.GET("/leaderboard", h.User.Leaderboard)
 		protected.GET("/unlocks", h.User.Unlocks)
 
+		achievements := protected.Group("/achievements")
+		{
+			achievements.GET("/my", h.Achievement.My)
+			achievements.GET("/titles", h.Achievement.ListTitles)
+			achievements.POST("/titles/:code/equip", middleware.RequireRoles("student"), h.Achievement.EquipTitle)
+		}
+
 		quests := protected.Group("/quests")
 		{
 			quests.GET("", h.Quest.List)

@@ -64,6 +64,15 @@ func (s *AIService) Chat(ctx context.Context, userID uuid.UUID, sessionID *uuid.
 		return nil, err
 	}
 
+	if !isAllowedStudentChatMessage(message) {
+		reply := "ขอโทษครับ AI Tutor ตอบได้เฉพาะเรื่องบทเรียน งานที่ได้รับ คะแนน การเข้าเรียน และความก้าวหน้าการเรียนในห้องนี้เท่านั้น ลองถามเรื่องงานค้าง เนื้อหาที่เรียน หรือจำนวนครั้งที่ขาดเรียนได้นะครับ"
+		_, _ = s.db.Exec(ctx,
+			`INSERT INTO ai_chat_messages (session_id, role, content) VALUES ($1, 'assistant', $2)`,
+			sid, reply)
+		_, _ = s.db.Exec(ctx, `UPDATE ai_chat_sessions SET updated_at = now() WHERE id = $1`, sid)
+		return &model.AIChatResponse{SessionID: sid, Message: reply}, nil
+	}
+
 	// Build context from student's data
 	contextStr, err := s.buildStudentContext(ctx, userID)
 	if err != nil {
@@ -81,11 +90,13 @@ You may answer only about:
 - The student's pending assignments, submissions, due dates, grades, attendance, XP/learning progress, and class study questions.
 - How to start solving a problem, hints, learning steps, and encouragement.
 
+Use Student Context as the source of truth for class records and learning materials. If the answer is not in Student Context and is not a normal academic explanation, say that the teacher has not added enough information yet.
+
 For problem-solving questions, guide the student step by step. Do not immediately dump the final answer unless the student explicitly asks for the final answer or the system context contains an official answer.
 
 For grade questions, use the actual records in Student Context. If there is no official final grade scale, say it is an estimate from available scores.
 
-If the question is outside school or academic progress, politely redirect back to learning topics.
+If the question is outside school or academic progress, politely redirect back to learning topics. Do not answer entertainment, romance, gambling, hacking, politics, adult, medical, legal, or financial advice questions.
 
 Student Context:
 ` + contextStr,
@@ -138,6 +149,44 @@ func aiChatSessionTitle(message string) string {
 		return "New chat"
 	}
 	return truncateRunes(title, 50)
+}
+
+func isAllowedStudentChatMessage(message string) bool {
+	normalized := strings.ToLower(strings.TrimSpace(message))
+	if normalized == "" {
+		return false
+	}
+
+	blockedKeywords := []string{
+		"พนัน", "บาคาร่า", "หวย", "แทงบอล", "casino", "gambling",
+		"จีบ", "แฟน", "ความรัก", "18+", "โป๊", "sex", "porn",
+		"แฮก", "hack", "crack", "ddos", "malware", "phishing",
+		"หุ้น", "คริปโต", "ลงทุน", "crypto", "bitcoin", "forex",
+		"การเมือง", "เลือกตั้ง", "พรรคการเมือง", "politics",
+		"ยาอะไร", "รักษาโรค", "วินิจฉัย", "diagnose",
+	}
+	for _, keyword := range blockedKeywords {
+		if strings.Contains(normalized, keyword) {
+			return false
+		}
+	}
+
+	allowedKeywords := []string{
+		"เรียน", "บทเรียน", "เนื้อหา", "สรุป", "ทบทวน", "ห้องเรียน", "ครู",
+		"งาน", "การบ้าน", "assignment", "คะแนน", "เกรด", "grade", "score",
+		"ส่งงาน", "งานค้าง", "ครบกำหนด", "deadline", "due", "ขาด", "ลา", "สาย",
+		"เช็คชื่อ", "เข้าเรียน", "attendance", "quest", "เควส", "xp", "level",
+		"hint", "คำใบ้", "โจทย์", "คำถาม", "ข้อสอบ", "แบบฝึก", "วิชา",
+		"คณิต", "วิทย์", "ฟิสิกส์", "เคมี", "ชีวะ", "ภาษาไทย", "อังกฤษ",
+		"ประวัติ", "สังคม", "สมการ", "โมล", "สาร", "สูตร", "คำนวณ",
+	}
+	for _, keyword := range allowedKeywords {
+		if strings.Contains(normalized, keyword) {
+			return true
+		}
+	}
+
+	return len([]rune(normalized)) <= 220 && strings.ContainsAny(normalized, "ไหม?=+-*/0123456789")
 }
 
 func truncateRunes(value string, max int) string {
@@ -1065,6 +1114,44 @@ func (s *AIService) buildStudentContext(ctx context.Context, userID uuid.UUID) (
 		grades = append(grades, fmt.Sprintf("- %s: %.2f / %.0f on %s%s", itemType, score, maxScore, createdAt.Format("2006-01-02"), feedbackText))
 	}
 
+	materialRows, err := s.db.Query(ctx,
+		`SELECT r.name, lm.title, lm.material_type, lm.description, lm.content, lm.url
+		 FROM learning_materials lm
+		 JOIN rooms r ON r.id = lm.classroom_id
+		 JOIN classroom_members cm ON cm.room_id = lm.classroom_id AND cm.student_id = $1
+		 WHERE lm.deleted_at IS NULL
+		   AND lm.is_published = true
+		   AND r.deleted_at IS NULL
+		 ORDER BY lm.sort_order ASC, lm.created_at DESC
+		 LIMIT 12`, userID)
+	if err != nil {
+		return "", err
+	}
+	defer materialRows.Close()
+
+	var materials []string
+	for materialRows.Next() {
+		var classroomName, title, materialType string
+		var description, content, url *string
+		if err := materialRows.Scan(&classroomName, &title, &materialType, &description, &content, &url); err != nil {
+			continue
+		}
+		details := ""
+		if description != nil && strings.TrimSpace(*description) != "" {
+			details += ", description: " + truncateRunes(strings.TrimSpace(*description), 220)
+		}
+		if content != nil && strings.TrimSpace(*content) != "" {
+			details += ", content: " + truncateRunes(strings.TrimSpace(*content), 520)
+		}
+		if url != nil && strings.TrimSpace(*url) != "" {
+			details += ", url: " + truncateRunes(strings.TrimSpace(*url), 180)
+		}
+		materials = append(materials, fmt.Sprintf("- [%s] %s (%s%s)", classroomName, title, materialType, details))
+	}
+	if err := materialRows.Err(); err != nil {
+		return "", err
+	}
+
 	ctxStr := fmt.Sprintf(`Current Assignments:
 %s
 
@@ -1080,7 +1167,10 @@ Grade Summary:
 - Estimated Average: %.2f%%
 - Total Graded Items: %d
 %s
-`, "No published assignments found.", pendingCount, present, late, absent, avgScore, gradeCount, formatContextSection("Recent Grades:", grades))
+
+Learning Materials:
+%s
+`, "No published assignments found.", pendingCount, present, late, absent, avgScore, gradeCount, formatContextSection("Recent Grades:", grades), formatContextLines(materials))
 
 	if len(assignments) > 0 {
 		ctxStr = fmt.Sprintf(`Current Assignments:
@@ -1098,7 +1188,10 @@ Grade Summary:
 - Estimated Average: %.2f%%
 - Total Graded Items: %d
 %s
-`, strings.Join(assignments, "\n"), pendingCount, present, late, absent, avgScore, gradeCount, formatContextSection("Recent Grades:", grades))
+
+Learning Materials:
+%s
+`, strings.Join(assignments, "\n"), pendingCount, present, late, absent, avgScore, gradeCount, formatContextSection("Recent Grades:", grades), formatContextLines(materials))
 	}
 
 	return ctxStr, nil
@@ -1109,6 +1202,13 @@ func formatContextSection(title string, lines []string) string {
 		return title + "\n- none"
 	}
 	return title + "\n" + strings.Join(lines, "\n")
+}
+
+func formatContextLines(lines []string) string {
+	if len(lines) == 0 {
+		return "- none"
+	}
+	return strings.Join(lines, "\n")
 }
 
 func (s *AIService) ListSessions(ctx context.Context, userID uuid.UUID) ([]*model.AIChatSession, error) {

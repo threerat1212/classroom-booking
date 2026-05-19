@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-import { Zap, Clock, BookOpen, CheckCircle, Lock, Star, ChevronRight } from 'lucide-react'
+import { Zap, Clock, BookOpen, CheckCircle, Lock, Star, ChevronRight, Sparkles } from 'lucide-react'
 import { apiFetch } from '@/lib/http/client'
 import { useQuery } from '@tanstack/react-query'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
@@ -20,6 +20,12 @@ interface Quest {
   is_completed?: boolean
   classroom_id?: string
   classroom_name?: string
+  quest_kind?: 'standard' | 'special'
+  required_title_code?: string
+  required_title_name?: string
+  unlock_note?: string
+  is_locked?: boolean
+  locked_reason?: string
 }
 
 const difficultyConfig = {
@@ -46,6 +52,7 @@ export default function StudentQuestsPage() {
 
   const filtered = quests?.filter((q) => {
     if (filter === 'all') return true
+    if (filter === 'special') return q.quest_kind === 'special'
     return q.difficulty === filter
   })
 
@@ -72,6 +79,7 @@ export default function StudentQuestsPage() {
           { key: 'medium', label: 'Medium' },
           { key: 'hard', label: 'Hard' },
           { key: 'expert', label: 'Expert' },
+          { key: 'special', label: 'Special' },
         ].map((f) => (
           <button
             key={f.key}
@@ -97,6 +105,7 @@ export default function StudentQuestsPage() {
         {filtered?.map((quest, idx) => {
           const diff = difficultyConfig[quest.difficulty]
           const completed = quest.is_completed
+          const locked = quest.is_locked
           return (
             <motion.div
               key={quest.id}
@@ -104,16 +113,26 @@ export default function StudentQuestsPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: idx * 0.05 }}
               className={`group relative overflow-hidden rounded-xl border p-4 transition-all duration-300 hover:scale-[1.02] ${
-                completed
+                locked
+                  ? 'border-slate-700/70 bg-slate-900/60'
+                  : completed
                   ? 'border-emerald-500/20 bg-emerald-500/5'
                   : 'border-white/10 bg-white/5 hover:bg-white/[0.07]'
               }`}
             >
               {/* Difficulty Badge */}
               <div className="flex items-center justify-between">
-                <span className={`rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${diff.color}`}>
-                  {diff.label}
-                </span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className={`rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${diff.color}`}>
+                    {diff.label}
+                  </span>
+                  {quest.quest_kind === 'special' && (
+                    <span className="flex items-center gap-1 rounded-full border border-violet-500/20 bg-violet-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-violet-300">
+                      <Sparkles className="h-3 w-3" />
+                      Special
+                    </span>
+                  )}
+                </div>
                 <div className="flex items-center gap-0.5">
                   {Array.from({ length: diff.stars }).map((_, i) => (
                     <Star key={i} className="h-3 w-3 fill-amber-400 text-amber-400" />
@@ -131,6 +150,12 @@ export default function StudentQuestsPage() {
                 )}
                 <p className="mt-0.5 text-xs text-slate-400">{quest.topic}</p>
                 <p className="mt-2 line-clamp-2 text-xs text-slate-500">{quest.description}</p>
+                {quest.required_title_name && (
+                  <p className="mt-2 inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-[10px] text-slate-300">
+                    <Lock className="h-3 w-3 text-violet-300" />
+                    {quest.required_title_name}
+                  </p>
+                )}
               </div>
 
               {/* Footer */}
@@ -147,30 +172,43 @@ export default function StudentQuestsPage() {
                     </div>
                   )}
                 </div>
-                <Link
-                  href={`/student/quests/${quest.id}`}
-                  className={`flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
-                    completed
-                      ? 'bg-emerald-500/20 text-emerald-400'
-                      : 'bg-gradient-to-r from-violet-500 to-indigo-600 text-white hover:from-violet-600 hover:to-indigo-700'
-                  }`}
-                >
-                  {completed ? (
-                    <>
-                      <CheckCircle className="h-3 w-3" />
-                      Done
-                    </>
-                  ) : (
-                    <>
-                      Start
-                      <ChevronRight className="h-3 w-3" />
-                    </>
-                  )}
-                </Link>
+                {locked ? (
+                  <span className="flex items-center gap-1 rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-semibold text-slate-500">
+                    <Lock className="h-3 w-3" />
+                    Locked
+                  </span>
+                ) : (
+                  <Link
+                    href={`/student/quests/${quest.id}`}
+                    className={`flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
+                      completed
+                        ? 'bg-emerald-500/20 text-emerald-400'
+                        : 'bg-gradient-to-r from-violet-500 to-indigo-600 text-white hover:from-violet-600 hover:to-indigo-700'
+                    }`}
+                  >
+                    {completed ? (
+                      <>
+                        <CheckCircle className="h-3 w-3" />
+                        Done
+                      </>
+                    ) : (
+                      <>
+                        Start
+                        <ChevronRight className="h-3 w-3" />
+                      </>
+                    )}
+                  </Link>
+                )}
               </div>
 
+              {locked && (
+                <div className="mt-3 rounded-lg border border-slate-700/70 bg-slate-950/40 p-2 text-xs text-slate-400">
+                  {quest.locked_reason || quest.unlock_note || 'Unlock the required title to start this special quest.'}
+                </div>
+              )}
+
               {/* Completed overlay */}
-              {completed && (
+              {completed && !locked && (
                 <div className="absolute inset-0 flex items-center justify-center bg-slate-950/60 backdrop-blur-[1px]">
                   <div className="flex items-center gap-2 rounded-full bg-emerald-500/20 px-4 py-2 text-emerald-400">
                     <CheckCircle className="h-4 w-4" />

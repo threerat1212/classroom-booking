@@ -36,6 +36,7 @@ type Services struct {
 	Export       *ExportService
 	AI           *AIService
 	Quest        *QuestService
+	Achievement  *AchievementService
 }
 
 func NewServices(db *pgxpool.Pool, cfg *config.Config) *Services {
@@ -54,8 +55,10 @@ func NewServices(db *pgxpool.Pool, cfg *config.Config) *Services {
 		Export:       NewExportService(db),
 		AI:           NewAIService(db, cfg),
 		Quest:        NewQuestService(db),
+		Achievement:  NewAchievementService(db),
 	}
 	svcs.Quest.SetAI(svcs.AI)
+	svcs.Quest.SetAchievements(svcs.Achievement)
 	return svcs
 }
 

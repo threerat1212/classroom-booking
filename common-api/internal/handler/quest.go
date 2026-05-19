@@ -47,8 +47,25 @@ func (h *QuestHandler) Get(c *gin.Context) {
 		return
 	}
 
-	quest, err := h.service.Get(c.Request.Context(), id)
+	userIDStr, exists := c.Get("userID")
+	if !exists {
+		response.Unauthorized(c, "UNAUTHORIZED")
+		return
+	}
+	userID, err := uuid.Parse(userIDStr.(string))
 	if err != nil {
+		response.BadRequest(c, "VALIDATION_ERROR", "invalid user id")
+		return
+	}
+	role, _ := c.Get("role")
+	roleStr, _ := role.(string)
+
+	quest, err := h.service.GetForUser(c.Request.Context(), id, userID, roleStr)
+	if err != nil {
+		if err == model.ErrForbidden {
+			response.Forbidden(c, "quest is locked or not available")
+			return
+		}
 		response.NotFound(c, "quest")
 		return
 	}
@@ -123,6 +140,10 @@ func (h *QuestHandler) Submit(c *gin.Context) {
 
 	attempt, err := h.service.Submit(c.Request.Context(), userID, questID, req.Answer)
 	if err != nil {
+		if err == model.ErrForbidden {
+			response.Forbidden(c, "quest is locked or not available")
+			return
+		}
 		response.Conflict(c, "CONFLICT", err.Error())
 		return
 	}

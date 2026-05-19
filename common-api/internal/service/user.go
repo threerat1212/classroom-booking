@@ -228,6 +228,9 @@ func (s *UserService) AddXP(ctx context.Context, userID uuid.UUID, amount int, a
 	newXp := currentXp + amount
 	newLevel := LevelFromXp(newXp)
 	newRank := RankTitleFromLevel(newLevel)
+	if equippedTitle := s.equippedTitleName(ctx, userID); equippedTitle != "" {
+		newRank = equippedTitle
+	}
 
 	// update user first so a history-table issue cannot silently block rewards.
 	var u model.User
@@ -256,4 +259,18 @@ func (s *UserService) AddXP(ctx context.Context, userID uuid.UUID, amount int, a
 		return &u, nil
 	}
 	return &u, nil
+}
+
+func (s *UserService) equippedTitleName(ctx context.Context, userID uuid.UUID) string {
+	var title string
+	err := s.db.QueryRow(ctx, `
+		SELECT t.name
+		FROM user_titles ut
+		JOIN learning_titles t ON t.code = ut.title_code
+		WHERE ut.user_id = $1 AND ut.is_equipped = true
+		LIMIT 1`, userID).Scan(&title)
+	if err != nil {
+		return ""
+	}
+	return title
 }
