@@ -49,3 +49,31 @@ func TestSanitizeJSONControlChars_ThaiText(t *testing.T) {
 		t.Errorf("Thai text corrupted: %q", result["q"])
 	}
 }
+
+func TestIsExactAnswerMatch(t *testing.T) {
+	cases := []struct {
+		name    string
+		student string
+		correct string
+		want    bool
+	}{
+		{"plain numeric equal", "1245", "1245", true},
+		{"with comma vs without", "1,245", "1245", true},
+		{"trailing spaces", "  1245  ", "1245", true},
+		{"trailing decimal zero", "1245.0", "1245", true},
+		{"case-insensitive text", "Bangkok", "bangkok", true},
+		{"trailing punctuation", "answer.", "answer", true},
+		{"thai exact", "การบวก", "การบวก", true},
+		{"different numbers", "1245", "1246", false},
+		{"different text", "apple", "banana", false},
+		{"empty inputs", "", "", true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := isExactAnswerMatch(tc.student, tc.correct)
+			if got != tc.want {
+				t.Errorf("isExactAnswerMatch(%q, %q) = %v, want %v", tc.student, tc.correct, got, tc.want)
+			}
+		})
+	}
+}
