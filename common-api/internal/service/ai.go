@@ -160,7 +160,12 @@ func (s *AIService) doAIRequest(ctx context.Context, messages []model.ChatComple
 		return s.doGeminiRequest(ctx, messages)
 	}
 
-	aiReq := model.ChatCompletionRequest{Model: s.model, Messages: messages}
+	aiReq := model.ChatCompletionRequest{
+		Model:       s.model,
+		Messages:    messages,
+		MaxTokens:   8000, // generous budget: reasoning models spend tokens on thinking before the JSON answer
+		Temperature: 0.3,  // lower temp for more reliable structured output
+	}
 	body, err := json.Marshal(aiReq)
 	if err != nil {
 		return "", fmt.Errorf("failed to encode AI request: %w", err)
@@ -203,7 +208,14 @@ func (s *AIService) doAIRequest(ctx context.Context, messages []model.ChatComple
 			if len(aiResp.Choices) == 0 {
 				return "", fmt.Errorf("no response from AI provider")
 			}
-			return aiResp.Choices[0].Message.Content, nil
+			choice := aiResp.Choices[0]
+			// If the model was cut off before finishing (finish_reason == "length"),
+			// the JSON in the content is almost certainly incomplete. Retry with the
+			// hope of a smaller, complete response — but only once per attempt loop.
+			if choice.FinishReason == "length" && attempt < 3 {
+				continue
+			}
+			return choice.Message.Content, nil
 		}
 
 		errBody, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
@@ -269,7 +281,11 @@ Output format:
 		} `json:"quests"`
 	}
 	if err := json.Unmarshal([]byte(extractJSONObject(content)), &result); err != nil {
-		return nil, fmt.Errorf("failed to parse AI response: %w", err)
+		preview := content
+		if len(preview) > 300 {
+			preview = preview[:300] + "..."
+		}
+		return nil, fmt.Errorf("failed to parse AI response: %w (raw: %s)", err, preview)
 	}
 
 	quests := make([]*model.LearningQuest, 0, len(result.Quests))

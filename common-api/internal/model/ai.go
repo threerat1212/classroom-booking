@@ -38,12 +38,15 @@ type ChatCompletionMessage struct {
 }
 
 type ChatCompletionRequest struct {
-	Model    string                  `json:"model"`
-	Messages []ChatCompletionMessage `json:"messages"`
+	Model       string                  `json:"model"`
+	Messages    []ChatCompletionMessage `json:"messages"`
+	MaxTokens   int                     `json:"max_tokens,omitempty"`
+	Temperature float64                 `json:"temperature,omitempty"`
 }
 
 type ChatCompletionChoice struct {
-	Message ChatCompletionMessage `json:"message"`
+	Message      ChatCompletionMessage `json:"message"`
+	FinishReason string                `json:"finish_reason"`
 }
 
 type ChatCompletionResponse struct {
