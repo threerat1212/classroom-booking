@@ -5,6 +5,7 @@ import (
 	"classroom-api/internal/model"
 	"classroom-api/internal/service"
 	"classroom-api/pkg/response"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
@@ -20,6 +21,23 @@ func NewAuthHandler(authSvc *service.AuthService, userSvc *service.UserService, 
 	return &AuthHandler{authService: authSvc, userService: userSvc, cfg: cfg}
 }
 
+func (h *AuthHandler) setRefreshCookie(c *gin.Context, value string, maxAge int) {
+	secure := c.Request.TLS != nil || c.GetHeader("X-Forwarded-Proto") == "https"
+	sameSite := http.SameSiteLaxMode
+	if secure {
+		sameSite = http.SameSiteNoneMode
+	}
+	http.SetCookie(c.Writer, &http.Cookie{
+		Name:     "refresh_token",
+		Value:    value,
+		Path:     "/",
+		MaxAge:   maxAge,
+		Secure:   secure,
+		HttpOnly: true,
+		SameSite: sameSite,
+	})
+}
+
 func (h *AuthHandler) Login(c *gin.Context) {
 	var req model.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -33,7 +51,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	c.SetCookie("refresh_token", tokens.RefreshToken, 7*24*60*60, "/", "", false, true)
+	h.setRefreshCookie(c, tokens.RefreshToken, 7*24*60*60)
 
 	response.OK(c, model.TokenResponse{
 		AccessToken:  tokens.AccessToken,
@@ -56,7 +74,7 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 		return
 	}
 
-	c.SetCookie("refresh_token", tokens.RefreshToken, 7*24*60*60, "/", "", false, true)
+	h.setRefreshCookie(c, tokens.RefreshToken, 7*24*60*60)
 
 	response.OK(c, model.TokenResponse{
 		AccessToken:  tokens.AccessToken,
@@ -82,7 +100,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		return
 	}
 
-	c.SetCookie("refresh_token", tokens.RefreshToken, 7*24*60*60, "/", "", false, true)
+	h.setRefreshCookie(c, tokens.RefreshToken, 7*24*60*60)
 
 	response.OK(c, model.TokenResponse{
 		AccessToken:  tokens.AccessToken,
@@ -123,6 +141,6 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 		}
 	}
 
-	c.SetCookie("refresh_token", "", -1, "/", "", false, true)
+	h.setRefreshCookie(c, "", -1)
 	response.NoContent(c)
 }

@@ -45,6 +45,7 @@ export async function apiFetch<T>(path: string, opts: FetchOptions = {}): Promis
   const res = await fetch(url, {
     ...opts,
     headers,
+    credentials: 'include',
   })
 
   if (res.status === 204) {
