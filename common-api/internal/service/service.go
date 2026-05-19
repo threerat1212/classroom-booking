@@ -3,8 +3,10 @@ package service
 import (
 	"context"
 	"crypto/rand"
+	"crypto/subtle"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -58,14 +60,27 @@ func NewServices(db *pgxpool.Pool, cfg *config.Config) *Services {
 }
 
 type AuthService struct {
-	db            *pgxpool.Pool
-	jwtSecret     string
-	refreshSecret string
+	db                *pgxpool.Pool
+	jwtSecret         string
+	refreshSecret     string
+	teacherInviteCode string
 }
 
 func NewAuthService(db *pgxpool.Pool, cfg *config.Config) *AuthService {
-	return &AuthService{db: db, jwtSecret: cfg.JWTSecret, refreshSecret: cfg.JWTRefreshSecret}
+	return &AuthService{
+		db:                db,
+		jwtSecret:         cfg.JWTSecret,
+		refreshSecret:     cfg.JWTRefreshSecret,
+		teacherInviteCode: cfg.TeacherInviteCode,
+	}
 }
+
+var (
+	ErrEmailAlreadyRegistered         = errors.New("email already registered")
+	ErrTeacherInviteCodeNotConfigured = errors.New("teacher invite code is not configured")
+	ErrTeacherInviteCodeRequired      = errors.New("teacher invite code is required")
+	ErrInvalidTeacherInviteCode       = errors.New("invalid teacher invite code")
+)
 
 func (s *AuthService) Login(ctx context.Context, email, password string) (*model.TokenResponse, *model.User, error) {
 	userSvc := NewUserService(s.db)
@@ -149,12 +164,27 @@ func (s *AuthService) Register(ctx context.Context, req model.RegisterRequest) (
 	// check if email already exists
 	_, _, err := userSvc.GetByEmail(ctx, req.Email)
 	if err == nil {
-		return nil, nil, fmt.Errorf("email already registered")
+		return nil, nil, ErrEmailAlreadyRegistered
 	}
 
 	role := req.Role
 	if role == "" {
 		role = "student"
+	}
+
+	if role == "teacher" {
+		expectedInviteCode := strings.TrimSpace(s.teacherInviteCode)
+		inviteCode := strings.TrimSpace(req.TeacherInviteCode)
+		if expectedInviteCode == "" {
+			return nil, nil, ErrTeacherInviteCodeNotConfigured
+		}
+		if inviteCode == "" {
+			return nil, nil, ErrTeacherInviteCodeRequired
+		}
+		if len(inviteCode) != len(expectedInviteCode) ||
+			subtle.ConstantTimeCompare([]byte(inviteCode), []byte(expectedInviteCode)) != 1 {
+			return nil, nil, ErrInvalidTeacherInviteCode
+		}
 	}
 
 	createReq := model.CreateUserRequest{

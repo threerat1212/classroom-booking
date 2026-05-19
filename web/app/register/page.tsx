@@ -15,8 +15,15 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { DoorOpen, AlertCircle, Loader2, CheckCircle } from 'lucide-react'
-import { apiFetch } from '@/lib/http/client'
+import { apiFetch, isApiError } from '@/lib/http/client'
 import { setAccessToken, setStoredUser } from '@/lib/auth/session'
+
+const REGISTER_ROLES = ['student', 'teacher', 'guest'] as const
+type RegisterRole = (typeof REGISTER_ROLES)[number]
+
+function isRegisterRole(value: string): value is RegisterRole {
+  return REGISTER_ROLES.includes(value as RegisterRole)
+}
 
 function FloatingOrb({ className, delay = 0 }: { className: string; delay?: number }) {
   return (
@@ -43,7 +50,8 @@ export default function RegisterPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [role, setRole] = useState('student')
+  const [role, setRole] = useState<RegisterRole>('student')
+  const [teacherInviteCode, setTeacherInviteCode] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
@@ -54,6 +62,16 @@ export default function RegisterPage() {
 
     if (password !== confirmPassword) {
       setError('Passwords do not match')
+      return
+    }
+
+    if (!isRegisterRole(role)) {
+      setError('Please choose a valid role')
+      return
+    }
+
+    if (role === 'teacher' && teacherInviteCode.trim() === '') {
+      setError('Teacher invite code is required')
       return
     }
 
@@ -68,6 +86,7 @@ export default function RegisterPage() {
             password,
             full_name: fullName,
             role,
+            teacher_invite_code: role === 'teacher' ? teacherInviteCode : undefined,
           }),
         },
       )
@@ -86,8 +105,20 @@ export default function RegisterPage() {
       setTimeout(() => {
         router.push('/dashboard')
       }, 800)
-    } catch (err: any) {
-      setError(err?.message || 'Registration failed')
+    } catch (err) {
+      if (isApiError(err) && err.code === 'VALIDATION_ERROR' && err.message.includes('RegisterRequest.Role')) {
+        setError('Please choose a valid role')
+      } else if (isApiError(err) && err.code === 'EMAIL_EXISTS') {
+        setError('This email is already registered')
+      } else if (isApiError(err) && err.code === 'TEACHER_INVITE_REQUIRED') {
+        setError('Teacher invite code is required')
+      } else if (isApiError(err) && err.code === 'INVALID_TEACHER_INVITE') {
+        setError('Teacher invite code is invalid')
+      } else if (isApiError(err) && err.code === 'TEACHER_INVITE_NOT_CONFIGURED') {
+        setError('Teacher signup is not configured yet')
+      } else {
+        setError(err instanceof Error ? err.message : 'Registration failed')
+      }
     } finally {
       setLoading(false)
     }
@@ -159,6 +190,7 @@ export default function RegisterPage() {
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   required
+                  autoComplete="name"
                   placeholder="John Doe"
                   className="border-white/10 bg-white/5 text-white placeholder:text-slate-500 focus-visible:ring-blue-500 focus-visible:ring-offset-0 focus-visible:bg-white/10 transition-colors"
                 />
@@ -174,6 +206,7 @@ export default function RegisterPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
+                  autoComplete="email"
                   placeholder="you@school.edu"
                   className="border-white/10 bg-white/5 text-white placeholder:text-slate-500 focus-visible:ring-blue-500 focus-visible:ring-offset-0 focus-visible:bg-white/10 transition-colors"
                 />
@@ -183,7 +216,18 @@ export default function RegisterPage() {
                 <Label htmlFor="role" className="text-sm font-medium text-slate-300">
                   Role
                 </Label>
-                <Select value={role} onValueChange={setRole} required>
+                <Select
+                  value={role}
+                  onValueChange={(value) => {
+                    if (isRegisterRole(value)) {
+                      setRole(value)
+                      if (value !== 'teacher') {
+                        setTeacherInviteCode('')
+                      }
+                    }
+                  }}
+                  required
+                >
                   <SelectTrigger className="border-white/10 bg-white/5 text-white focus:ring-blue-500 focus:ring-offset-0 [&>span]:text-white [&>svg]:text-slate-400">
                     <SelectValue placeholder="Select role" />
                   </SelectTrigger>
@@ -194,6 +238,28 @@ export default function RegisterPage() {
                   </SelectContent>
                 </Select>
               </div>
+
+              {role === 'teacher' && (
+                <motion.div
+                  className="space-y-2"
+                  initial={{ opacity: 0, y: -6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                >
+                  <Label htmlFor="teacherInviteCode" className="text-sm font-medium text-slate-300">
+                    Teacher Invite Code
+                  </Label>
+                  <Input
+                    id="teacherInviteCode"
+                    type="password"
+                    value={teacherInviteCode}
+                    onChange={(e) => setTeacherInviteCode(e.target.value)}
+                    required
+                    autoComplete="off"
+                    placeholder="Enter invite code"
+                    className="border-white/10 bg-white/5 text-white placeholder:text-slate-500 focus-visible:ring-blue-500 focus-visible:ring-offset-0 focus-visible:bg-white/10 transition-colors"
+                  />
+                </motion.div>
+              )}
 
               <div className="space-y-2">
                 <Label htmlFor="password" className="text-sm font-medium text-slate-300">
@@ -206,6 +272,7 @@ export default function RegisterPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   minLength={6}
+                  autoComplete="new-password"
                   placeholder="At least 6 characters"
                   className="border-white/10 bg-white/5 text-white placeholder:text-slate-500 focus-visible:ring-blue-500 focus-visible:ring-offset-0 focus-visible:bg-white/10 transition-colors"
                 />
@@ -221,6 +288,7 @@ export default function RegisterPage() {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
+                  autoComplete="new-password"
                   placeholder="Confirm your password"
                   className="border-white/10 bg-white/5 text-white placeholder:text-slate-500 focus-visible:ring-blue-500 focus-visible:ring-offset-0 focus-visible:bg-white/10 transition-colors"
                 />

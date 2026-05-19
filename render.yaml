@@ -19,6 +19,8 @@ services:
         generateValue: true
       - key: UPLOAD_DIR
         value: /app/uploads
+      - key: TEACHER_INVITE_CODE
+        sync: false
       - key: AI_PROVIDER
         value: openrouter
       - key: AI_API_KEY

@@ -29,6 +29,7 @@ services:
       JWT_REFRESH_SECRET: dev-refresh-secret-change-in-production
       API_PORT: 8080
       UPLOAD_DIR: /app/uploads
+      TEACHER_INVITE_CODE: ${TEACHER_INVITE_CODE:-}
       AI_PROVIDER: ${AI_PROVIDER:-openrouter}
       AI_API_KEY: ${AI_API_KEY:-}
       AI_BASE_URL: ${AI_BASE_URL:-https://openrouter.ai/api/v1/chat/completions}

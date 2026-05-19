@@ -5,6 +5,7 @@ import (
 	"classroom-api/internal/model"
 	"classroom-api/internal/service"
 	"classroom-api/pkg/response"
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -93,8 +94,20 @@ func (h *AuthHandler) Register(c *gin.Context) {
 
 	tokens, user, err := h.authService.Register(c.Request.Context(), req)
 	if err != nil {
-		if err.Error() == "email already registered" {
+		if errors.Is(err, service.ErrEmailAlreadyRegistered) {
 			response.Conflict(c, "EMAIL_EXISTS", "email already registered")
+			return
+		}
+		if errors.Is(err, service.ErrTeacherInviteCodeNotConfigured) {
+			response.BadRequest(c, "TEACHER_INVITE_NOT_CONFIGURED", "teacher invite code is not configured")
+			return
+		}
+		if errors.Is(err, service.ErrTeacherInviteCodeRequired) {
+			response.BadRequest(c, "TEACHER_INVITE_REQUIRED", "teacher invite code is required")
+			return
+		}
+		if errors.Is(err, service.ErrInvalidTeacherInviteCode) {
+			response.BadRequest(c, "INVALID_TEACHER_INVITE", "invalid teacher invite code")
 			return
 		}
 		response.InternalError(c, "registration failed")

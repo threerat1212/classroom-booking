@@ -53,10 +53,11 @@ type UpdateUserRequest struct {
 }
 
 type RegisterRequest struct {
-	Email    string `json:"email" binding:"required,email"`
-	Password string `json:"password" binding:"required,min=6"`
-	FullName string `json:"full_name" binding:"required"`
-	Role     string `json:"role" binding:"omitempty,oneof=student guest"`
+	Email             string `json:"email" binding:"required,email"`
+	Password          string `json:"password" binding:"required,min=6"`
+	FullName          string `json:"full_name" binding:"required"`
+	Role              string `json:"role" binding:"omitempty,oneof=student teacher guest"`
+	TeacherInviteCode string `json:"teacher_invite_code,omitempty"`
 }
 
 type GoogleLoginRequest struct {

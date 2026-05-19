@@ -7,19 +7,20 @@ import (
 )
 
 type Config struct {
-	DatabaseURL      string `mapstructure:"DATABASE_URL"`
-	JWTSecret        string `mapstructure:"JWT_SECRET"`
-	JWTRefreshSecret string `mapstructure:"JWT_REFRESH_SECRET"`
-	APIPort          string `mapstructure:"API_PORT"`
-	UploadDir        string `mapstructure:"UPLOAD_DIR"`
-	GoogleClientID   string `mapstructure:"GOOGLE_CLIENT_ID"`
-	AIProvider       string `mapstructure:"AI_PROVIDER"`
-	AIAPIKey         string `mapstructure:"AI_API_KEY"`
-	AIBaseURL        string `mapstructure:"AI_BASE_URL"`
-	AIModel          string `mapstructure:"AI_MODEL"`
-	AIAppName        string `mapstructure:"AI_APP_NAME"`
-	AISiteURL        string `mapstructure:"AI_SITE_URL"`
-	GLMAPIKey        string `mapstructure:"GLM_API_KEY"` // legacy fallback
+	DatabaseURL       string `mapstructure:"DATABASE_URL"`
+	JWTSecret         string `mapstructure:"JWT_SECRET"`
+	JWTRefreshSecret  string `mapstructure:"JWT_REFRESH_SECRET"`
+	APIPort           string `mapstructure:"API_PORT"`
+	UploadDir         string `mapstructure:"UPLOAD_DIR"`
+	GoogleClientID    string `mapstructure:"GOOGLE_CLIENT_ID"`
+	TeacherInviteCode string `mapstructure:"TEACHER_INVITE_CODE"`
+	AIProvider        string `mapstructure:"AI_PROVIDER"`
+	AIAPIKey          string `mapstructure:"AI_API_KEY"`
+	AIBaseURL         string `mapstructure:"AI_BASE_URL"`
+	AIModel           string `mapstructure:"AI_MODEL"`
+	AIAppName         string `mapstructure:"AI_APP_NAME"`
+	AISiteURL         string `mapstructure:"AI_SITE_URL"`
+	GLMAPIKey         string `mapstructure:"GLM_API_KEY"` // legacy fallback
 }
 
 func Load() *Config {
@@ -42,6 +43,7 @@ func Load() *Config {
 	_ = viper.BindEnv("API_PORT")
 	_ = viper.BindEnv("PORT")
 	_ = viper.BindEnv("GOOGLE_CLIENT_ID")
+	_ = viper.BindEnv("TEACHER_INVITE_CODE")
 	_ = viper.BindEnv("UPLOAD_DIR")
 	_ = viper.BindEnv("AI_PROVIDER")
 	_ = viper.BindEnv("AI_API_KEY")
