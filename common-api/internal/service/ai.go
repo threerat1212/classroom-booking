@@ -6,12 +6,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"math"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
-	"unicode"
 
 	"classroom-api/internal/config"
 	"classroom-api/internal/model"
@@ -293,24 +290,6 @@ Output format:
 }
 
 func (s *AIService) GradeQuest(ctx context.Context, question, correctAnswer, studentAnswer string, expReward int) (*model.QuestAttempt, error) {
-	// Fast-path: if student's answer matches the correct answer exactly
-	// (after normalization or as equal numeric values), skip the AI call.
-	// LLMs are unreliable at simple equality checks and can hallucinate
-	// "incorrect" on a clearly correct answer, so we trust deterministic
-	// comparison here.
-	if isExactAnswerMatch(studentAnswer, correctAnswer) {
-		isCorrect := true
-		score := 100
-		feedback := "ถูกต้อง! เก่งมาก 🎉"
-		return &model.QuestAttempt{
-			Answer:    &studentAnswer,
-			IsCorrect: &isCorrect,
-			Score:     &score,
-			Feedback:  &feedback,
-			ExpEarned: expReward,
-		}, nil
-	}
-
 	systemPrompt := fmt.Sprintf(`You are an AI grader for student practice quests. You must output ONLY valid JSON.
 
 Evaluate the student's answer to the question.
@@ -361,16 +340,6 @@ Output format:
 		}, nil
 	}
 
-	// Safety net: if AI hallucinates "incorrect" despite an exact match,
-	// override. (The fast-path above should already handle this, but the
-	// student's answer may have arrived in a form we didn't normalize.)
-	if !result.IsCorrect && isExactAnswerMatch(studentAnswer, correctAnswer) {
-		result.IsCorrect = true
-		result.Score = 100
-		result.Feedback = "ถูกต้อง! เก่งมาก 🎉"
-		result.ExpEarned = expReward
-	}
-
 	return &model.QuestAttempt{
 		Answer:    &studentAnswer,
 		IsCorrect: &result.IsCorrect,
@@ -381,52 +350,6 @@ Output format:
 }
 
 func strPtr(s string) *string { return &s }
-
-// isExactAnswerMatch returns true if the student's answer can be confidently
-// treated as equivalent to the correct answer without consulting an LLM.
-// It handles whitespace, punctuation, casing, and numeric formatting
-// differences (e.g. "1,245" == "1245" == "1245.0").
-func isExactAnswerMatch(student, correct string) bool {
-	if normalizeAnswer(student) == normalizeAnswer(correct) {
-		return true
-	}
-	if eq, ok := numericEquals(student, correct); ok && eq {
-		return true
-	}
-	return false
-}
-
-func normalizeAnswer(s string) string {
-	var b strings.Builder
-	b.Grow(len(s))
-	for _, r := range strings.ToLower(s) {
-		if unicode.IsSpace(r) {
-			continue
-		}
-		switch r {
-		case ',', '.', '!', '?', '"', '\'', '`', '(', ')', '[', ']', '{', '}':
-			continue
-		}
-		b.WriteRune(r)
-	}
-	return b.String()
-}
-
-func numericEquals(a, b string) (bool, bool) {
-	fa, ea := parseFlexibleNumber(a)
-	fb, eb := parseFlexibleNumber(b)
-	if ea != nil || eb != nil {
-		return false, false
-	}
-	return math.Abs(fa-fb) < 1e-9, true
-}
-
-func parseFlexibleNumber(s string) (float64, error) {
-	cleaned := strings.TrimSpace(s)
-	cleaned = strings.ReplaceAll(cleaned, ",", "")
-	cleaned = strings.ReplaceAll(cleaned, " ", "")
-	return strconv.ParseFloat(cleaned, 64)
-}
 
 func extractJSONObject(content string) string {
 	trimmed := strings.TrimSpace(content)
