@@ -18,6 +18,8 @@ interface Quest {
   exp_reward: number
   time_limit_minutes?: number
   is_completed?: boolean
+  classroom_id?: string
+  classroom_name?: string
 }
 
 const difficultyConfig = {
@@ -122,6 +124,11 @@ export default function StudentQuestsPage() {
               {/* Content */}
               <div className="mt-3">
                 <h3 className="text-sm font-semibold text-white">{quest.title}</h3>
+                {quest.classroom_name && (
+                  <p className="mt-0.5 text-[10px] font-medium uppercase tracking-wider text-violet-400">
+                    {quest.classroom_name}
+                  </p>
+                )}
                 <p className="mt-0.5 text-xs text-slate-400">{quest.topic}</p>
                 <p className="mt-2 line-clamp-2 text-xs text-slate-500">{quest.description}</p>
               </div>

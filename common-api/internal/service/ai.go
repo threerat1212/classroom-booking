@@ -227,7 +227,7 @@ func (s *AIService) callAI(ctx context.Context, systemPrompt, userPrompt string)
 	return s.doAIRequest(ctx, messages)
 }
 
-func (s *AIService) GenerateQuests(ctx context.Context, topic string, teacherID uuid.UUID) ([]*model.LearningQuest, error) {
+func (s *AIService) GenerateQuests(ctx context.Context, topic string, teacherID, classroomID uuid.UUID) ([]*model.LearningQuest, error) {
 	systemPrompt := `You are an educational AI that creates practice quests for students. You must output ONLY valid JSON.
 
 Create 4 quests (easy, medium, hard, expert) for the given topic. Each quest must have:
@@ -276,11 +276,11 @@ Output format:
 	for _, q := range result.Quests {
 		var quest model.LearningQuest
 		err := s.db.QueryRow(ctx,
-			`INSERT INTO learning_quests (teacher_id, title, topic, description, difficulty, question, answer, hints, explanation, exp_reward, time_limit_minutes, status)
-			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'active')
-			 RETURNING id, teacher_id, title, topic, description, difficulty, question, answer, hints, explanation, exp_reward, time_limit_minutes, status, created_at, updated_at`,
-			teacherID, q.Title, topic, "AI-generated practice quest", q.Difficulty, q.Question, q.Answer, q.Hints, q.Explanation, q.ExpReward, q.TimeLimitMinutes,
-		).Scan(&quest.ID, &quest.TeacherID, &quest.Title, &quest.Topic, &quest.Description, &quest.Difficulty, &quest.Question, &quest.Answer, &quest.Hints, &quest.Explanation, &quest.ExpReward, &quest.TimeLimitMinutes, &quest.Status, &quest.CreatedAt, &quest.UpdatedAt)
+			`INSERT INTO learning_quests (teacher_id, classroom_id, title, topic, description, difficulty, question, answer, hints, explanation, exp_reward, time_limit_minutes, status)
+			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'active')
+			 RETURNING id, teacher_id, classroom_id, title, topic, description, difficulty, question, answer, hints, explanation, exp_reward, time_limit_minutes, status, created_at, updated_at`,
+			teacherID, classroomID, q.Title, topic, "AI-generated practice quest", q.Difficulty, q.Question, q.Answer, q.Hints, q.Explanation, q.ExpReward, q.TimeLimitMinutes,
+		).Scan(&quest.ID, &quest.TeacherID, &quest.ClassroomID, &quest.Title, &quest.Topic, &quest.Description, &quest.Difficulty, &quest.Question, &quest.Answer, &quest.Hints, &quest.Explanation, &quest.ExpReward, &quest.TimeLimitMinutes, &quest.Status, &quest.CreatedAt, &quest.UpdatedAt)
 		if err != nil {
 			continue
 		}

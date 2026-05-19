@@ -29,7 +29,10 @@ func (h *QuestHandler) List(c *gin.Context) {
 		return
 	}
 
-	quests, err := h.service.List(c.Request.Context(), userID)
+	role, _ := c.Get("role")
+	roleStr, _ := role.(string)
+
+	quests, err := h.service.List(c.Request.Context(), userID, roleStr)
 	if err != nil {
 		response.InternalError(c, err.Error())
 		return
@@ -71,18 +74,22 @@ func (h *QuestHandler) Create(c *gin.Context) {
 }
 
 func (h *QuestHandler) Generate(c *gin.Context) {
-	var req struct {
-		Topic string `json:"topic" binding:"required"`
-	}
+	var req model.GenerateQuestRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.BadRequest(c, "VALIDATION_ERROR", err.Error())
+		return
+	}
+
+	classroomID, err := uuid.Parse(req.ClassroomID)
+	if err != nil {
+		response.BadRequest(c, "VALIDATION_ERROR", "invalid classroom id")
 		return
 	}
 
 	userIDStr, _ := c.Get("userID")
 	teacherID, _ := uuid.Parse(userIDStr.(string))
 
-	quests, err := h.service.Generate(c.Request.Context(), req.Topic, teacherID)
+	quests, err := h.service.Generate(c.Request.Context(), req.Topic, teacherID, classroomID)
 	if err != nil {
 		response.InternalError(c, err.Error())
 		return

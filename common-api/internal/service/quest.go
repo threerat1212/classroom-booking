@@ -19,14 +19,42 @@ func NewQuestService(db *pgxpool.Pool) *QuestService { return &QuestService{db: 
 
 func (s *QuestService) SetAI(ai *AIService) { s.ai = ai }
 
-func (s *QuestService) List(ctx context.Context, studentID uuid.UUID) ([]*model.LearningQuest, error) {
-	rows, err := s.db.Query(ctx,
-		`SELECT q.id, q.teacher_id, q.title, q.topic, q.description, q.difficulty, q.exp_reward, q.time_limit_minutes, q.status,
-			CASE WHEN a.id IS NOT NULL THEN true ELSE false END as is_completed
-		 FROM learning_quests q
-		 LEFT JOIN quest_attempts a ON a.quest_id = q.id AND a.student_id = $1
-		 WHERE q.deleted_at IS NULL AND q.status = 'active'
-		 ORDER BY q.difficulty, q.created_at DESC`, studentID)
+// List returns quests visible to the given user, filtered by role.
+//   - teacher: quests they created (any classroom)
+//   - student: quests for classrooms they're enrolled in
+//   - admin:   all quests
+//   - other:   empty
+func (s *QuestService) List(ctx context.Context, userID uuid.UUID, role string) ([]*model.LearningQuest, error) {
+	const baseSelect = `
+		SELECT q.id, q.teacher_id, q.classroom_id, r.name, q.title, q.topic, q.description, q.difficulty,
+		       q.exp_reward, q.time_limit_minutes, q.status,
+		       CASE WHEN a.id IS NOT NULL THEN true ELSE false END AS is_completed
+		FROM learning_quests q
+		LEFT JOIN quest_attempts a ON a.quest_id = q.id AND a.student_id = $1
+		LEFT JOIN rooms r          ON r.id = q.classroom_id
+		WHERE q.deleted_at IS NULL AND q.status = 'active'`
+
+	var (
+		sql  string
+		args = []interface{}{userID}
+	)
+
+	switch role {
+	case "student":
+		sql = baseSelect + `
+		  AND q.classroom_id IN (
+		    SELECT room_id FROM classroom_members WHERE student_id = $1
+		  )
+		ORDER BY q.difficulty, q.created_at DESC`
+	case "teacher":
+		sql = baseSelect + ` AND q.teacher_id = $1 ORDER BY q.created_at DESC`
+	case "admin":
+		sql = baseSelect + ` ORDER BY q.created_at DESC`
+	default:
+		return []*model.LearningQuest{}, nil
+	}
+
+	rows, err := s.db.Query(ctx, sql, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -35,7 +63,7 @@ func (s *QuestService) List(ctx context.Context, studentID uuid.UUID) ([]*model.
 	var quests []*model.LearningQuest
 	for rows.Next() {
 		var q model.LearningQuest
-		if err := rows.Scan(&q.ID, &q.TeacherID, &q.Title, &q.Topic, &q.Description, &q.Difficulty, &q.ExpReward, &q.TimeLimitMinutes, &q.Status, &q.IsCompleted); err != nil {
+		if err := rows.Scan(&q.ID, &q.TeacherID, &q.ClassroomID, &q.ClassroomName, &q.Title, &q.Topic, &q.Description, &q.Difficulty, &q.ExpReward, &q.TimeLimitMinutes, &q.Status, &q.IsCompleted); err != nil {
 			continue
 		}
 		quests = append(quests, &q)
@@ -46,23 +74,51 @@ func (s *QuestService) List(ctx context.Context, studentID uuid.UUID) ([]*model.
 func (s *QuestService) Get(ctx context.Context, id uuid.UUID) (*model.LearningQuest, error) {
 	var q model.LearningQuest
 	err := s.db.QueryRow(ctx,
-		`SELECT id, teacher_id, title, topic, description, difficulty, question, hints, explanation, exp_reward, time_limit_minutes, status, created_at, updated_at
-		 FROM learning_quests WHERE id = $1 AND deleted_at IS NULL`, id,
-	).Scan(&q.ID, &q.TeacherID, &q.Title, &q.Topic, &q.Description, &q.Difficulty, &q.Question, &q.Hints, &q.Explanation, &q.ExpReward, &q.TimeLimitMinutes, &q.Status, &q.CreatedAt, &q.UpdatedAt)
+		`SELECT q.id, q.teacher_id, q.classroom_id, r.name, q.title, q.topic, q.description, q.difficulty,
+		        q.question, q.hints, q.explanation, q.exp_reward, q.time_limit_minutes, q.status,
+		        q.created_at, q.updated_at
+		 FROM learning_quests q
+		 LEFT JOIN rooms r ON r.id = q.classroom_id
+		 WHERE q.id = $1 AND q.deleted_at IS NULL`, id,
+	).Scan(&q.ID, &q.TeacherID, &q.ClassroomID, &q.ClassroomName, &q.Title, &q.Topic, &q.Description, &q.Difficulty, &q.Question, &q.Hints, &q.Explanation, &q.ExpReward, &q.TimeLimitMinutes, &q.Status, &q.CreatedAt, &q.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
 	return &q, nil
 }
 
-func (s *QuestService) Create(ctx context.Context, teacherID uuid.UUID, req model.CreateQuestRequest) (*model.LearningQuest, error) {
-	var q model.LearningQuest
+// assertTeacherOwnsClassroom returns an error if the teacher does not own the
+// given classroom (or the classroom does not exist).
+func (s *QuestService) assertTeacherOwnsClassroom(ctx context.Context, teacherID, classroomID uuid.UUID) error {
+	var owner uuid.UUID
 	err := s.db.QueryRow(ctx,
-		`INSERT INTO learning_quests (teacher_id, title, topic, description, difficulty, question, exp_reward)
-		 VALUES ($1, $2, $3, $4, $5, 'AI generated question will be placed here', 10)
-		 RETURNING id, teacher_id, title, topic, description, difficulty, exp_reward, status, created_at, updated_at`,
-		teacherID, req.Title, req.Topic, req.Description, req.Difficulty,
-	).Scan(&q.ID, &q.TeacherID, &q.Title, &q.Topic, &q.Description, &q.Difficulty, &q.ExpReward, &q.Status, &q.CreatedAt, &q.UpdatedAt)
+		`SELECT teacher_id FROM rooms
+		 WHERE id = $1 AND deleted_at IS NULL AND room_type = 'classroom'`, classroomID).Scan(&owner)
+	if err != nil {
+		return fmt.Errorf("classroom not found")
+	}
+	if owner != teacherID {
+		return fmt.Errorf("teacher does not own this classroom")
+	}
+	return nil
+}
+
+func (s *QuestService) Create(ctx context.Context, teacherID uuid.UUID, req model.CreateQuestRequest) (*model.LearningQuest, error) {
+	classroomID, err := uuid.Parse(req.ClassroomID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid classroom id")
+	}
+	if err := s.assertTeacherOwnsClassroom(ctx, teacherID, classroomID); err != nil {
+		return nil, err
+	}
+
+	var q model.LearningQuest
+	err = s.db.QueryRow(ctx,
+		`INSERT INTO learning_quests (teacher_id, classroom_id, title, topic, description, difficulty, question, exp_reward)
+		 VALUES ($1, $2, $3, $4, $5, $6, 'AI generated question will be placed here', 10)
+		 RETURNING id, teacher_id, classroom_id, title, topic, description, difficulty, exp_reward, status, created_at, updated_at`,
+		teacherID, classroomID, req.Title, req.Topic, req.Description, req.Difficulty,
+	).Scan(&q.ID, &q.TeacherID, &q.ClassroomID, &q.Title, &q.Topic, &q.Description, &q.Difficulty, &q.ExpReward, &q.Status, &q.CreatedAt, &q.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -132,9 +188,12 @@ func (s *QuestService) Submit(ctx context.Context, studentID, questID uuid.UUID,
 	return &attempt, nil
 }
 
-func (s *QuestService) Generate(ctx context.Context, topic string, teacherID uuid.UUID) ([]*model.LearningQuest, error) {
+func (s *QuestService) Generate(ctx context.Context, topic string, teacherID, classroomID uuid.UUID) ([]*model.LearningQuest, error) {
 	if s.ai == nil {
 		return nil, fmt.Errorf("AI service not available")
 	}
-	return s.ai.GenerateQuests(ctx, topic, teacherID)
+	if err := s.assertTeacherOwnsClassroom(ctx, teacherID, classroomID); err != nil {
+		return nil, err
+	}
+	return s.ai.GenerateQuests(ctx, topic, teacherID, classroomID)
 }

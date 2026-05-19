@@ -7,22 +7,24 @@ import (
 )
 
 type LearningQuest struct {
-	ID               uuid.UUID   `json:"id"`
-	TeacherID        uuid.UUID   `json:"teacher_id"`
-	Title            string      `json:"title"`
-	Topic            string      `json:"topic"`
-	Description      string      `json:"description"`
-	Difficulty       string      `json:"difficulty"`
-	Question         string      `json:"question"`
-	Answer           *string     `json:"answer,omitempty"`
-	Hints            []string    `json:"hints"`
-	Explanation      *string     `json:"explanation,omitempty"`
-	ExpReward        int         `json:"exp_reward"`
-	TimeLimitMinutes *int        `json:"time_limit_minutes,omitempty"`
-	Status           string      `json:"status"`
-	CreatedAt        time.Time   `json:"created_at"`
-	UpdatedAt        time.Time   `json:"updated_at"`
-	IsCompleted      bool        `json:"is_completed,omitempty"`
+	ID               uuid.UUID  `json:"id"`
+	TeacherID        uuid.UUID  `json:"teacher_id"`
+	ClassroomID      *uuid.UUID `json:"classroom_id,omitempty"`
+	ClassroomName    *string    `json:"classroom_name,omitempty"`
+	Title            string     `json:"title"`
+	Topic            string     `json:"topic"`
+	Description      string     `json:"description"`
+	Difficulty       string     `json:"difficulty"`
+	Question         string     `json:"question"`
+	Answer           *string    `json:"answer,omitempty"`
+	Hints            []string   `json:"hints"`
+	Explanation      *string    `json:"explanation,omitempty"`
+	ExpReward        int        `json:"exp_reward"`
+	TimeLimitMinutes *int       `json:"time_limit_minutes,omitempty"`
+	Status           string     `json:"status"`
+	CreatedAt        time.Time  `json:"created_at"`
+	UpdatedAt        time.Time  `json:"updated_at"`
+	IsCompleted      bool       `json:"is_completed,omitempty"`
 }
 
 type QuestAttempt struct {
@@ -40,10 +42,16 @@ type QuestAttempt struct {
 }
 
 type CreateQuestRequest struct {
+	ClassroomID string `json:"classroom_id" binding:"required,uuid"`
 	Topic       string `json:"topic" binding:"required"`
 	Title       string `json:"title" binding:"required"`
 	Difficulty  string `json:"difficulty" binding:"required,oneof=easy medium hard expert"`
 	Description string `json:"description"`
+}
+
+type GenerateQuestRequest struct {
+	ClassroomID string `json:"classroom_id" binding:"required,uuid"`
+	Topic       string `json:"topic" binding:"required"`
 }
 
 type SubmitQuestRequest struct {

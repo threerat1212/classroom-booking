@@ -6,6 +6,7 @@ import { Wand2, Plus, Zap, Star, Loader2, Trash2, RefreshCw } from 'lucide-react
 import { apiFetch } from '@/lib/http/client'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
+import { listClassrooms, type Classroom } from '@/lib/api/classrooms'
 
 interface Quest {
   id: string
@@ -14,13 +15,24 @@ interface Quest {
   difficulty: string
   exp_reward: number
   status: string
+  classroom_id?: string
+  classroom_name?: string
 }
 
 export default function TeacherQuestsPage() {
   const router = useRouter()
   const [topic, setTopic] = useState('')
+  const [classroomID, setClassroomID] = useState('')
   const [generating, setGenerating] = useState(false)
   const [error, setError] = useState('')
+
+  const { data: classrooms } = useQuery({
+    queryKey: ['teacher-classrooms'],
+    queryFn: async () => {
+      const res = await listClassrooms()
+      return res.data
+    },
+  })
 
   const { data: quests, isLoading, refetch } = useQuery({
     queryKey: ['teacher-quests'],
@@ -31,10 +43,10 @@ export default function TeacherQuestsPage() {
   })
 
   const generateMutation = useMutation({
-    mutationFn: async (topicInput: string) => {
+    mutationFn: async (input: { topic: string; classroom_id: string }) => {
       const res = await apiFetch<{ data: Quest[] }>('/api/v1/quests/generate', {
         method: 'POST',
-        body: JSON.stringify({ topic: topicInput }),
+        body: JSON.stringify(input),
       })
       return res.data
     },
@@ -51,9 +63,13 @@ export default function TeacherQuestsPage() {
 
   const handleGenerate = () => {
     if (!topic.trim()) return
+    if (!classroomID) {
+      setError('Please select a classroom')
+      return
+    }
     setError('')
     setGenerating(true)
-    generateMutation.mutate(topic.trim())
+    generateMutation.mutate({ topic: topic.trim(), classroom_id: classroomID })
   }
 
   const diffColor = (d: string) => {
@@ -82,28 +98,42 @@ export default function TeacherQuestsPage() {
         <p className="mt-1 text-xs text-slate-400">
           Enter a topic and AI will create 4 quests (Easy, Medium, Hard, Expert) automatically.
         </p>
-        <div className="mt-4 flex flex-col gap-3 sm:flex-row">
-          <input
-            value={topic}
-            onChange={(e) => setTopic(e.target.value)}
-            placeholder="e.g. Multiplication, Newton's Laws, Thai History..."
-            className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-slate-500 focus:border-violet-500/50 focus:outline-none"
-          />
-          <button
-            onClick={handleGenerate}
-            disabled={generating || !topic.trim()}
-            className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-500 to-indigo-600 px-6 py-2.5 text-sm font-semibold text-white transition-all disabled:opacity-40"
+        <div className="mt-4 space-y-3">
+          <select
+            value={classroomID}
+            onChange={(e) => setClassroomID(e.target.value)}
+            className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white focus:border-violet-500/50 focus:outline-none"
           >
-            {generating ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" /> Generating...
-              </>
-            ) : (
-              <>
-                <Wand2 className="h-4 w-4" /> Generate Quests
-              </>
-            )}
-          </button>
+            <option value="" className="bg-slate-900">— Select classroom —</option>
+            {classrooms?.map((c: Classroom) => (
+              <option key={c.id} value={c.id} className="bg-slate-900">
+                {c.name} ({c.code})
+              </option>
+            ))}
+          </select>
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <input
+              value={topic}
+              onChange={(e) => setTopic(e.target.value)}
+              placeholder="e.g. Multiplication, Newton's Laws, Thai History..."
+              className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-slate-500 focus:border-violet-500/50 focus:outline-none"
+            />
+            <button
+              onClick={handleGenerate}
+              disabled={generating || !topic.trim() || !classroomID}
+              className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-500 to-indigo-600 px-6 py-2.5 text-sm font-semibold text-white transition-all disabled:opacity-40"
+            >
+              {generating ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" /> Generating...
+                </>
+              ) : (
+                <>
+                  <Wand2 className="h-4 w-4" /> Generate Quests
+                </>
+              )}
+            </button>
+          </div>
         </div>
         {error && <p className="mt-2 text-xs text-red-400">{error}</p>}
       </div>
@@ -145,7 +175,10 @@ export default function TeacherQuestsPage() {
               </div>
               <div>
                 <p className="text-sm font-medium text-white">{quest.title}</p>
-                <p className="text-xs text-slate-400">{quest.topic} · {quest.difficulty} · +{quest.exp_reward} EXP</p>
+                <p className="text-xs text-slate-400">
+                  {quest.classroom_name && <span className="text-violet-400">{quest.classroom_name} · </span>}
+                  {quest.topic} · {quest.difficulty} · +{quest.exp_reward} EXP
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-2">
