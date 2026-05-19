@@ -53,7 +53,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	h.setRefreshCookie(c, tokens.RefreshToken, 7*24*60*60)
+	h.setRefreshCookie(c, tokens.RefreshToken, 90*24*60*60)
 
 	response.OK(c, model.TokenResponse{
 		AccessToken:  tokens.AccessToken,
@@ -76,7 +76,7 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 		return
 	}
 
-	h.setRefreshCookie(c, tokens.RefreshToken, 7*24*60*60)
+	h.setRefreshCookie(c, tokens.RefreshToken, 90*24*60*60)
 
 	response.OK(c, model.TokenResponse{
 		AccessToken:  tokens.AccessToken,
@@ -114,7 +114,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		return
 	}
 
-	h.setRefreshCookie(c, tokens.RefreshToken, 7*24*60*60)
+	h.setRefreshCookie(c, tokens.RefreshToken, 90*24*60*60)
 
 	response.OK(c, model.TokenResponse{
 		AccessToken:  tokens.AccessToken,
@@ -137,7 +137,7 @@ func (h *AuthHandler) GoogleLogin(c *gin.Context) {
 		return
 	}
 
-	c.SetCookie("refresh_token", tokens.RefreshToken, 7*24*60*60, "/", "", false, true)
+	c.SetCookie("refresh_token", tokens.RefreshToken, 90*24*60*60, "/", "", false, true)
 
 	response.OK(c, model.TokenResponse{
 		AccessToken:  tokens.AccessToken,

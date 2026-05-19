@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -19,7 +20,7 @@ import (
 const (
 	defaultAIProvider = "openrouter"
 	defaultAIBaseURL  = "https://openrouter.ai/api/v1/chat/completions"
-	defaultAIModel    = "google/gemini-2.0-flash-exp:free"
+	defaultAIModel    = "deepseek/deepseek-v4-flash:free"
 )
 
 func (s *AIService) Chat(ctx context.Context, userID uuid.UUID, sessionID *uuid.UUID, message string) (*model.AIChatResponse, error) {
@@ -205,13 +206,14 @@ func (s *AIService) doAIRequest(ctx context.Context, messages []model.ChatComple
 			return aiResp.Choices[0].Message.Content, nil
 		}
 
-		_ = resp.Body.Close()
+		errBody, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
+		resp.Body.Close()
 
 		if resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode >= 500 {
 			continue
 		}
 
-		return "", fmt.Errorf("AI provider returned status %d", resp.StatusCode)
+		return "", fmt.Errorf("AI provider returned status %d: %s", resp.StatusCode, string(errBody))
 	}
 
 	return "", fmt.Errorf("AI กำลัง busy มาก กรุณารอสักครู่แล้วลองใหม่ (rate limit)")

@@ -21,10 +21,15 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
+const (
+	accessTokenTTL  = 30 * 24 * time.Hour
+	refreshTokenTTL = 90 * 24 * time.Hour
+)
+
 func GenerateTokenPair(userID uuid.UUID, email, role, accessSecret, refreshSecret string) (*TokenPair, error) {
 	now := time.Now()
-	accessExpiry := now.Add(15 * time.Minute)
-	refreshExpiry := now.Add(7 * 24 * time.Hour)
+	accessExpiry := now.Add(accessTokenTTL)
+	refreshExpiry := now.Add(refreshTokenTTL)
 
 	accessClaims := Claims{
 		UserID: userID.String(),
@@ -56,7 +61,7 @@ func GenerateTokenPair(userID uuid.UUID, email, role, accessSecret, refreshSecre
 	return &TokenPair{
 		AccessToken:  accessSigned,
 		RefreshToken: refreshSigned,
-		ExpiresIn:    int64(15 * time.Minute / time.Second),
+		ExpiresIn:    int64(accessTokenTTL / time.Second),
 	}, nil
 }
 
