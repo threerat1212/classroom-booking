@@ -74,6 +74,14 @@ function itemCodeFor(slot: WardrobeSlot, equipped: Partial<Record<CharacterSlot,
   return equipped[slot] || defaultCodes[slot]
 }
 
+function numberOrZero(value: unknown) {
+  return typeof value === 'number' && Number.isFinite(value) ? value : 0
+}
+
+function booleanOr(value: unknown, fallback: boolean) {
+  return typeof value === 'boolean' ? value : fallback
+}
+
 const defaultCodes: Record<WardrobeSlot, string> = {
   hair: 'hair_novice',
   hat: 'hat_none',
@@ -358,12 +366,12 @@ export default function StudentCharacterPage() {
   }
 
   const equipped = useMemo(() => {
-    const base = summary?.character.equipped_items || {}
+    const base = summary?.character?.equipped_items || {}
     return {
       ...base,
-      hair: base.hair || summary?.character.equipped_hair || defaultCodes.hair,
-      hat: base.hat || summary?.character.equipped_hat || defaultCodes.hat,
-      aura: base.aura || summary?.character.equipped_aura || defaultCodes.aura,
+      hair: base.hair || summary?.character?.equipped_hair || defaultCodes.hair,
+      hat: base.hat || summary?.character?.equipped_hat || defaultCodes.hat,
+      aura: base.aura || summary?.character?.equipped_aura || defaultCodes.aura,
     } as Partial<Record<CharacterSlot, string>>
   }, [summary])
 
@@ -387,10 +395,23 @@ export default function StudentCharacterPage() {
     )
   }
 
-  const { inventory } = summary
-  const visibleItems = inventory.filter((item) => item.category === activeSlot && item.is_shop_item)
+  const inventory = (Array.isArray(summary.inventory) ? summary.inventory : []).map((item) => {
+    const isOwned = booleanOr(item.is_owned, item.is_unlocked)
+    return {
+      ...item,
+      rarity: item.rarity || 'common',
+      required_level: numberOrZero(item.required_level) || 1,
+      price_gold: numberOrZero(item.price_gold),
+      is_shop_item: booleanOr(item.is_shop_item, true),
+      is_owned: isOwned,
+      is_level_unlocked: booleanOr(item.is_level_unlocked, true),
+      can_purchase: booleanOr(item.can_purchase, false),
+      is_unlocked: booleanOr(item.is_unlocked, isOwned),
+    }
+  })
+  const visibleItems = inventory.filter((item) => item.category === activeSlot && item.is_shop_item !== false)
   const equippedCode = itemCodeFor(activeSlot, equipped)
-  const gold = summary.gold_balance
+  const gold = numberOrZero(summary.gold_balance)
 
   const equippedRows = slots.map((slot) => {
     const code = itemCodeFor(slot.id, equipped)
