@@ -243,7 +243,7 @@ export default function StudentCharacterPage() {
             ห้องแต่งตัวนักเรียน
           </h1>
           <p className="mt-1 text-sm text-slate-400">
-            แต่งตัวละครสไตล์ 2.5D sprite, หมุนดู 4 มุม และซื้อของตกแต่งด้วย Gold จาก Learning Quests
+            แต่งตัวละคร 3 มิติแนว anime, หมุนดู 4 มุม และซื้อของตกแต่งด้วย Gold จาก Learning Quests
           </p>
         </div>
         <div className="flex items-center gap-2 rounded-xl border border-amber-500/20 bg-slate-900/40 backdrop-blur px-4 py-2.5 text-amber-200 shadow-[0_0_15px_rgba(245,158,11,0.08)] hover:shadow-[0_0_20px_rgba(245,158,11,0.18)] transition-all">
@@ -258,8 +258,8 @@ export default function StudentCharacterPage() {
         <section className="relative space-y-4 rounded-2xl border border-white/[0.05] bg-slate-950/20 p-5 backdrop-blur-xl shadow-2xl before:absolute before:inset-0 before:rounded-2xl before:border before:border-cyan-500/5 before:pointer-events-none">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400">Character Preview</h2>
-              <p className="text-xs text-slate-500">Layered sprite mannequin</p>
+              <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400">Anime 3D Preview</h2>
+              <p className="text-xs text-slate-500">Layered 3D avatar rig</p>
             </div>
             <div className="flex items-center gap-1.5">
               <button
