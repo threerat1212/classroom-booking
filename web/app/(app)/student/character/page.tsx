@@ -130,6 +130,19 @@ function palette(code: string, fallback: string) {
   return map[variant(code)] || fallback
 }
 
+function shade(hex: string, amount: number) {
+  if (!hex || !hex.startsWith('#')) return hex
+  let h = hex.slice(1)
+  if (h.length === 3) h = h.split('').map((c) => c + c).join('')
+  if (h.length !== 6) return hex
+  const num = parseInt(h, 16)
+  const clamp = (v: number) => Math.max(0, Math.min(255, v))
+  const r = clamp((num >> 16) + amount)
+  const g = clamp(((num >> 8) & 0xff) + amount)
+  const b = clamp((num & 0xff) + amount)
+  return `rgb(${r}, ${g}, ${b})`
+}
+
 function CharacterPaperDoll({
   equipped,
   inventory,
@@ -151,22 +164,41 @@ function CharacterPaperDoll({
   }
   const isBack = direction === 'back'
   const isSide = direction === 'left' || direction === 'right'
-  const sideFlip = direction === 'left' ? 'translate(200 0) scale(-1 1)' : undefined
-  const squeeze = isSide ? 'translate(100 112) scale(.74 1) translate(-100 -112)' : undefined
+  const sideFlip = direction === 'left' ? 'translate(64 0) scale(-1 1)' : undefined
+  const squeeze = isSide ? 'translate(32 40) scale(0.86 1) translate(-32 -40)' : undefined
+
   const topColor = palette(codes.top, '#64748b')
   const bottomColor = palette(codes.bottom, '#475569')
   const hairColor = palette(codes.hair, '#78350f')
   const shoesColor = palette(codes.shoes, '#e2e8f0')
+  const skinBase = '#fde0c0'
+  const skinShade = '#f4a87a'
+  const skinOutline = '#9a3412'
+
+  const topShade = shade(topColor, -38)
+  const topLight = shade(topColor, 22)
+  const bottomShade = shade(bottomColor, -38)
+  const hairShade = shade(hairColor, -45)
+  const hairLight = shade(hairColor, 30)
+  const shoesShade = shade(shoesColor, -45)
+
   const backKind = variant(codes.back)
   const auraKind = variant(codes.aura)
+  const hatKind = variant(codes.hat)
+  const glassesKind = variant(codes.glasses)
+  const hairKind = variant(codes.hair)
+  const glassesColor = palette(codes.glasses, '#475569')
+
   const equippedNames = inventory.reduce<Record<string, string>>((acc, item) => {
     acc[item.code] = item.name
     return acc
   }, {})
 
+  const showFace = !isBack
+  const showLongHairFront = !isBack
+
   return (
     <div className="relative flex aspect-[5/6] w-full max-w-[340px] items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-[radial-gradient(circle_at_50%_25%,rgba(59,130,246,.18),transparent_32%),linear-gradient(180deg,rgba(15,23,42,.98),rgba(2,6,23,.98))]">
-      <div className="absolute inset-x-10 bottom-7 h-5 rounded-full bg-black/35 blur-md" />
       {auraKind === 'glow' && <div className="absolute h-56 w-56 rounded-full bg-cyan-400/15 blur-2xl" />}
       {auraKind === 'fire' && <div className="absolute bottom-12 h-64 w-48 rounded-full bg-orange-500/20 blur-2xl" />}
       {auraKind === 'rainbow' && (
@@ -178,119 +210,371 @@ function CharacterPaperDoll({
       )}
 
       <svg
-        viewBox="0 0 200 240"
-        className="relative z-10 h-[88%] w-[88%] drop-shadow-2xl"
+        viewBox="0 -8 64 88"
+        className="relative z-10 h-[92%] w-[92%] drop-shadow-2xl"
         role="img"
         aria-label={`ตัวละคร ${directionLabels[direction]}`}
-        shapeRendering="geometricPrecision"
+        shapeRendering="crispEdges"
+        style={{ imageRendering: 'pixelated' }}
       >
-        <defs>
-          <linearGradient id="skin" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stopColor="#fed7aa" />
-            <stop offset="100%" stopColor="#fb923c" />
-          </linearGradient>
-          <linearGradient id="cloth-shine" x1="0" x2="1" y1="0" y2="1">
-            <stop offset="0%" stopColor="rgba(255,255,255,.35)" />
-            <stop offset="100%" stopColor="rgba(255,255,255,0)" />
-          </linearGradient>
-        </defs>
         <g transform={sideFlip}>
           <g transform={squeeze}>
+            {/* Floor shadow */}
+            <ellipse cx="32" cy="72" rx="13" ry="1.6" fill="#000" opacity="0.45" />
+
+            {/* === BACK ACCESSORIES (behind body) === */}
             {backKind === 'cape' && (
-              <path d="M66 98 C52 126 47 176 56 208 C82 222 122 222 148 208 C155 176 149 126 134 98 Z" fill="#6d28d9" opacity=".88" />
+              <g>
+                <path d="M22 34 L16 68 L24 70 L32 58 L40 70 L48 68 L42 34 Z" fill="#7c3aed" />
+                <path d="M22 34 L16 68" fill="none" stroke="#3b0764" strokeWidth="0.6" />
+                <path d="M42 34 L48 68" fill="none" stroke="#3b0764" strokeWidth="0.6" />
+                <path d="M28 38 L26 64 M36 38 L38 64" stroke="#5b21b6" strokeWidth="0.5" opacity="0.6" />
+              </g>
             )}
             {backKind === 'wings' && (
-              <g opacity=".92">
-                <path d="M70 106 C34 80 22 102 32 130 C42 154 54 169 78 178 C68 154 68 128 70 106 Z" fill="#fde68a" />
-                <path d="M130 106 C166 80 178 102 168 130 C158 154 146 169 122 178 C132 154 132 128 130 106 Z" fill="#fde68a" />
-                <path d="M54 121 L27 112 M59 139 L35 145 M143 121 L173 112 M140 139 L165 145" stroke="#f59e0b" strokeWidth="4" strokeLinecap="round" opacity=".55" />
+              <g>
+                <path d="M22 36 L10 30 L4 42 L8 50 L18 52 L22 48 Z" fill="#fef3c7" stroke="#d97706" strokeWidth="0.4" />
+                <path d="M42 36 L54 30 L60 42 L56 50 L46 52 L42 48 Z" fill="#fef3c7" stroke="#d97706" strokeWidth="0.4" />
+                <line x1="14" y1="36" x2="20" y2="46" stroke="#d97706" strokeWidth="0.4" />
+                <line x1="10" y1="42" x2="18" y2="48" stroke="#d97706" strokeWidth="0.4" />
+                <line x1="50" y1="36" x2="44" y2="46" stroke="#d97706" strokeWidth="0.4" />
+                <line x1="54" y1="42" x2="46" y2="48" stroke="#d97706" strokeWidth="0.4" />
               </g>
             )}
             {backKind === 'satchel' && !isBack && (
-              <path d="M130 122 L154 143 L145 173 L120 151 Z" fill="#a16207" stroke="#78350f" strokeWidth="3" />
-            )}
-
-            <path d="M82 84 H118 V107 H82 Z" fill="#fb923c" />
-            <path d="M72 105 C76 94 124 94 128 105 L137 166 C127 178 73 178 63 166 Z" fill={topColor} />
-            <path d="M74 106 C82 116 118 116 126 106 L120 130 C108 137 92 137 80 130 Z" fill="url(#cloth-shine)" opacity=".55" />
-            <path d="M65 112 C50 121 46 146 57 154 C65 145 69 127 72 111 Z" fill={topColor} />
-            <path d="M135 112 C150 121 154 146 143 154 C135 145 131 127 128 111 Z" fill={topColor} />
-
-            <path d="M76 164 H98 L96 205 H72 Z" fill={bottomColor} />
-            <path d="M102 164 H124 L128 205 H104 Z" fill={bottomColor} />
-            <path d="M69 202 H98 C101 207 99 212 91 213 H64 C61 208 63 204 69 202 Z" fill={shoesColor} stroke="#334155" strokeWidth="2" />
-            <path d="M102 202 H131 C137 204 139 208 136 213 H109 C101 212 99 207 102 202 Z" fill={shoesColor} stroke="#334155" strokeWidth="2" />
-
-            <path d="M70 54 C70 30 130 30 130 54 V76 C130 94 116 105 100 105 C84 105 70 94 70 76 Z" fill="url(#skin)" stroke="#c2410c" strokeWidth="2" />
-
-            {variant(codes.hair) === 'spiky' && (
-              <path d="M67 58 L58 37 L77 43 L85 24 L100 40 L115 24 L123 43 L142 37 L133 58 Z" fill={hairColor} stroke="#0f172a" strokeWidth="2" />
-            )}
-            {variant(codes.hair) === 'elegant' && (
-              <g fill={hairColor} stroke="#0f172a" strokeWidth="2">
-                <path d="M67 58 C68 28 132 28 133 58 C118 45 82 45 67 58 Z" />
-                {!isBack && <path d="M70 75 C54 83 57 116 68 128 C76 109 78 91 70 75 Z" />}
-                {!isBack && <path d="M130 75 C146 83 143 116 132 128 C124 109 122 91 130 75 Z" />}
+              <g>
+                <rect x="38" y="40" width="10" height="13" fill="#a16207" />
+                <rect x="38" y="40" width="10" height="2" fill="#78350f" />
+                <rect x="40" y="43" width="6" height="2" fill="#d97706" />
+                <line x1="38" y1="40" x2="26" y2="35" stroke="#78350f" strokeWidth="1" />
               </g>
             )}
-            {variant(codes.hair) === 'flaming' && (
-              <path d="M66 60 C54 42 65 22 78 30 C82 12 98 8 103 28 C116 14 135 28 132 49 C142 53 136 66 128 70 C112 54 88 53 72 70 Z" fill={hairColor} stroke="#7f1d1d" strokeWidth="2" />
-            )}
-            {variant(codes.hair) === 'silver_wave' && (
-              <path d="M66 60 C68 25 134 25 135 62 C127 55 126 84 117 99 C108 83 93 83 82 99 C75 83 75 54 66 60 Z" fill={hairColor} stroke="#475569" strokeWidth="2" />
-            )}
-            {variant(codes.hair) === 'novice' && (
-              <path d="M67 59 C68 31 132 31 133 59 C124 49 111 47 101 51 C89 44 76 49 67 59 Z" fill={hairColor} stroke="#451a03" strokeWidth="2" />
-            )}
 
-            {!isBack && (
+            {/* === LEGS (bottom/pants) === */}
+            <rect x="24" y="50" width="7" height="17" fill={bottomColor} />
+            <rect x="33" y="50" width="7" height="17" fill={bottomColor} />
+            {/* Leg side shading */}
+            <rect x="24" y="50" width="1" height="17" fill={bottomShade} opacity="0.8" />
+            <rect x="33" y="50" width="1" height="17" fill={bottomShade} opacity="0.8" />
+            {/* Leg gap shadow */}
+            <rect x="31" y="50" width="2" height="17" fill={bottomShade} opacity="0.4" />
+
+            {/* === SHOES === */}
+            <rect x="22" y="65" width="10" height="4" fill={shoesColor} />
+            <rect x="32" y="65" width="10" height="4" fill={shoesColor} />
+            <rect x="22" y="68" width="10" height="1" fill={shoesShade} />
+            <rect x="32" y="68" width="10" height="1" fill={shoesShade} />
+            <rect x="22" y="65" width="10" height="1" fill={shade(shoesColor, 40)} opacity="0.7" />
+            <rect x="32" y="65" width="10" height="1" fill={shade(shoesColor, 40)} opacity="0.7" />
+
+            {/* === BODY (top/shirt) === */}
+            <rect x="22" y="33" width="20" height="19" fill={topColor} />
+            {/* Highlight on chest */}
+            <rect x="24" y="35" width="2" height="14" fill={topLight} opacity="0.6" />
+            {/* Side shading */}
+            <rect x="40" y="34" width="2" height="18" fill={topShade} opacity="0.6" />
+            {/* Belt */}
+            <rect x="22" y="49" width="20" height="3" fill={topShade} />
+            <rect x="29" y="50" width="6" height="1" fill="#fbbf24" />
+
+            {/* === ARMS === */}
+            <rect x="17" y="34" width="5" height="14" fill={topColor} />
+            <rect x="42" y="34" width="5" height="14" fill={topColor} />
+            <rect x="17" y="46" width="5" height="2" fill={topShade} opacity="0.7" />
+            <rect x="42" y="46" width="5" height="2" fill={topShade} opacity="0.7" />
+
+            {/* === HANDS === */}
+            <rect x="17" y="48" width="5" height="4" fill={skinBase} />
+            <rect x="42" y="48" width="5" height="4" fill={skinBase} />
+            <rect x="17" y="51" width="5" height="1" fill={skinShade} />
+            <rect x="42" y="51" width="5" height="1" fill={skinShade} />
+
+            {/* === NECK === */}
+            <rect x="29" y="31" width="6" height="3" fill={skinBase} />
+            <rect x="29" y="33" width="6" height="1" fill={skinShade} />
+
+            {/* === HEAD BASE === */}
+            <rect x="18" y="6" width="28" height="26" fill={skinBase} />
+            {/* Chin/jaw shadow */}
+            <rect x="18" y="28" width="28" height="4" fill={skinShade} opacity="0.65" />
+            {/* Subtle cheek shadows */}
+            <rect x="18" y="14" width="2" height="14" fill={skinShade} opacity="0.5" />
+            <rect x="44" y="14" width="2" height="14" fill={skinShade} opacity="0.5" />
+            {/* Outline */}
+            <rect x="18" y="6" width="28" height="1" fill={skinOutline} opacity="0.5" />
+            <rect x="17" y="7" width="1" height="25" fill={skinOutline} opacity="0.5" />
+            <rect x="46" y="7" width="1" height="25" fill={skinOutline} opacity="0.5" />
+            <rect x="18" y="31" width="28" height="1" fill={skinOutline} opacity="0.5" />
+
+            {/* === FACE === */}
+            {showFace && (
               <>
                 {isSide ? (
                   <>
-                    <circle cx="112" cy="70" r="3" fill="#0f172a" />
-                    <path d="M118 78 Q124 82 118 86" stroke="#9a3412" strokeWidth="2" fill="none" strokeLinecap="round" />
+                    {/* Side profile: one eye + small profile mouth */}
+                    <rect x="36" y="19" width="4" height="5" fill="#fff" />
+                    <rect x="37" y="20" width="3" height="4" fill="#0f172a" />
+                    <rect x="38" y="20" width="2" height="2" fill={hairColor} opacity="0.5" />
+                    <rect x="36" y="19" width="4" height="1" fill={hairColor} />
+                    {/* Mouth */}
+                    <rect x="36" y="27" width="3" height="1" fill="#9a3412" />
+                    {/* Nose hint */}
+                    <rect x="42" y="22" width="1" height="2" fill={skinShade} />
+                    {/* Blush */}
+                    <rect x="34" y="25" width="3" height="2" fill="#f9a8d4" opacity="0.6" />
                   </>
                 ) : (
                   <>
-                    <circle cx="88" cy="70" r="3.5" fill="#0f172a" />
-                    <circle cx="112" cy="70" r="3.5" fill="#0f172a" />
-                    <path d="M90 85 Q100 93 110 85" stroke="#9a3412" strokeWidth="3" fill="none" strokeLinecap="round" />
+                    {/* Both eyes (anime-style big eyes) */}
+                    <rect x="22" y="19" width="5" height="6" fill="#fff" />
+                    <rect x="37" y="19" width="5" height="6" fill="#fff" />
+                    {/* Eye outline */}
+                    <rect x="22" y="19" width="5" height="1" fill="#0f172a" />
+                    <rect x="37" y="19" width="5" height="1" fill="#0f172a" />
+                    <rect x="22" y="24" width="5" height="1" fill="#0f172a" />
+                    <rect x="37" y="24" width="5" height="1" fill="#0f172a" />
+                    {/* Pupils */}
+                    <rect x="23" y="20" width="3" height="4" fill={hairColor} />
+                    <rect x="38" y="20" width="3" height="4" fill={hairColor} />
+                    {/* Pupil darker center */}
+                    <rect x="24" y="21" width="2" height="3" fill="#0f172a" />
+                    <rect x="39" y="21" width="2" height="3" fill="#0f172a" />
+                    {/* Eye highlight */}
+                    <rect x="25" y="20" width="1" height="1" fill="#fff" />
+                    <rect x="40" y="20" width="1" height="1" fill="#fff" />
+                    {/* Mouth */}
+                    <rect x="30" y="27" width="4" height="1" fill="#9a3412" />
+                    <rect x="31" y="28" width="2" height="1" fill="#9a3412" opacity="0.5" />
+                    {/* Blush */}
+                    <rect x="20" y="25" width="3" height="2" fill="#f9a8d4" opacity="0.65" />
+                    <rect x="41" y="25" width="3" height="2" fill="#f9a8d4" opacity="0.65" />
+                    {/* Nose hint */}
+                    <rect x="31" y="24" width="2" height="1" fill={skinShade} opacity="0.5" />
                   </>
                 )}
               </>
             )}
 
-            {variant(codes.glasses) !== 'none' && !isBack && (
-              <g stroke={palette(codes.glasses, '#e2e8f0')} strokeWidth="3" fill="none" strokeLinecap="round">
-                {variant(codes.glasses) === 'star' ? (
+            {/* === HAIR === */}
+            {hairKind === 'novice' && (
+              <g>
+                {/* Top cap */}
+                <rect x="18" y="6" width="28" height="6" fill={hairColor} />
+                <rect x="16" y="8" width="2" height="10" fill={hairColor} />
+                <rect x="46" y="8" width="2" height="10" fill={hairColor} />
+                {/* Front bangs */}
+                {showLongHairFront && (
                   <>
-                    <path d="M82 66 L86 72 L93 72 L88 77 L90 84 L82 80 L75 84 L77 77 L72 72 L79 72 Z" fill="#fde047" stroke="#f59e0b" />
-                    <path d="M108 66 L112 72 L119 72 L114 77 L116 84 L108 80 L101 84 L103 77 L98 72 L105 72 Z" fill="#fde047" stroke="#f59e0b" />
+                    <rect x="20" y="12" width="4" height="6" fill={hairColor} />
+                    <rect x="28" y="12" width="3" height="3" fill={hairColor} />
+                    <rect x="34" y="12" width="3" height="3" fill={hairColor} />
+                    <rect x="40" y="12" width="4" height="6" fill={hairColor} />
+                  </>
+                )}
+                {isBack && <rect x="18" y="11" width="28" height="20" fill={hairColor} />}
+                {/* Highlight */}
+                <rect x="22" y="6" width="8" height="1" fill={hairLight} opacity="0.7" />
+                <rect x="20" y="8" width="2" height="2" fill={hairLight} opacity="0.4" />
+              </g>
+            )}
+
+            {hairKind === 'spiky' && (
+              <g>
+                {/* Wild spiky top */}
+                <path d="M16 14 L18 4 L22 12 L24 2 L30 10 L32 0 L38 10 L40 2 L44 12 L46 4 L48 14 L46 16 L18 16 Z" fill={hairColor} />
+                <rect x="16" y="14" width="3" height="6" fill={hairColor} />
+                <rect x="45" y="14" width="3" height="6" fill={hairColor} />
+                {showLongHairFront && (
+                  <>
+                    <rect x="20" y="14" width="4" height="4" fill={hairColor} />
+                    <rect x="40" y="14" width="4" height="4" fill={hairColor} />
+                  </>
+                )}
+                {isBack && <rect x="18" y="14" width="28" height="18" fill={hairColor} />}
+                {/* Highlight tips */}
+                <rect x="24" y="3" width="1" height="3" fill={hairLight} />
+                <rect x="32" y="1" width="1" height="3" fill={hairLight} />
+                <rect x="40" y="3" width="1" height="3" fill={hairLight} />
+              </g>
+            )}
+
+            {hairKind === 'elegant' && (
+              <g>
+                <rect x="14" y="8" width="36" height="6" fill={hairColor} />
+                <rect x="16" y="6" width="32" height="2" fill={hairColor} />
+                <rect x="18" y="4" width="28" height="2" fill={hairColor} />
+                {showLongHairFront ? (
+                  <>
+                    {/* Long flowing sides */}
+                    <rect x="14" y="14" width="4" height="22" fill={hairColor} />
+                    <rect x="46" y="14" width="4" height="22" fill={hairColor} />
+                    <rect x="12" y="20" width="2" height="14" fill={hairColor} />
+                    <rect x="50" y="20" width="2" height="14" fill={hairColor} />
+                    {/* Front bangs */}
+                    <rect x="20" y="14" width="6" height="4" fill={hairColor} />
+                    <rect x="38" y="14" width="6" height="4" fill={hairColor} />
                   </>
                 ) : (
+                  <rect x="12" y="14" width="40" height="28" fill={hairColor} />
+                )}
+                {/* Silky highlight */}
+                <rect x="22" y="8" width="20" height="1" fill={hairLight} opacity="0.7" />
+                <rect x="20" y="6" width="4" height="1" fill={hairLight} opacity="0.4" />
+              </g>
+            )}
+
+            {hairKind === 'flaming' && (
+              <g>
+                {/* Flame-shaped spikes */}
+                <path d="M16 14 L18 6 L20 14 L22 4 L24 14 L26 2 L28 14 L30 4 L32 14 L34 2 L36 14 L38 4 L40 14 L42 6 L44 14 L46 4 L48 14 Z" fill={hairColor} />
+                <rect x="16" y="14" width="3" height="6" fill={hairColor} />
+                <rect x="45" y="14" width="3" height="6" fill={hairColor} />
+                {showLongHairFront && (
                   <>
-                    <circle cx="88" cy="72" r="9" />
-                    <circle cx="112" cy="72" r="9" />
-                    <path d="M97 72 H103" />
+                    <rect x="20" y="14" width="3" height="4" fill={hairColor} />
+                    <rect x="41" y="14" width="3" height="4" fill={hairColor} />
                   </>
+                )}
+                {isBack && <rect x="18" y="14" width="28" height="18" fill={hairColor} />}
+                {/* Fire tips */}
+                <rect x="22" y="4" width="1" height="3" fill="#fbbf24" />
+                <rect x="26" y="2" width="1" height="3" fill="#fef08a" />
+                <rect x="34" y="2" width="1" height="3" fill="#fef08a" />
+                <rect x="42" y="6" width="1" height="3" fill="#fbbf24" />
+                <rect x="46" y="4" width="1" height="3" fill="#fbbf24" />
+              </g>
+            )}
+
+            {hairKind === 'silver_wave' && (
+              <g>
+                <rect x="14" y="8" width="36" height="6" fill={hairColor} />
+                <rect x="16" y="6" width="32" height="2" fill={hairColor} />
+                {showLongHairFront ? (
+                  <>
+                    {/* Wavy long sides */}
+                    <rect x="12" y="14" width="4" height="22" fill={hairColor} />
+                    <rect x="48" y="14" width="4" height="22" fill={hairColor} />
+                    <rect x="10" y="18" width="2" height="14" fill={hairColor} />
+                    <rect x="52" y="18" width="2" height="14" fill={hairColor} />
+                    <rect x="14" y="34" width="3" height="4" fill={hairColor} />
+                    <rect x="47" y="34" width="3" height="4" fill={hairColor} />
+                    {/* Bangs */}
+                    <rect x="20" y="14" width="4" height="4" fill={hairColor} />
+                    <rect x="40" y="14" width="4" height="4" fill={hairColor} />
+                  </>
+                ) : (
+                  <rect x="10" y="14" width="44" height="28" fill={hairColor} />
+                )}
+                {/* Silver shine */}
+                <rect x="20" y="9" width="24" height="1" fill="#fff" opacity="0.55" />
+                <rect x="14" y="18" width="1" height="14" fill="#fff" opacity="0.3" />
+                <rect x="49" y="18" width="1" height="14" fill="#fff" opacity="0.3" />
+              </g>
+            )}
+
+            {/* === GLASSES === */}
+            {glassesKind !== 'none' && showFace && !isSide && (
+              <g>
+                {glassesKind === 'star' ? (
+                  <g>
+                    <path d="M25 19 L26 21 L28 21 L26.5 22.5 L27 24.5 L25 23 L23 24.5 L23.5 22.5 L22 21 L24 21 Z" fill="#fde047" stroke="#f59e0b" strokeWidth="0.3" />
+                    <path d="M39 19 L40 21 L42 21 L40.5 22.5 L41 24.5 L39 23 L37 24.5 L37.5 22.5 L36 21 L38 21 Z" fill="#fde047" stroke="#f59e0b" strokeWidth="0.3" />
+                  </g>
+                ) : (
+                  <g fill="none" stroke={glassesColor} strokeWidth="0.7">
+                    <rect x="21" y="19" width="7" height="6" />
+                    <rect x="36" y="19" width="7" height="6" />
+                    <line x1="28" y1="22" x2="36" y2="22" />
+                    {/* Lens shine */}
+                    <rect x="22" y="20" width="2" height="1" fill="#fff" opacity="0.4" stroke="none" />
+                    <rect x="37" y="20" width="2" height="1" fill="#fff" opacity="0.4" stroke="none" />
+                  </g>
+                )}
+              </g>
+            )}
+            {glassesKind !== 'none' && showFace && isSide && glassesKind !== 'star' && (
+              <g fill="none" stroke={glassesColor} strokeWidth="0.7">
+                <rect x="35" y="19" width="7" height="6" />
+                <rect x="34" y="22" width="2" height="0.5" />
+              </g>
+            )}
+
+            {/* === HAT === */}
+            {hatKind === 'bandana' && (
+              <g>
+                <rect x="16" y="13" width="32" height="4" fill="#ef4444" />
+                <rect x="16" y="13" width="32" height="1" fill="#7f1d1d" opacity="0.7" />
+                <rect x="20" y="14" width="4" height="2" fill="#fca5a5" opacity="0.7" />
+                {/* Knot */}
+                {!isBack && (
+                  <g>
+                    <rect x="46" y="14" width="4" height="3" fill="#ef4444" />
+                    <rect x="48" y="17" width="3" height="2" fill="#ef4444" />
+                    <rect x="48" y="13" width="3" height="2" fill="#ef4444" />
+                  </g>
                 )}
               </g>
             )}
 
-            {variant(codes.hat) === 'bandana' && <path d="M67 57 H133 V66 H67 Z" fill="#ef4444" />}
-            {variant(codes.hat) === 'wizard' && (
+            {hatKind === 'wizard' && (
               <g>
-                <path d="M57 56 C65 35 82 14 100 5 C118 14 135 35 143 56 Z" fill="#4c1d95" stroke="#1e1b4b" strokeWidth="2" />
-                <path d="M58 58 C74 64 126 64 142 58" stroke="#facc15" strokeWidth="5" strokeLinecap="round" />
+                {/* Pointy hat */}
+                <path d="M14 14 L32 -4 L50 14 Z" fill="#4c1d95" />
+                <rect x="12" y="13" width="40" height="3" fill="#4c1d95" />
+                <rect x="12" y="12" width="40" height="1" fill="#1e1b4b" />
+                <rect x="12" y="15" width="40" height="1" fill="#1e1b4b" opacity="0.6" />
+                {/* Hat side darker (3D) */}
+                <path d="M32 -4 L50 14 L46 14 L32 0 Z" fill="#1e1b4b" opacity="0.5" />
+                {/* Star */}
+                <path d="M22 4 L23 6 L25 6 L23.5 7.5 L24 9 L22 8 L20 9 L20.5 7.5 L19 6 L21 6 Z" fill="#fde047" stroke="#f59e0b" strokeWidth="0.3" />
               </g>
             )}
-            {variant(codes.hat) === 'crown' && (
-              <path d="M72 55 L67 34 L84 44 L100 27 L116 44 L133 34 L128 55 Z" fill="#fbbf24" stroke="#92400e" strokeWidth="3" />
-            )}
-            {variant(codes.hat) === 'conqueror' && (
+
+            {hatKind === 'crown' && (
               <g>
-                <path d="M66 58 C67 31 133 31 134 58 Z" fill="#111827" stroke="#475569" strokeWidth="3" />
-                <path d="M91 38 L100 12 L109 38 Z" fill="#ef4444" />
+                <rect x="18" y="6" width="28" height="3" fill="#fbbf24" />
+                {/* Three spikes */}
+                <path d="M18 6 L20 0 L24 6 Z" fill="#fbbf24" />
+                <path d="M28 6 L32 -3 L36 6 Z" fill="#fbbf24" />
+                <path d="M40 6 L44 0 L46 6 Z" fill="#fbbf24" />
+                {/* Jewels */}
+                <rect x="31" y="2" width="2" height="2" fill="#ef4444" />
+                <rect x="21" y="3" width="1" height="1" fill="#22d3ee" />
+                <rect x="43" y="3" width="1" height="1" fill="#22d3ee" />
+                {/* Highlight */}
+                <rect x="20" y="7" width="4" height="1" fill="#fef3c7" opacity="0.8" />
+                <rect x="38" y="7" width="4" height="1" fill="#fef3c7" opacity="0.8" />
+                <rect x="18" y="9" width="28" height="1" fill="#92400e" opacity="0.6" />
+              </g>
+            )}
+
+            {hatKind === 'conqueror' && (
+              <g>
+                {/* Brim */}
+                <rect x="10" y="13" width="44" height="2" fill="#0f172a" />
+                <rect x="10" y="14" width="44" height="1" fill="#000" opacity="0.5" />
+                {/* Top */}
+                <rect x="18" y="5" width="28" height="9" fill="#0f172a" />
+                <rect x="18" y="5" width="28" height="1" fill="#1f2937" />
+                {/* Band */}
+                <rect x="18" y="10" width="28" height="2" fill="#7c2d12" />
+                {/* Feather */}
+                <path d="M40 5 L46 -2 L48 4 L43 8 Z" fill="#dc2626" />
+                <path d="M44 -2 L46 0" stroke="#7f1d1d" strokeWidth="0.4" />
+              </g>
+            )}
+
+            {/* === AURA OVERLAY ON SPRITE === */}
+            {auraKind === 'glow' && (
+              <g opacity="0.55">
+                <rect x="14" y="6" width="36" height="64" fill="none" stroke="#22d3ee" strokeWidth="0.4" />
+                <rect x="12" y="4" width="40" height="68" fill="none" stroke="#67e8f9" strokeWidth="0.3" opacity="0.6" />
+              </g>
+            )}
+            {auraKind === 'fire' && (
+              <g>
+                <path d="M14 70 L16 64 L18 70 L20 62 L22 70 L24 60 L26 70 L28 62 L30 70 L32 60 L34 70 L36 62 L38 70 L40 60 L42 70 L44 62 L46 70 L48 64 L50 70 Z" fill="#f97316" opacity="0.7" />
+                <path d="M16 70 L18 66 L20 70 L22 64 L24 70 L26 64 L28 70 L30 64 L32 70 L34 64 L36 70 L38 64 L40 70 L42 64 L44 70 L46 66 L48 70 Z" fill="#fbbf24" opacity="0.8" />
               </g>
             )}
           </g>
