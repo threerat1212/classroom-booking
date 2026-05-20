@@ -47,60 +47,100 @@ function CharacterSprite({ hair = 'hair_novice', hat = 'hat_none', outfit = 'out
       {/* SVG Canvas */}
       <svg viewBox="0 0 100 100" className="w-5/6 h-5/6 z-10 select-none">
         <defs>
-          <linearGradient id="hair-novice" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#854d0e" /><stop offset="100%" stopColor="#451a03" /></linearGradient>
-          <linearGradient id="hair-spiky" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#2563eb" /><stop offset="100%" stopColor="#1e3a8a" /></linearGradient>
-          <linearGradient id="hair-elegant" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#c084fc" /><stop offset="100%" stopColor="#6b21a8" /></linearGradient>
+          <linearGradient id="hair-novice" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#d97706" /><stop offset="100%" stopColor="#78350f" /></linearGradient>
+          <linearGradient id="hair-spiky" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#3b82f6" /><stop offset="100%" stopColor="#1d4ed8" /></linearGradient>
+          <linearGradient id="hair-elegant" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#c084fc" /><stop offset="100%" stopColor="#7e22ce" /></linearGradient>
           <linearGradient id="hair-flaming" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#f97316" /><stop offset="50%" stopColor="#ef4444" /><stop offset="100%" stopColor="#b91c1c" /></linearGradient>
+          <linearGradient id="hair-silver_wave" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#f8fafc" /><stop offset="100%" stopColor="#94a3b8" /></linearGradient>
 
           <linearGradient id="outfit-novice" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#a1a1aa" /><stop offset="100%" stopColor="#52525b" /></linearGradient>
           <linearGradient id="outfit-apprentice" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#10b981" /><stop offset="100%" stopColor="#047857" /></linearGradient>
           <linearGradient id="outfit-wizard" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#8b5cf6" /><stop offset="100%" stopColor="#4c1d95" /></linearGradient>
           <linearGradient id="outfit-plate" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#e2e8f0" /><stop offset="100%" stopColor="#64748b" /></linearGradient>
           <linearGradient id="outfit-god" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#fbbf24" /><stop offset="100%" stopColor="#b45309" /></linearGradient>
+
+          <linearGradient id="skinGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#fde0c0" />
+            <stop offset="100%" stopColor="#f4a87a" />
+          </linearGradient>
         </defs>
 
-        <rect x="35" y="32" width="30" height="26" rx="8" fill="#fed7aa" />
-        <rect x="46" y="55" width="8" height="8" fill="#fdba74" />
-        <circle cx="43" cy="44" r="2" fill="#1e293b" />
-        <circle cx="57" cy="44" r="2" fill="#1e293b" />
-        <path d="M 46 49 Q 50 53 54 49" stroke="#9a3412" strokeWidth="1.5" strokeLinecap="round" fill="none" />
-        <circle cx="40" cy="47" r="1.5" fill="#fca5a5" opacity="0.6" />
-        <circle cx="60" cy="47" r="1.5" fill="#fca5a5" opacity="0.6" />
+        {/* Neck */}
+        <rect x="46" y="58" width="8" height="6" fill="#fde0c0" />
 
-        {hair === 'hair_novice' && <path d="M 32 34 C 32 20, 68 20, 68 34 C 68 34, 70 30, 64 26 Z" fill="url(#hair-novice)" />}
-        {hair === 'hair_spiky' && <path d="M 31 35 L 26 26 L 36 28 L 42 16 L 50 24 L 58 16 L 64 28 L 74 26 L 69 35 Z" fill="url(#hair-spiky)" />}
+        {/* Body Torso */}
+        <path d="M 38 64 L 62 64 C 64 74, 63 86, 50 86 C 37 86, 36 74, 38 64 Z" fill={`url(#${outfit.replace('_', '-')})`} />
+        {/* Uniform collar */}
+        <path d="M 44 64 L 50 70 L 56 64" fill="none" stroke="#ffffff" strokeWidth="0.8" opacity="0.8" />
+
+        {/* Arms */}
+        <path d="M 38 64 C 33 65, 31 72, 32 75 C 33 76, 35 75, 36 73 Z" fill={`url(#${outfit.replace('_', '-')})`} />
+        <circle cx="33.5" cy="75.5" r="1.8" fill="#fde0c0" />
+        <path d="M 62 64 C 67 65, 69 72, 68 75 C 67 76, 65 75, 64 73 Z" fill={`url(#${outfit.replace('_', '-')})`} />
+        <circle cx="66.5" cy="75.5" r="1.8" fill="#fde0c0" />
+
+        {/* Head */}
+        <path d="M 34 42 C 34 32, 66 32, 66 42 C 66 52, 62 60, 50 60 C 38 60, 34 52, 34 42 Z" fill="url(#skinGrad)" stroke="#c2410c" strokeWidth="0.4" />
+
+        {/* Big anime eyes */}
+        {/* Left eye */}
+        <ellipse cx="42" cy="46" rx="3.2" ry="4" fill="#ffffff" />
+        <ellipse cx="42" cy="46" rx="2" ry="3.5" fill={`url(#${hair.replace('_', '-')})`} />
+        <ellipse cx="42" cy="46.5" rx="1.1" ry="1.8" fill="#1e293b" />
+        <circle cx="41.2" cy="44.2" r="0.8" fill="#ffffff" />
+        <path d="M 38 44 Q 42 41 46 44" fill="none" stroke="#1e293b" strokeWidth="1.2" strokeLinecap="round" />
+        {/* Right eye */}
+        <ellipse cx="58" cy="46" rx="3.2" ry="4" fill="#ffffff" />
+        <ellipse cx="58" cy="46" rx="2" ry="3.5" fill={`url(#${hair.replace('_', '-')})`} />
+        <ellipse cx="58" cy="46.5" rx="1.1" ry="1.8" fill="#1e293b" />
+        <circle cx="57.2" cy="44.2" r="0.8" fill="#ffffff" />
+        <path d="M 54 44 Q 58 41 62 44" fill="none" stroke="#1e293b" strokeWidth="1.2" strokeLinecap="round" />
+
+        {/* Blush */}
+        <ellipse cx="39" cy="51" rx="2.5" ry="1" fill="#fca5a5" opacity="0.6" />
+        <ellipse cx="61" cy="51" rx="2.5" ry="1" fill="#fca5a5" opacity="0.6" />
+
+        {/* Cute Smile */}
+        <path d="M 48.5 52.5 Q 50 54.2 51.5 52.5" fill="none" stroke="#c2410c" strokeWidth="0.8" strokeLinecap="round" />
+
+        {/* Back hair side locks (under overlay) */}
+        {hair === 'hair_novice' && (
+          <g>
+            <path d="M 32 40 C 30 46, 32 54, 34 54 C 36 54, 35 46, 35 40 Z" fill="url(#hair-novice)" />
+            <path d="M 68 40 C 70 46, 68 54, 66 54 C 64 54, 65 46, 65 40 Z" fill="url(#hair-novice)" />
+          </g>
+        )}
         {hair === 'hair_elegant' && (
           <g>
-            <path d="M 33 34 C 33 22, 67 22, 67 34 Z" fill="url(#hair-elegant)" />
-            <path d="M 34 35 Q 26 40 28 52" stroke="url(#hair-elegant)" strokeWidth="4" fill="none" />
-            <path d="M 66 35 Q 74 40 72 52" stroke="url(#hair-elegant)" strokeWidth="4" fill="none" />
-          </g>
-        )}
-        {hair === 'hair_flaming' && <path d="M 32 35 C 28 25, 40 18, 52 14 C 64 18, 68 36, 68 36 Z" fill="url(#hair-flaming)" />}
-
-        {outfit === 'outfit_novice' && <path d="M 32 60 L 68 60 L 65 85 L 35 85 Z" fill="url(#outfit-novice)" />}
-        {outfit === 'outfit_apprentice' && <path d="M 30 60 L 70 60 L 65 85 L 35 85 Z" fill="url(#outfit-apprentice)" />}
-        {outfit === 'outfit_wizard' && <path d="M 28 60 L 72 60 L 66 85 L 34 85 Z" fill="url(#outfit-wizard)" />}
-        {outfit === 'outfit_plate' && (
-          <g>
-            <path d="M 30 60 L 70 60 L 65 85 L 35 85 Z" fill="url(#outfit-plate)" />
-            <path d="M 26 60 Q 30 54 36 60 Z" fill="#94a3b8" />
-            <path d="M 74 60 Q 70 54 64 60 Z" fill="#94a3b8" />
-          </g>
-        )}
-        {outfit === 'outfit_god' && (
-          <g>
-            <path d="M 30 65 Q 14 55 18 42 Z" fill="#fbbf24" opacity="0.8" />
-            <path d="M 70 65 Q 86 55 82 42 Z" fill="#fbbf24" opacity="0.8" />
-            <path d="M 28 60 L 72 60 L 66 85 L 34 85 Z" fill="url(#outfit-god)" />
+            <path d="M 33 40 C 23 46, 25 66, 29 70 C 31 66, 30 46, 30 40 Z" fill="url(#hair-elegant)" />
+            <path d="M 67 40 C 77 46, 75 66, 71 70 C 69 66, 70 46, 70 40 Z" fill="url(#hair-elegant)" />
           </g>
         )}
 
-        {hat === 'hat_bandana' && <path d="M 32 32 H 68 V 37 H 32 Z" fill="#ef4444" />}
-        {hat === 'hat_wizard' && <path d="M 22 32 C 22 28, 78 28, 78 32 C 78 32, 50 4, 22 32 Z" fill="#312e81" />}
-        {hat === 'hat_crown' && <path d="M 34 32 L 31 20 L 50 16 L 69 20 L 66 32 Z" fill="#facc15" />}
-        {hat === 'hat_conqueror' && <path d="M 30 32 C 30 18, 70 18, 70 32 Z" fill="#1e293b" />}
+        {/* Hair Front Bangs */}
+        {hair === 'hair_novice' && <path d="M 32 40 C 32 20, 68 20, 68 40 C 62 44, 56 40, 50 44 C 44 40, 38 44, 32 40 Z" fill="url(#hair-novice)" />}
+        {hair === 'hair_spiky' && <path d="M 30 41 C 28 33, 32 24, 35 28 C 37 23, 42 31, 43 33 C 45 27, 49 22, 52 26 C 55 21, 60 28, 61 32 C 63 26, 68 22, 70 28 C 72 23, 77 33, 75 41 Z" fill="url(#hair-spiky)" />}
+        {hair === 'hair_elegant' && <path d="M 33 40 C 33 24, 67 24, 67 40 C 60 42, 55 40, 50 42 C 45 40, 40 42, 33 40 Z" fill="url(#hair-elegant)" />}
+        {hair === 'hair_flaming' && <path d="M 32 41 C 28 28, 38 18, 50 14 C 62 18, 68 41, 68 41 L 62 38 C 58 42, 53 38, 50 41 C 47 38, 42 42, 38 38 Z" fill="url(#hair-flaming)" />}
+        {hair === 'hair_silver_wave' && <path d="M 33 40 C 33 24, 67 24, 67 40 C 60 42, 55 40, 50 42 C 45 40, 40 42, 33 40 Z" fill="url(#hair-silver_wave)" />}
+
+        {/* Hats */}
+        {hat === 'hat_bandana' && <path d="M 32 39.5 Q 50 36.5 68 39.5 L 67.5 43.5 Q 50 40.5 32.5 43.5 Z" fill="#ef4444" />}
+        {hat === 'hat_wizard' && (
+          <g>
+            <path d="M 32 41 C 37 31, 44 20, 50 12 C 55 20, 61 31, 68 41 Z" fill="#4338ca" stroke="#1e1b4b" strokeWidth="0.4" />
+            <ellipse cx="50" cy="42" rx="22" ry="2.5" fill="#312e81" stroke="#1e1b4b" strokeWidth="0.4" />
+          </g>
+        )}
+        {hat === 'hat_crown' && <path d="M 34 38 L 31 22 L 41 28 L 50 18 L 59 28 L 69 22 L 66 38 Z" fill="#facc15" stroke="#854d0e" strokeWidth="0.4" />}
+        {hat === 'hat_conqueror' && (
+          <g>
+            <path d="M 33 39 L 67 39 L 65 31 L 35 31 Z" fill="#1e293b" />
+            <path d="M 31 39.5 Q 50 42.5 69 39.5 L 68 41 Q 50 44 32 41 Z" fill="#0f172a" />
+          </g>
+        )}
       </svg>
+
 
       {aura === 'aura_rainbow' && (
         <div className="absolute inset-0 pointer-events-none">

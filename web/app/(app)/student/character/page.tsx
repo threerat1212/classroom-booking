@@ -34,6 +34,7 @@ import CharacterPaperDoll, {
   directions,
   itemCodeFor,
   palette,
+  shade,
 } from '@/components/character/CharacterPaperDoll'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
@@ -50,10 +51,33 @@ const slots: { id: WardrobeSlot; label: string; short: string; icon: ComponentTy
 ]
 
 const rarityStyles = {
-  common: 'border-slate-700 bg-slate-800/40 text-slate-300',
-  rare: 'border-cyan-700/70 bg-cyan-950/30 text-cyan-300',
-  epic: 'border-fuchsia-700/70 bg-fuchsia-950/30 text-fuchsia-300',
-  legendary: 'border-amber-700/70 bg-amber-950/40 text-amber-200',
+  common: 'border-slate-700/50 bg-slate-800/30 text-slate-400',
+  rare: 'border-cyan-500/30 bg-cyan-950/20 text-cyan-400 shadow-[0_0_8px_rgba(6,182,212,0.1)]',
+  epic: 'border-fuchsia-500/30 bg-fuchsia-950/20 text-fuchsia-400 shadow-[0_0_8px_rgba(217,70,239,0.1)]',
+  legendary: 'border-amber-500/30 bg-amber-950/20 text-amber-300 shadow-[0_0_8px_rgba(245,158,11,0.15)]',
+}
+
+const cardRarities = {
+  common: {
+    border: 'border-white/5 hover:border-slate-700/50',
+    glow: 'hover:shadow-[0_0_15px_rgba(148,163,184,0.04)]',
+    bg: 'bg-slate-950/20 hover:bg-slate-950/40',
+  },
+  rare: {
+    border: 'border-cyan-500/10 hover:border-cyan-500/30',
+    glow: 'hover:shadow-[0_0_20px_rgba(6,182,212,0.08)]',
+    bg: 'bg-cyan-950/5 hover:bg-cyan-950/15',
+  },
+  epic: {
+    border: 'border-fuchsia-500/10 hover:border-fuchsia-500/30',
+    glow: 'hover:shadow-[0_0_20px_rgba(217,70,239,0.08)]',
+    bg: 'bg-fuchsia-950/5 hover:bg-fuchsia-950/15',
+  },
+  legendary: {
+    border: 'border-amber-500/10 hover:border-amber-500/45',
+    glow: 'hover:shadow-[0_0_25px_rgba(245,158,11,0.12)]',
+    bg: 'bg-amber-950/5 hover:bg-amber-950/15',
+  },
 }
 
 const slotNames: Record<WardrobeSlot, string> = {
@@ -76,16 +100,23 @@ function booleanOr(value: unknown, fallback: boolean) {
 }
 
 function CosmeticToken({ item }: { item: CharacterItem }) {
+  const tokenRarityColors = {
+    common: 'border-slate-800/60 bg-slate-950/70',
+    rare: 'border-cyan-500/35 bg-gradient-to-br from-cyan-950/30 to-slate-950/80 shadow-[0_0_8px_rgba(6,182,212,0.1),inset_0_0_6px_rgba(6,182,212,0.08)]',
+    epic: 'border-fuchsia-500/35 bg-gradient-to-br from-fuchsia-950/30 to-slate-950/80 shadow-[0_0_8px_rgba(217,70,239,0.1),inset_0_0_6px_rgba(217,70,239,0.08)]',
+    legendary: 'border-amber-500/35 bg-gradient-to-br from-amber-950/30 to-slate-950/80 shadow-[0_0_12px_rgba(245,158,11,0.15),inset_0_0_8px_rgba(245,158,11,0.1)]',
+  }
+  
+  const itemColor = palette(item.code, '#64748b')
+  const itemBg = item.category === 'aura'
+    ? 'conic-gradient(from 180deg, #22d3ee, #fbbf24, #c084fc, #22d3ee)'
+    : `radial-gradient(circle at center, ${itemColor} 20%, ${shade(itemColor, -30)} 90%)`
+
   return (
-    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-slate-950/60">
+    <div className={`relative flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border transition-transform duration-200 group-hover/token:scale-105 ${tokenRarityColors[item.rarity || 'common']}`}>
       <div
-        className="h-7 w-7 rounded-lg border border-white/20 shadow-inner"
-        style={{
-          background:
-            item.category === 'aura'
-              ? 'conic-gradient(from 180deg, #22d3ee, #fbbf24, #c084fc, #22d3ee)'
-              : palette(item.code, '#64748b'),
-        }}
+        className="h-8 w-8 rounded-xl border border-white/10 shadow-inner"
+        style={{ background: itemBg }}
       />
     </div>
   )
@@ -192,40 +223,55 @@ export default function StudentCharacterPage() {
 
   return (
     <div className="space-y-6">
+      <style>{`
+        @keyframes scan {
+          0% { transform: translateY(-10px); opacity: 0; }
+          10% { opacity: 0.6; }
+          90% { opacity: 0.6; }
+          100% { transform: translateY(190px); opacity: 0; }
+        }
+        @keyframes floating {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-3.5px); }
+        }
+      `}</style>
+
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="flex items-center gap-2 text-2xl font-bold text-white">
-            <Sparkles className="h-6 w-6 text-amber-300" />
+          <h1 className="flex items-center gap-2 text-2xl font-bold bg-gradient-to-r from-cyan-400 via-sky-300 to-indigo-400 bg-clip-text text-transparent">
+            <Sparkles className="h-6 w-6 text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.5)]" />
             ห้องแต่งตัวนักเรียน
           </h1>
           <p className="mt-1 text-sm text-slate-400">
             แต่งตัวละครสไตล์ 2.5D sprite, หมุนดู 4 มุม และซื้อของตกแต่งด้วย Gold จาก Learning Quests
           </p>
         </div>
-        <div className="flex items-center gap-2 rounded-xl border border-amber-400/20 bg-amber-400/10 px-4 py-2 text-amber-100">
-          <Coins className="h-4 w-4 text-amber-300" />
-          <span className="text-sm font-bold">{gold.toLocaleString()} Gold</span>
+        <div className="flex items-center gap-2 rounded-xl border border-amber-500/20 bg-slate-900/40 backdrop-blur px-4 py-2.5 text-amber-200 shadow-[0_0_15px_rgba(245,158,11,0.08)] hover:shadow-[0_0_20px_rgba(245,158,11,0.18)] transition-all">
+          <div className="animate-[floating_2.5s_infinite_ease-in-out]">
+            <Coins className="h-5 w-5 text-amber-400 drop-shadow-[0_0_6px_rgba(245,158,11,0.4)]" />
+          </div>
+          <span className="text-sm font-extrabold tracking-wide">{gold.toLocaleString()} Gold</span>
         </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[380px_1fr]">
-        <section className="space-y-4 rounded-2xl border border-white/10 bg-white/[0.04] p-5 backdrop-blur">
+        <section className="relative space-y-4 rounded-2xl border border-white/[0.05] bg-slate-950/20 p-5 backdrop-blur-xl shadow-2xl before:absolute before:inset-0 before:rounded-2xl before:border before:border-cyan-500/5 before:pointer-events-none">
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400">Character Preview</h2>
               <p className="text-xs text-slate-500">Layered sprite mannequin</p>
             </div>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1.5">
               <button
                 onClick={() => rotate(-1)}
-                className="rounded-lg border border-white/10 bg-white/5 p-2 text-slate-300 transition-colors hover:bg-white/10 hover:text-white"
+                className="rounded-xl border border-white/5 bg-slate-900/40 p-2 text-slate-400 transition-all hover:border-white/10 hover:bg-slate-900/60 hover:text-white"
                 aria-label="หมุนซ้าย"
               >
                 <RotateCcw className="h-4 w-4" />
               </button>
               <button
                 onClick={() => rotate(1)}
-                className="rounded-lg border border-white/10 bg-white/5 p-2 text-slate-300 transition-colors hover:bg-white/10 hover:text-white"
+                className="rounded-xl border border-white/5 bg-slate-900/40 p-2 text-slate-400 transition-all hover:border-white/10 hover:bg-slate-900/60 hover:text-white"
                 aria-label="หมุนขวา"
               >
                 <RotateCw className="h-4 w-4" />
@@ -240,10 +286,10 @@ export default function StudentCharacterPage() {
               <button
                 key={dir}
                 onClick={() => setDirection(dir)}
-                className={`rounded-lg border px-2 py-2 text-xs font-semibold transition-all ${
+                className={`rounded-xl border py-2 text-xs font-bold tracking-wide transition-all ${
                   direction === dir
-                    ? 'border-cyan-400/40 bg-cyan-400/15 text-cyan-100'
-                    : 'border-white/10 bg-white/5 text-slate-400 hover:bg-white/10'
+                    ? 'border-cyan-500/30 bg-cyan-500/10 text-cyan-300 shadow-[0_0_10px_rgba(6,182,212,0.1)]'
+                    : 'border-white/5 bg-slate-900/30 text-slate-400 hover:border-white/10 hover:bg-slate-900/55 hover:text-slate-200'
                 }`}
               >
                 {directionLabels[dir]}
@@ -251,52 +297,83 @@ export default function StudentCharacterPage() {
             ))}
           </div>
 
-          <div className="space-y-2 rounded-xl border border-white/10 bg-slate-950/45 p-3">
-            {equippedRows.map((row) => (
-              <button
-                key={row.id}
-                onClick={() => setActiveSlot(row.id)}
-                className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left transition-colors ${
-                  activeSlot === row.id ? 'bg-white/10 text-white' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
-                }`}
-              >
-                <span className="text-xs font-medium">{row.label}</span>
-                <span className="max-w-[190px] truncate text-xs">{row.item?.name || 'ค่าเริ่มต้น'}</span>
-              </button>
-            ))}
+          <div className="grid grid-cols-2 gap-2.5 rounded-xl border border-white/[0.05] bg-slate-950/50 p-3">
+            {equippedRows.map((row) => {
+              const SlotIcon = row.icon
+              const isEquipped = row.code !== defaultCodes[row.id]
+              return (
+                <button
+                  key={row.id}
+                  onClick={() => setActiveSlot(row.id)}
+                  className={`group relative flex items-center gap-2 rounded-xl border p-2 text-left transition-all ${
+                    activeSlot === row.id
+                      ? 'border-cyan-500/50 bg-cyan-500/10 text-white shadow-[0_0_12px_rgba(6,182,212,0.12)]'
+                      : isEquipped
+                      ? 'border-white/10 bg-white/[0.03] text-slate-200 hover:border-white/20 hover:bg-white/[0.06]'
+                      : 'border-white/5 bg-slate-900/20 text-slate-500 hover:border-white/10 hover:text-slate-400'
+                  }`}
+                >
+                  <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border transition-colors ${
+                    activeSlot === row.id
+                      ? 'border-cyan-400/30 bg-cyan-950/40 text-cyan-300'
+                      : isEquipped
+                      ? 'border-white/10 bg-white/5 text-slate-300'
+                      : 'border-white/5 bg-white/[0.02] text-slate-600 group-hover:text-slate-500'
+                  }`}>
+                    <SlotIcon className="h-4 w-4" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-slate-300">{row.label}</p>
+                    <p className={`truncate text-xs font-semibold ${
+                      isEquipped ? 'text-white' : 'text-slate-600'
+                    }`}>
+                      {row.item?.name || 'เริ่มต้น'}
+                    </p>
+                  </div>
+                </button>
+              )
+            })}
           </div>
         </section>
 
-        <section className="rounded-2xl border border-white/10 bg-white/[0.04] p-5 backdrop-blur">
+        <section className="relative flex flex-col rounded-2xl border border-white/[0.05] bg-slate-900/40 p-5 backdrop-blur-xl shadow-2xl">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
             <div>
               <h2 className="flex items-center gap-2 text-lg font-bold text-white">
-                <ShoppingBag className="h-5 w-5 text-cyan-300" />
+                <ShoppingBag className="h-5 w-5 text-cyan-400 drop-shadow-[0_0_6px_rgba(34,211,238,0.3)]" />
                 ร้านค้าของตกแต่ง
               </h2>
               <p className="mt-1 text-sm text-slate-400">เลเวลสูงขึ้นจะเห็นของใหม่ ของสวยขึ้นราคาก็แรงขึ้นนิดหนึ่งครับ</p>
             </div>
-            <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-slate-950/50 px-3 py-2 text-xs text-slate-300">
-              <Eye className="h-3.5 w-3.5 text-cyan-300" />
-              กำลังดู: {slotNames[activeSlot]}
+            <div className="flex items-center gap-2 rounded-xl border border-white/5 bg-slate-950/60 px-3.5 py-2 text-xs font-semibold text-slate-300">
+              <Eye className="h-4 w-4 text-cyan-400" />
+              กำลังดู: <span className="text-cyan-300">{slotNames[activeSlot]}</span>
             </div>
           </div>
 
-          <div className="mt-5 flex gap-2 overflow-x-auto pb-2">
+          <div className="mt-5 flex gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
             {slots.map((slot) => {
               const Icon = slot.icon
+              const isActive = activeSlot === slot.id
               return (
                 <button
                   key={slot.id}
                   onClick={() => setActiveSlot(slot.id)}
-                  className={`flex min-w-fit items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition-all ${
-                    activeSlot === slot.id
-                      ? 'border-cyan-400/40 bg-cyan-400/15 text-cyan-100'
-                      : 'border-white/10 bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white'
+                  className={`relative flex min-w-fit items-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-bold tracking-wide transition-all duration-200 ${
+                    isActive
+                      ? 'border-cyan-500/30 bg-cyan-500/10 text-cyan-300 shadow-[0_0_12px_rgba(6,182,212,0.1)]'
+                      : 'border-white/5 bg-slate-900/40 text-slate-400 hover:border-white/15 hover:bg-slate-900/60 hover:text-slate-200'
                   }`}
                 >
-                  <Icon className="h-3.5 w-3.5" />
+                  <Icon className="h-4 w-4" />
                   {slot.label}
+                  {isActive && (
+                    <motion.span
+                      layoutId="activeTabUnderline"
+                      className="absolute -bottom-[2px] left-3 right-3 h-[2.5px] rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.8)]"
+                      transition={{ type: 'spring', stiffness: 350, damping: 25 }}
+                    />
+                  )}
                 </button>
               )
             })}
@@ -311,46 +388,53 @@ export default function StudentCharacterPage() {
                 const lockedByLevel = !item.is_level_unlocked
                 const needsGold = item.is_level_unlocked && !item.is_owned && !canAfford
 
+                const cardStyle = cardRarities[item.rarity || 'common']
+                const currentCardStyle = isEquipped
+                  ? 'border-cyan-500/45 bg-cyan-950/20 shadow-[0_0_18px_rgba(6,182,212,0.12)]'
+                  : lockedByLevel
+                  ? 'border-slate-800/40 bg-slate-900/10 opacity-55'
+                  : `${cardStyle.border} ${cardStyle.bg} ${cardStyle.glow}`
+
                 return (
                   <motion.div
                     layout
                     key={item.code}
-                    initial={{ opacity: 0, y: 8 }}
+                    initial={{ opacity: 0, y: 12 }}
                     animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 8 }}
-                    className={`flex min-h-[190px] flex-col justify-between rounded-xl border p-4 transition-all ${
-                      isEquipped
-                        ? 'border-cyan-400/40 bg-cyan-400/10'
-                        : item.is_owned
-                        ? 'border-white/10 bg-white/5 hover:bg-white/[0.08]'
-                        : lockedByLevel
-                        ? 'border-slate-800 bg-slate-900/50 opacity-75'
-                        : 'border-amber-500/20 bg-amber-500/[0.06] hover:bg-amber-500/10'
-                    }`}
+                    exit={{ opacity: 0, y: 12 }}
+                    className={`group/card relative flex min-h-[200px] flex-col justify-between rounded-2xl border p-4 transition-all duration-300 ${currentCardStyle}`}
                   >
+                    {item.rarity === 'legendary' && !lockedByLevel && !isEquipped && (
+                      <div className="absolute inset-0 overflow-hidden rounded-2xl pointer-events-none">
+                        <div className="absolute inset-x-0 h-[1.5px] bg-gradient-to-r from-transparent via-amber-400/40 to-transparent animate-[scan_3s_infinite_ease-in-out]" />
+                      </div>
+                    )}
+
                     <div>
                       <div className="flex items-start justify-between gap-3">
-                        <CosmeticToken item={item} />
-                        <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase ${rarityStyles[item.rarity]}`}>
+                        <div className="group/token">
+                          <CosmeticToken item={item} />
+                        </div>
+                        <span className={`rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${rarityStyles[item.rarity]}`}>
                           {item.rarity}
                         </span>
                       </div>
 
-                      <h3 className="mt-3 line-clamp-2 text-sm font-bold text-white">{item.name}</h3>
-                      <div className="mt-2 space-y-1">
-                        <p className="flex items-center gap-1 text-xs text-amber-200">
+                      <h3 className="mt-3 line-clamp-1 text-sm font-bold text-slate-100 group-hover/card:text-white transition-colors">{item.name}</h3>
+                      <div className="mt-2 space-y-1.5">
+                        <p className="flex items-center gap-1.5 text-xs font-bold text-amber-300">
                           <Coins className="h-3.5 w-3.5" />
                           {item.price_gold > 0 ? `${item.price_gold.toLocaleString()} Gold` : 'ฟรี'}
                         </p>
                         {item.required_level > 1 && (
-                          <p className="flex items-center gap-1 text-xs text-slate-400">
-                            <Shield className="h-3.5 w-3.5" />
+                          <p className="flex items-center gap-1.5 text-xs font-semibold text-slate-400">
+                            <Shield className="h-3.5 w-3.5 text-slate-500" />
                             ต้องการ Lv.{item.required_level}
                           </p>
                         )}
                         {item.required_title_code && (
-                          <p className="flex items-center gap-1 text-xs text-cyan-300">
-                            <Award className="h-3.5 w-3.5" />
+                          <p className="flex items-center gap-1.5 text-xs font-semibold text-cyan-400">
+                            <Award className="h-3.5 w-3.5 text-cyan-500" />
                             ต้องมีฉายาพิเศษ
                           </p>
                         )}
@@ -359,7 +443,7 @@ export default function StudentCharacterPage() {
 
                     <div className="mt-4">
                       {isEquipped ? (
-                        <button disabled className="flex w-full items-center justify-center gap-2 rounded-lg bg-cyan-400/15 py-2 text-xs font-bold text-cyan-100">
+                        <button disabled className="flex w-full items-center justify-center gap-2 rounded-xl bg-cyan-500/15 py-2.5 text-xs font-bold text-cyan-300 border border-cyan-500/25 shadow-inner">
                           <CheckCircle className="h-3.5 w-3.5" />
                           สวมใส่อยู่
                         </button>
@@ -367,17 +451,17 @@ export default function StudentCharacterPage() {
                         <button
                           onClick={() => equipMutation.mutate(item.code)}
                           disabled={isPending}
-                          className="flex w-full items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/10 py-2 text-xs font-bold text-white transition-colors hover:bg-white/15 disabled:opacity-50"
+                          className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-slate-800/40 hover:bg-slate-700/60 py-2.5 text-xs font-bold text-white transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
                         >
                           สวมใส่
                         </button>
                       ) : lockedByLevel ? (
-                        <button disabled className="flex w-full items-center justify-center gap-2 rounded-lg bg-slate-800/70 py-2 text-xs font-bold text-slate-500">
+                        <button disabled className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900/65 border border-white/5 py-2.5 text-xs font-bold text-slate-500">
                           <Lock className="h-3.5 w-3.5" />
                           ยังไม่ปลดล็อก
                         </button>
                       ) : needsGold ? (
-                        <button disabled className="flex w-full items-center justify-center gap-2 rounded-lg bg-slate-800/70 py-2 text-xs font-bold text-slate-500">
+                        <button disabled className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900/65 border border-white/5 py-2.5 text-xs font-bold text-slate-500">
                           <Coins className="h-3.5 w-3.5" />
                           Gold ยังไม่พอ
                         </button>
@@ -385,7 +469,7 @@ export default function StudentCharacterPage() {
                         <button
                           onClick={() => purchaseMutation.mutate(item.code)}
                           disabled={isPending}
-                          className="flex w-full items-center justify-center gap-2 rounded-lg bg-amber-400 py-2 text-xs font-bold text-slate-950 transition-colors hover:bg-amber-300 disabled:opacity-50"
+                          className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 py-2.5 text-xs font-bold text-slate-950 transition-all hover:scale-[1.02] active:scale-[0.98] shadow-[0_4px_12px_rgba(245,158,11,0.15)] hover:shadow-[0_4px_16px_rgba(245,158,11,0.25)] disabled:opacity-50"
                         >
                           <ShoppingBag className="h-3.5 w-3.5" />
                           ซื้อและสวมใส่
@@ -399,9 +483,9 @@ export default function StudentCharacterPage() {
           </div>
 
           {visibleItems.length === 0 && (
-            <div className="mt-5 rounded-xl border border-white/10 bg-slate-950/40 p-8 text-center">
-              <ShoppingBag className="mx-auto h-8 w-8 text-slate-600" />
-              <p className="mt-2 text-sm text-slate-400">ยังไม่มีของในหมวดนี้</p>
+            <div className="mt-5 rounded-2xl border border-white/[0.05] bg-slate-950/40 p-12 text-center">
+              <ShoppingBag className="mx-auto h-10 w-10 text-slate-700" />
+              <p className="mt-3 text-sm font-semibold text-slate-400">ยังไม่มีของตกแต่งในหมวดหมู่นี้</p>
             </div>
           )}
         </section>

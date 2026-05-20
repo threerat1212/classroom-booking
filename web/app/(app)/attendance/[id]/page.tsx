@@ -9,29 +9,96 @@ import Link from 'next/link'
 
 // Quick Vector Layer Render for Table rows
 function CharacterMiniSprite({ hair = 'hair_novice', hat = 'hat_none', outfit = 'outfit_novice', aura = 'aura_none' }) {
+  // Color mappings for hair styles
+  const hairColors: Record<string, string> = {
+    hair_novice: '#d97706',
+    hair_spiky: '#3b82f6',
+    hair_elegant: '#c084fc',
+    hair_flaming: '#f97316',
+    hair_silver_wave: '#f8fafc',
+  }
+  const outfitColors: Record<string, string> = {
+    outfit_novice: '#a1a1aa',
+    outfit_apprentice: '#10b981',
+    outfit_wizard: '#8b5cf6',
+    outfit_plate: '#e2e8f0',
+    outfit_god: '#fbbf24',
+  }
+
+  const hColor = hairColors[hair] || '#78350f'
+  const oColor = outfitColors[outfit] || '#52525b'
+
   return (
     <div className="relative w-8 h-8 rounded bg-slate-950 border border-white/10 flex items-center justify-center overflow-hidden">
       <svg viewBox="0 0 100 100" className="w-5/6 h-5/6">
-        <rect x="35" y="32" width="30" height="26" rx="8" fill="#fed7aa" />
-        <rect x="46" y="55" width="8" height="8" fill="#fdba74" />
-        <circle cx="43" cy="44" r="2" fill="#1e293b" />
-        <circle cx="57" cy="44" r="2" fill="#1e293b" />
+        {/* Neck */}
+        <rect x="46" y="58" width="8" height="6" fill="#fde0c0" />
 
-        {hair === 'hair_novice' && <path d="M 32 34 C 32 20, 68 20, 68 34 Z" fill="#854d0e" />}
-        {hair === 'hair_spiky' && <path d="M 31 35 L 26 26 L 36 28 L 42 16 L 50 24 L 58 16 L 64 28 L 74 26 L 69 35 Z" fill="#2563eb" />}
-        {hair === 'hair_elegant' && <path d="M 33 34 C 33 22, 67 22, 67 34 Z" fill="#c084fc" />}
-        {hair === 'hair_flaming' && <path d="M 32 35 C 28 25, 48 8, 68 22 Z" fill="#f97316" />}
+        {/* Torso */}
+        <path d="M 38 64 L 62 64 C 64 74, 63 86, 50 86 C 37 86, 36 74, 38 64 Z" fill={oColor} />
+        <path d="M 44 64 L 50 70 L 56 64" fill="none" stroke="#ffffff" strokeWidth="0.8" opacity="0.8" />
 
-        {outfit === 'outfit_novice' && <path d="M 32 60 L 68 60 L 65 85 L 35 85 Z" fill="#a1a1aa" />}
-        {outfit === 'outfit_apprentice' && <path d="M 30 60 L 70 60 L 65 85 L 35 85 Z" fill="#10b981" />}
-        {outfit === 'outfit_wizard' && <path d="M 28 60 L 72 60 L 66 85 L 34 85 Z" fill="#8b5cf6" />}
-        {outfit === 'outfit_plate' && <path d="M 30 60 L 70 60 L 65 85 L 35 85 Z" fill="#e2e8f0" />}
-        {outfit === 'outfit_god' && <path d="M 28 60 L 72 60 L 66 85 L 34 85 Z" fill="#fbbf24" />}
+        {/* Head */}
+        <path d="M 34 42 C 34 32, 66 32, 66 42 C 66 52, 62 60, 50 60 C 38 60, 34 52, 34 42 Z" fill="#fde0c0" stroke="#c2410c" strokeWidth="0.4" />
 
-        {hat === 'hat_bandana' && <path d="M 32 32 H 68 V 37 H 32 Z" fill="#ef4444" />}
-        {hat === 'hat_wizard' && <path d="M 22 32 C 22 28, 78 28, 78 32 C 78 32, 50 4, 22 32 Z" fill="#312e81" />}
-        {hat === 'hat_crown' && <path d="M 34 32 L 31 20 L 50 16 L 69 20 L 66 32 Z" fill="#facc15" />}
-        {hat === 'hat_conqueror' && <path d="M 30 32 C 30 18, 70 18, 70 32 Z" fill="#1e293b" />}
+        {/* Eyes (Mini cute anime eyes) */}
+        <ellipse cx="43" cy="46" rx="2" ry="3.5" fill="#ffffff" />
+        <ellipse cx="43" cy="46" rx="1.2" ry="3.1" fill={hColor} />
+        <circle cx="42.5" cy="44.5" r="0.6" fill="#ffffff" />
+        <path d="M 40 44 Q 43 42 46 44" fill="none" stroke="#1e293b" strokeWidth="1" strokeLinecap="round" />
+
+        <ellipse cx="57" cy="46" rx="2" ry="3.5" fill="#ffffff" />
+        <ellipse cx="57" cy="46" rx="1.2" ry="3.1" fill={hColor} />
+        <circle cx="56.5" cy="44.5" r="0.6" fill="#ffffff" />
+        <path d="M 54 44 Q 57 42 60 44" fill="none" stroke="#1e293b" strokeWidth="1" strokeLinecap="round" />
+
+        <ellipse cx="39" cy="51" rx="2" ry="0.8" fill="#fca5a5" opacity="0.6" />
+        <ellipse cx="61" cy="51" rx="2" ry="0.8" fill="#fca5a5" opacity="0.6" />
+        <path d="M 48.5 53 Q 50 54.5 51.5 53" fill="none" stroke="#c2410c" strokeWidth="0.8" strokeLinecap="round" />
+
+        {/* Hair Side Strands */}
+        {hair === 'hair_novice' && (
+          <g>
+            <path d="M 32 40 C 30 46, 32 54, 34 54 Z" fill={hColor} />
+            <path d="M 68 40 C 70 46, 68 54, 66 54 Z" fill={hColor} />
+          </g>
+        )}
+        {hair === 'hair_elegant' && (
+          <g>
+            <path d="M 33 40 C 25 46, 26 62, 30 65 Z" fill={hColor} />
+            <path d="M 67 40 C 75 46, 74 62, 70 65 Z" fill={hColor} />
+          </g>
+        )}
+
+        {/* Hair overlay */}
+        {hair === 'hair_novice' && <path d="M 32 40 C 32 20, 68 20, 68 40 C 62 44, 56 40, 50 44 C 44 40, 38 44, 32 40 Z" fill={hColor} />}
+        {hair === 'hair_spiky' && <path d="M 30 41 C 28 33, 32 24, 35 28 C 37 23, 42 31, 43 33 C 45 27, 49 22, 52 26 C 55 21, 60 28, 61 32 C 63 26, 68 22, 70 28 C 72 23, 77 33, 75 41 Z" fill={hColor} />}
+        {hair === 'hair_elegant' && <path d="M 33 40 C 33 24, 67 24, 67 40 C 60 42, 55 40, 50 42 C 45 40, 40 42, 33 40 Z" fill={hColor} />}
+        {hair === 'hair_flaming' && <path d="M 32 41 C 28 28, 38 18, 50 14 C 62 18, 68 41, 68 41 L 62 38 C 58 42, 53 38, 50 41 Z" fill="url(#miniFlame)" />}
+        {hair === 'hair_silver_wave' && <path d="M 33 40 C 33 24, 67 24, 67 40 C 60 42, 55 40, 50 42 Z" fill={hColor} />}
+
+        {/* Hats */}
+        {hat === 'hat_bandana' && <path d="M 32 39.5 Q 50 36.5 68 39.5 L 67.5 43.5 Q 50 40.5 32.5 43.5 Z" fill="#ef4444" />}
+        {hat === 'hat_wizard' && (
+          <g>
+            <path d="M 32 41 C 37 31, 44 20, 50 12 C 55 20, 61 31, 68 41 Z" fill="#4338ca" />
+            <ellipse cx="50" cy="42" rx="22" ry="2.5" fill="#312e81" />
+          </g>
+        )}
+        {hat === 'hat_crown' && <path d="M 34 38 L 31 22 L 41 28 L 50 18 L 59 28 L 69 22 L 66 38 Z" fill="#facc15" stroke="#854d0e" strokeWidth="0.4" />}
+        {hat === 'hat_conqueror' && (
+          <g>
+            <path d="M 33 39 L 67 39 L 65 31 Z" fill="#1e293b" />
+            <path d="M 31 39.5 Q 50 42.5 69 39.5 Z" fill="#0f172a" />
+          </g>
+        )}
+
+        <defs>
+          <linearGradient id="miniFlame" x1="0" y1="1" x2="0" y2="0">
+            <stop offset="0%" stopColor="#b91c1c" />
+            <stop offset="100%" stopColor="#fbbf24" />
+          </linearGradient>
+        </defs>
       </svg>
     </div>
   )
