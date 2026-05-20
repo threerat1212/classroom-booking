@@ -9,6 +9,7 @@ export interface StoredUser {
   role: 'admin' | 'teacher' | 'student' | 'guest'
   xp?: number
   level?: number
+  gold_balance?: number
   rank_title?: string
 }
 

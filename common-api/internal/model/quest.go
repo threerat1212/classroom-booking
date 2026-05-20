@@ -20,6 +20,7 @@ type LearningQuest struct {
 	Hints             []string   `json:"hints"`
 	Explanation       *string    `json:"explanation,omitempty"`
 	ExpReward         int        `json:"exp_reward"`
+	GoldReward        int        `json:"gold_reward"`
 	TimeLimitMinutes  *int       `json:"time_limit_minutes,omitempty"`
 	Status            string     `json:"status"`
 	QuestKind         string     `json:"quest_kind"`
@@ -42,6 +43,7 @@ type QuestAttempt struct {
 	Score       *int       `json:"score,omitempty"`
 	Feedback    *string    `json:"feedback,omitempty"`
 	ExpEarned   int        `json:"exp_earned"`
+	GoldEarned  int        `json:"gold_earned"`
 	StartedAt   *time.Time `json:"started_at,omitempty"`
 	CompletedAt *time.Time `json:"completed_at,omitempty"`
 	CreatedAt   time.Time  `json:"created_at"`
@@ -58,6 +60,7 @@ type CreateQuestRequest struct {
 	Hints             []string `json:"hints,omitempty"`
 	Explanation       string   `json:"explanation,omitempty"`
 	ExpReward         int      `json:"exp_reward,omitempty"`
+	GoldReward        int      `json:"gold_reward,omitempty"`
 	TimeLimitMinutes  *int     `json:"time_limit_minutes,omitempty"`
 	QuestKind         string   `json:"quest_kind,omitempty" binding:"omitempty,oneof=standard special"`
 	RequiredTitleCode string   `json:"required_title_code,omitempty"`

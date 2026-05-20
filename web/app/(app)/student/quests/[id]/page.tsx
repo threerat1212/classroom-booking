@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Zap, Clock, Lightbulb, Send, ArrowLeft, CheckCircle, Sparkles, Star, Lock } from 'lucide-react'
+import { Zap, Clock, Lightbulb, Send, ArrowLeft, CheckCircle, Sparkles, Star, Lock, Coins } from 'lucide-react'
 import { apiFetch } from '@/lib/http/client'
 import { useQuery } from '@tanstack/react-query'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
@@ -17,6 +17,7 @@ interface Quest {
   hints: string[]
   explanation?: string
   exp_reward: number
+  gold_reward: number
   time_limit_minutes?: number
   quest_kind?: 'standard' | 'special'
   required_title_name?: string
@@ -28,6 +29,7 @@ interface AttemptResult {
   score: number
   feedback: string
   exp_earned: number
+  gold_earned: number
 }
 
 const diffMap: Record<string, { label: string; color: string }> = {
@@ -64,7 +66,7 @@ export default function QuestDetailPage() {
         body: JSON.stringify({ quest_id: id, answer: answer.trim() }),
       })
       setResult(res.data)
-      if (res.data.exp_earned > 0) {
+      if (res.data.exp_earned > 0 || res.data.gold_earned > 0) {
         await refreshUser().catch(() => undefined)
       }
     } catch (err: any) {
@@ -127,6 +129,10 @@ export default function QuestDetailPage() {
             <div className="flex items-center gap-1 rounded-lg border border-violet-500/20 bg-violet-500/10 px-3 py-1.5 text-xs font-semibold text-violet-300">
               <Zap className="h-3.5 w-3.5" />
               +{quest.exp_reward} EXP
+            </div>
+            <div className="flex items-center gap-1 rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-1.5 text-xs font-semibold text-amber-200">
+              <Coins className="h-3.5 w-3.5" />
+              +{quest.gold_reward} Gold
             </div>
           </div>
         </div>
@@ -235,6 +241,14 @@ export default function QuestDetailPage() {
                 <Sparkles className="h-4 w-4 text-violet-400" />
                 <span className="text-sm font-semibold text-violet-300">
                   +{result.exp_earned} EXP earned!
+                </span>
+              </div>
+            )}
+            {result.gold_earned > 0 && (
+              <div className="mt-3 flex items-center gap-2 rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-2">
+                <Coins className="h-4 w-4 text-amber-300" />
+                <span className="text-sm font-semibold text-amber-200">
+                  +{result.gold_earned} Gold earned!
                 </span>
               </div>
             )}

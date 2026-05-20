@@ -42,7 +42,7 @@ export default function LoginPage() {
     setError('')
     setLoading(true)
     try {
-      const res = await apiFetch<{ data: { access_token: string; user: { id: string; email: string; full_name: string; role: string; xp?: number; level?: number; rank_title?: string } } }>(
+      const res = await apiFetch<{ data: { access_token: string; user: { id: string; email: string; full_name: string; role: string; xp?: number; level?: number; gold_balance?: number; rank_title?: string } } }>(
         '/api/v1/auth/login',
         {
           method: 'POST',
@@ -57,6 +57,7 @@ export default function LoginPage() {
         role: res.data.user.role as 'admin' | 'teacher' | 'student' | 'guest',
         xp: res.data.user.xp,
         level: res.data.user.level,
+        gold_balance: res.data.user.gold_balance,
         rank_title: res.data.user.rank_title,
       })
       document.cookie = `access_token=${res.data.access_token}; path=/; max-age=86400`

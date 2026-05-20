@@ -33,7 +33,7 @@ func (s *QuestService) SetAchievements(achievements *AchievementService) {
 func (s *QuestService) List(ctx context.Context, userID uuid.UUID, role string) ([]*model.LearningQuest, error) {
 	const baseSelect = `
 		SELECT q.id, q.teacher_id, q.classroom_id, r.name, q.title, q.topic, q.description, q.difficulty,
-		       q.exp_reward, q.time_limit_minutes, q.status, q.quest_kind,
+		       q.exp_reward, q.gold_reward, q.time_limit_minutes, q.status, q.quest_kind,
 		       q.required_title_code, rt.name, q.unlock_note,
 		       CASE WHEN $2::text = 'student' AND q.required_title_code IS NOT NULL AND ut.user_id IS NULL THEN true ELSE false END AS is_locked,
 		       CASE WHEN $2::text = 'student' AND q.required_title_code IS NOT NULL AND ut.user_id IS NULL THEN 'ปลดล็อกด้วยฉายา ' || COALESCE(rt.name, q.required_title_code) ELSE NULL END AS locked_reason,
@@ -74,7 +74,7 @@ func (s *QuestService) List(ctx context.Context, userID uuid.UUID, role string) 
 	var quests []*model.LearningQuest
 	for rows.Next() {
 		var q model.LearningQuest
-		if err := rows.Scan(&q.ID, &q.TeacherID, &q.ClassroomID, &q.ClassroomName, &q.Title, &q.Topic, &q.Description, &q.Difficulty, &q.ExpReward, &q.TimeLimitMinutes, &q.Status, &q.QuestKind, &q.RequiredTitleCode, &q.RequiredTitleName, &q.UnlockNote, &q.IsLocked, &q.LockedReason, &q.IsCompleted); err != nil {
+		if err := rows.Scan(&q.ID, &q.TeacherID, &q.ClassroomID, &q.ClassroomName, &q.Title, &q.Topic, &q.Description, &q.Difficulty, &q.ExpReward, &q.GoldReward, &q.TimeLimitMinutes, &q.Status, &q.QuestKind, &q.RequiredTitleCode, &q.RequiredTitleName, &q.UnlockNote, &q.IsLocked, &q.LockedReason, &q.IsCompleted); err != nil {
 			continue
 		}
 		quests = append(quests, &q)
@@ -105,14 +105,14 @@ func (s *QuestService) getQuest(ctx context.Context, id uuid.UUID, includeAnswer
 	}
 	err := s.db.QueryRow(ctx,
 		fmt.Sprintf(`SELECT q.id, q.teacher_id, q.classroom_id, r.name, q.title, q.topic, q.description, q.difficulty,
-		        q.question, %s, q.hints, q.explanation, q.exp_reward, q.time_limit_minutes, q.status,
+		        q.question, %s, q.hints, q.explanation, q.exp_reward, q.gold_reward, q.time_limit_minutes, q.status,
 		        q.quest_kind, q.required_title_code, rt.name, q.unlock_note,
 		        q.created_at, q.updated_at
 		 FROM learning_quests q
 		 LEFT JOIN rooms r ON r.id = q.classroom_id
 		 LEFT JOIN learning_titles rt ON rt.code = q.required_title_code
 		 WHERE q.id = $1 AND q.deleted_at IS NULL`, answerSelect), id,
-	).Scan(&q.ID, &q.TeacherID, &q.ClassroomID, &q.ClassroomName, &q.Title, &q.Topic, &q.Description, &q.Difficulty, &q.Question, &q.Answer, &q.Hints, &q.Explanation, &q.ExpReward, &q.TimeLimitMinutes, &q.Status, &q.QuestKind, &q.RequiredTitleCode, &q.RequiredTitleName, &q.UnlockNote, &q.CreatedAt, &q.UpdatedAt)
+	).Scan(&q.ID, &q.TeacherID, &q.ClassroomID, &q.ClassroomName, &q.Title, &q.Topic, &q.Description, &q.Difficulty, &q.Question, &q.Answer, &q.Hints, &q.Explanation, &q.ExpReward, &q.GoldReward, &q.TimeLimitMinutes, &q.Status, &q.QuestKind, &q.RequiredTitleCode, &q.RequiredTitleName, &q.UnlockNote, &q.CreatedAt, &q.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -192,6 +192,10 @@ func (s *QuestService) Create(ctx context.Context, teacherID uuid.UUID, req mode
 	if expReward <= 0 {
 		expReward = spec.expReward
 	}
+	goldReward := req.GoldReward
+	if goldReward <= 0 {
+		goldReward = spec.goldReward
+	}
 	timeLimit := req.TimeLimitMinutes
 	if timeLimit == nil && spec.timeLimitMinutes > 0 {
 		v := spec.timeLimitMinutes
@@ -230,14 +234,14 @@ func (s *QuestService) Create(ctx context.Context, teacherID uuid.UUID, req mode
 	err = s.db.QueryRow(ctx,
 		`INSERT INTO learning_quests (
 			teacher_id, classroom_id, title, topic, description, difficulty, question, answer, hints,
-			explanation, exp_reward, time_limit_minutes, quest_kind, required_title_code, unlock_note
+			explanation, exp_reward, gold_reward, time_limit_minutes, quest_kind, required_title_code, unlock_note
 		)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
 		 RETURNING id, teacher_id, classroom_id, title, topic, description, difficulty, question, answer, hints,
-		           explanation, exp_reward, time_limit_minutes, status, quest_kind, required_title_code, unlock_note, created_at, updated_at`,
+		           explanation, exp_reward, gold_reward, time_limit_minutes, status, quest_kind, required_title_code, unlock_note, created_at, updated_at`,
 		teacherID, classroomID, req.Title, req.Topic, req.Description, difficulty, question, answer, req.Hints,
-		explanation, expReward, timeLimit, questKind, requiredTitleCode, unlockNote,
-	).Scan(&q.ID, &q.TeacherID, &q.ClassroomID, &q.Title, &q.Topic, &q.Description, &q.Difficulty, &q.Question, &q.Answer, &q.Hints, &q.Explanation, &q.ExpReward, &q.TimeLimitMinutes, &q.Status, &q.QuestKind, &q.RequiredTitleCode, &q.UnlockNote, &q.CreatedAt, &q.UpdatedAt)
+		explanation, expReward, goldReward, timeLimit, questKind, requiredTitleCode, unlockNote,
+	).Scan(&q.ID, &q.TeacherID, &q.ClassroomID, &q.Title, &q.Topic, &q.Description, &q.Difficulty, &q.Question, &q.Answer, &q.Hints, &q.Explanation, &q.ExpReward, &q.GoldReward, &q.TimeLimitMinutes, &q.Status, &q.QuestKind, &q.RequiredTitleCode, &q.UnlockNote, &q.CreatedAt, &q.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -280,6 +284,7 @@ func (s *QuestService) Submit(ctx context.Context, studentID, questID uuid.UUID,
 	score := 0
 	feedback := "Incorrect. Please review the explanation and try again."
 	expEarned := 0
+	goldEarned := 0
 
 	if graded != nil {
 		isCorrect = *graded.IsCorrect
@@ -288,20 +293,22 @@ func (s *QuestService) Submit(ctx context.Context, studentID, questID uuid.UUID,
 			feedback = *graded.Feedback
 		}
 		expEarned = graded.ExpEarned
+		goldEarned = questGoldForScore(score, quest.GoldReward, answer != "")
 	} else if quest.Answer != nil && answersEquivalent(*quest.Answer, answer) {
 		isCorrect = true
 		score = 100
 		feedback = "Correct! Well done!"
 		expEarned = quest.ExpReward
+		goldEarned = quest.GoldReward
 	}
 
 	var attempt model.QuestAttempt
 	err = s.db.QueryRow(ctx,
-		`INSERT INTO quest_attempts (quest_id, student_id, answer, is_correct, score, feedback, exp_earned, completed_at)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, now())
-		 RETURNING id, quest_id, student_id, answer, is_correct, score, feedback, exp_earned, completed_at, created_at`,
-		questID, studentID, answer, isCorrect, score, feedback, expEarned,
-	).Scan(&attempt.ID, &attempt.QuestID, &attempt.StudentID, &attempt.Answer, &attempt.IsCorrect, &attempt.Score, &attempt.Feedback, &attempt.ExpEarned, &attempt.CompletedAt, &attempt.CreatedAt)
+		`INSERT INTO quest_attempts (quest_id, student_id, answer, is_correct, score, feedback, exp_earned, gold_earned, completed_at)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, now())
+		 RETURNING id, quest_id, student_id, answer, is_correct, score, feedback, exp_earned, gold_earned, completed_at, created_at`,
+		questID, studentID, answer, isCorrect, score, feedback, expEarned, goldEarned,
+	).Scan(&attempt.ID, &attempt.QuestID, &attempt.StudentID, &attempt.Answer, &attempt.IsCorrect, &attempt.Score, &attempt.Feedback, &attempt.ExpEarned, &attempt.GoldEarned, &attempt.CompletedAt, &attempt.CreatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -312,6 +319,13 @@ func (s *QuestService) Submit(ctx context.Context, studentID, questID uuid.UUID,
 		if _, err := userSvc.AddXP(ctx, studentID, expEarned, "quest_completed", fmt.Sprintf("Quest: %s (Score: %d%%)", quest.Title, score), "quest", &questID); err != nil {
 			attempt.ExpEarned = 0
 			_, _ = s.db.Exec(ctx, `UPDATE quest_attempts SET exp_earned = 0 WHERE id = $1`, attempt.ID)
+		}
+	}
+	if goldEarned > 0 {
+		userSvc := NewUserService(s.db)
+		if _, err := userSvc.AddGold(ctx, studentID, goldEarned, "quest_completed", fmt.Sprintf("Quest: %s (Score: %d%%)", quest.Title, score), "quest", &questID); err != nil {
+			attempt.GoldEarned = 0
+			_, _ = s.db.Exec(ctx, `UPDATE quest_attempts SET gold_earned = 0 WHERE id = $1`, attempt.ID)
 		}
 	}
 

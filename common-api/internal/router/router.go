@@ -165,6 +165,7 @@ func New(cfg *config.Config, h *handler.Handlers) *gin.Engine {
 		{
 			character.GET("", h.Character.GetSummary)
 			character.POST("/equip", middleware.RequireRoles("student"), h.Character.Equip)
+			character.POST("/purchase", middleware.RequireRoles("student"), h.Character.Purchase)
 		}
 
 		ai := protected.Group("/ai")

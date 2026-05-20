@@ -337,16 +337,17 @@ func (q *generatedQuestPayload) UnmarshalJSON(data []byte) error {
 
 type questDifficultySpec struct {
 	expReward        int
+	goldReward       int
 	timeLimitMinutes int
 }
 
 var questDifficultyOrder = []string{"easy", "medium", "hard", "expert"}
 
 var questDifficultySpecs = map[string]questDifficultySpec{
-	"easy":   {expReward: 10, timeLimitMinutes: 5},
-	"medium": {expReward: 25, timeLimitMinutes: 10},
-	"hard":   {expReward: 50, timeLimitMinutes: 15},
-	"expert": {expReward: 80, timeLimitMinutes: 20},
+	"easy":   {expReward: 10, goldReward: 8, timeLimitMinutes: 5},
+	"medium": {expReward: 25, goldReward: 18, timeLimitMinutes: 10},
+	"hard":   {expReward: 50, goldReward: 40, timeLimitMinutes: 15},
+	"expert": {expReward: 80, goldReward: 75, timeLimitMinutes: 20},
 }
 
 func normalizeGeneratedQuests(input []generatedQuestPayload, topic string) ([]generatedQuestPayload, error) {
@@ -554,7 +555,7 @@ Rules:
 - Avoid vague opinion questions. Prefer questions with a clear, checkable answer.
 - The answer must be a concise canonical answer. Include acceptable wording in the explanation, not in the answer.
 - Hints must guide the student without giving the final answer.
-- Difficulty, exp_reward, and time_limit_minutes must match the values below.
+- Difficulty, exp_reward, and time_limit_minutes must match the values below. Gold rewards are assigned by the server.
 
 Required output shape:
 {
@@ -599,11 +600,11 @@ Required output shape:
 	for _, q := range normalized {
 		var quest model.LearningQuest
 		err := tx.QueryRow(ctx,
-			`INSERT INTO learning_quests (teacher_id, classroom_id, title, topic, description, difficulty, question, answer, hints, explanation, exp_reward, time_limit_minutes, status)
-			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'active')
-			 RETURNING id, teacher_id, classroom_id, title, topic, description, difficulty, question, answer, hints, explanation, exp_reward, time_limit_minutes, status, created_at, updated_at`,
-			teacherID, classroomID, q.Title, topic, "AI-generated practice quest", q.Difficulty, q.Question, q.Answer, q.Hints, q.Explanation, q.ExpReward, q.TimeLimitMinutes,
-		).Scan(&quest.ID, &quest.TeacherID, &quest.ClassroomID, &quest.Title, &quest.Topic, &quest.Description, &quest.Difficulty, &quest.Question, &quest.Answer, &quest.Hints, &quest.Explanation, &quest.ExpReward, &quest.TimeLimitMinutes, &quest.Status, &quest.CreatedAt, &quest.UpdatedAt)
+			`INSERT INTO learning_quests (teacher_id, classroom_id, title, topic, description, difficulty, question, answer, hints, explanation, exp_reward, gold_reward, time_limit_minutes, status)
+			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 'active')
+			 RETURNING id, teacher_id, classroom_id, title, topic, description, difficulty, question, answer, hints, explanation, exp_reward, gold_reward, time_limit_minutes, status, created_at, updated_at`,
+			teacherID, classroomID, q.Title, topic, "AI-generated practice quest", q.Difficulty, q.Question, q.Answer, q.Hints, q.Explanation, q.ExpReward, questDifficultySpecs[q.Difficulty].goldReward, q.TimeLimitMinutes,
+		).Scan(&quest.ID, &quest.TeacherID, &quest.ClassroomID, &quest.Title, &quest.Topic, &quest.Description, &quest.Difficulty, &quest.Question, &quest.Answer, &quest.Hints, &quest.Explanation, &quest.ExpReward, &quest.GoldReward, &quest.TimeLimitMinutes, &quest.Status, &quest.CreatedAt, &quest.UpdatedAt)
 		if err != nil {
 			return nil, fmt.Errorf("failed to save %s quest: %w", q.Difficulty, err)
 		}
@@ -820,6 +821,23 @@ func questExpForScore(score, maxExp int, attempted bool) int {
 		return maxInt(1, maxExp/2)
 	case score > 0:
 		return minInt(2, maxExp)
+	default:
+		return 0
+	}
+}
+
+func questGoldForScore(score, maxGold int, attempted bool) int {
+	if maxGold <= 0 || !attempted {
+		return 0
+	}
+	score = clampScore(score)
+	switch {
+	case score >= 80:
+		return maxGold
+	case score >= 50:
+		return maxInt(1, maxGold/2)
+	case score > 0:
+		return minInt(2, maxGold)
 	default:
 		return 0
 	}

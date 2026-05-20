@@ -14,6 +14,7 @@ interface Quest {
   topic: string
   difficulty: string
   exp_reward: number
+  gold_reward: number
   status: string
   classroom_id?: string
   classroom_name?: string
@@ -32,6 +33,7 @@ const emptySpecialQuest = {
   hints: '',
   explanation: '',
   exp_reward: '35',
+  gold_reward: '25',
 }
 
 export default function TeacherQuestsPage() {
@@ -106,6 +108,7 @@ export default function TeacherQuestsPage() {
           hints,
           explanation: specialQuest.explanation.trim(),
           exp_reward: Number(specialQuest.exp_reward) || 35,
+          gold_reward: Number(specialQuest.gold_reward) || 25,
           unlock_note: selectedTitle ? `ปลดล็อกด้วยฉายา ${selectedTitle.name}` : '',
         }),
       })
@@ -259,6 +262,12 @@ export default function TeacherQuestsPage() {
             placeholder="EXP"
             className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-slate-500 focus:border-amber-500/50 focus:outline-none"
           />
+          <input
+            value={specialQuest.gold_reward}
+            onChange={(e) => setSpecialQuest((prev) => ({ ...prev, gold_reward: e.target.value }))}
+            placeholder="Gold"
+            className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-slate-500 focus:border-amber-500/50 focus:outline-none"
+          />
           <textarea
             value={specialQuest.question}
             onChange={(e) => setSpecialQuest((prev) => ({ ...prev, question: e.target.value }))}
@@ -343,7 +352,7 @@ export default function TeacherQuestsPage() {
                 </div>
                 <p className="text-xs text-slate-400">
                   {quest.classroom_name && <span className="text-violet-400">{quest.classroom_name} · </span>}
-                  {quest.topic} · {quest.difficulty} · +{quest.exp_reward} EXP
+                  {quest.topic} · {quest.difficulty} · +{quest.exp_reward} EXP · +{quest.gold_reward} Gold
                 </p>
                 {quest.required_title_name && (
                   <p className="mt-1 flex items-center gap-1 text-xs text-amber-200">

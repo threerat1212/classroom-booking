@@ -19,6 +19,7 @@ type User struct {
 	Status     string     `json:"status"`
 	XP         int        `json:"xp"`
 	Level      int        `json:"level"`
+	Gold       int        `json:"gold_balance"`
 	RankTitle  *string    `json:"rank_title,omitempty"`
 	LastLogin  *time.Time `json:"last_login_at,omitempty"`
 	CreatedAt  time.Time  `json:"created_at"`
