@@ -308,6 +308,15 @@ func (s *AchievementService) awardTitleTx(ctx context.Context, tx pgx.Tx, userID
 		}
 	}
 
+	// Auto-unlock associated character cosmetics
+	_, err = tx.Exec(ctx, `
+		INSERT INTO user_unlocked_items (user_id, item_code)
+		SELECT $1, code FROM character_items WHERE required_title_code = $2
+		ON CONFLICT DO NOTHING`, userID, code)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 

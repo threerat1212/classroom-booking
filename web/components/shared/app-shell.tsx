@@ -63,6 +63,7 @@ const navSections: NavSection[] = [
       { href: '/student/leaderboard', label: 'Leaderboard', icon: Trophy, roles: ['student'] },
       { href: '/student/notifications', label: 'Notifications', icon: Bell, roles: ['student'], badge: 0 },
       { href: '/student/badges', label: 'Badges', icon: Award, roles: ['student'] },
+      { href: '/student/character', label: 'My Character', icon: UserCircle, roles: ['student'] },
     ],
   },
   {

@@ -79,11 +79,17 @@ func (s *AttendanceService) DeleteSession(ctx context.Context, id uuid.UUID) err
 
 func (s *AttendanceService) ListRecords(ctx context.Context, sessionID, studentID *uuid.UUID) ([]*model.AttendanceRecord, error) {
 	rows, err := s.db.Query(ctx,
-		`SELECT id, session_id, student_id, status, check_in_time, check_out_time, notes, created_at, updated_at
-		 FROM attendance_records WHERE deleted_at IS NULL
-		   AND ($1::uuid IS NULL OR session_id = $1)
-		   AND ($2::uuid IS NULL OR student_id = $2)
-		 ORDER BY created_at DESC`, sessionID, studentID)
+		`SELECT
+			ar.id, ar.session_id, ar.student_id, ar.status, ar.check_in_at, ar.check_out_at, ar.notes, ar.created_at, ar.updated_at,
+			u.full_name as student_name, u.rank_title as student_title,
+			uc.equipped_hair, uc.equipped_hat, uc.equipped_outfit, uc.equipped_aura
+		 FROM attendance_records ar
+		 LEFT JOIN users u ON u.id = ar.student_id
+		 LEFT JOIN user_characters uc ON uc.user_id = ar.student_id
+		 WHERE ar.deleted_at IS NULL
+		   AND ($1::uuid IS NULL OR ar.session_id = $1)
+		   AND ($2::uuid IS NULL OR ar.student_id = $2)
+		 ORDER BY ar.created_at DESC`, sessionID, studentID)
 	if err != nil {
 		return nil, err
 	}
@@ -91,7 +97,11 @@ func (s *AttendanceService) ListRecords(ctx context.Context, sessionID, studentI
 	items := make([]*model.AttendanceRecord, 0)
 	for rows.Next() {
 		var r model.AttendanceRecord
-		if err := rows.Scan(&r.ID, &r.SessionID, &r.StudentID, &r.Status, &r.CheckInTime, &r.CheckOutTime, &r.Notes, &r.CreatedAt, &r.UpdatedAt); err != nil {
+		if err := rows.Scan(
+			&r.ID, &r.SessionID, &r.StudentID, &r.Status, &r.CheckInTime, &r.CheckOutTime, &r.Notes, &r.CreatedAt, &r.UpdatedAt,
+			&r.StudentName, &r.StudentTitle,
+			&r.EquippedHair, &r.EquippedHat, &r.EquippedOutfit, &r.EquippedAura,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, &r)
@@ -99,7 +109,7 @@ func (s *AttendanceService) ListRecords(ctx context.Context, sessionID, studentI
 	return items, rows.Err()
 }
 
-func (s *AttendanceService) UpsertRecord(ctx context.Context, req model.UpsertAttendanceRecordRequest) (*model.AttendanceRecord, error) {
+func (s *AttendanceService) UpsertRecord(ctx context.Context, req model.UpsertAttendanceRecordRequest, markedBy uuid.UUID) (*model.AttendanceRecord, error) {
 	sid, err := uuid.Parse(req.SessionID)
 	if err != nil {
 		return nil, err
@@ -110,15 +120,16 @@ func (s *AttendanceService) UpsertRecord(ctx context.Context, req model.UpsertAt
 	}
 	var r model.AttendanceRecord
 	err = s.db.QueryRow(ctx,
-		`INSERT INTO attendance_records (session_id, student_id, status, check_in_time, notes)
-		 VALUES ($1, $2, $3, COALESCE($4, now()), $5)
+		`INSERT INTO attendance_records (session_id, student_id, status, check_in_at, notes, marked_by)
+		 VALUES ($1, $2, $3, COALESCE($4, now()), $5, $6)
 		 ON CONFLICT (session_id, student_id) DO UPDATE SET
 		     status = EXCLUDED.status,
-		     check_in_time = COALESCE(EXCLUDED.check_in_time, attendance_records.check_in_time),
+		     check_in_at = COALESCE(EXCLUDED.check_in_at, attendance_records.check_in_at),
 		     notes = EXCLUDED.notes,
+		     marked_by = EXCLUDED.marked_by,
 		     updated_at = now()
-		 RETURNING id, session_id, student_id, status, check_in_time, check_out_time, notes, created_at, updated_at`,
-		sid, stid, req.Status, nil, req.Notes,
+		 RETURNING id, session_id, student_id, status, check_in_at, check_out_at, notes, created_at, updated_at`,
+		sid, stid, req.Status, nil, req.Notes, markedBy,
 	).Scan(&r.ID, &r.SessionID, &r.StudentID, &r.Status, &r.CheckInTime, &r.CheckOutTime, &r.Notes, &r.CreatedAt, &r.UpdatedAt)
 	if err != nil {
 		return nil, err

@@ -19,6 +19,12 @@ export interface AttendanceRecord {
   check_in_time?: string
   check_out_time?: string
   notes?: string
+  student_name?: string
+  student_title?: string
+  equipped_hair?: string
+  equipped_hat?: string
+  equipped_outfit?: string
+  equipped_aura?: string
 }
 
 export interface CreateSessionPayload {

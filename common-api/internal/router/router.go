@@ -92,6 +92,14 @@ func New(cfg *config.Config, h *handler.Handlers) *gin.Engine {
 			assignments.POST("", middleware.RequireRoles("teacher", "admin"), h.Assignment.Create)
 			assignments.PUT("/:id", middleware.RequireRoles("teacher", "admin"), h.Assignment.Update)
 			assignments.DELETE("/:id", middleware.RequireRoles("teacher", "admin"), h.Assignment.Delete)
+			assignments.GET("/:id/comments", h.Comment.ListByAssignment)
+			assignments.POST("/:id/comments", h.Comment.Create)
+		}
+
+		comments := protected.Group("/comments")
+		{
+			comments.PUT("/:id", h.Comment.Update)
+			comments.DELETE("/:id", h.Comment.Delete)
 		}
 
 		submissions := protected.Group("/submissions")
@@ -106,6 +114,7 @@ func New(cfg *config.Config, h *handler.Handlers) *gin.Engine {
 		attendance := protected.Group("/attendance")
 		{
 			attendance.GET("/sessions", h.Attendance.ListSessions)
+			attendance.GET("/sessions/:id", h.Attendance.GetSession)
 			attendance.POST("/sessions", middleware.RequireRoles("teacher", "admin"), h.Attendance.CreateSession)
 			attendance.DELETE("/sessions/:id", middleware.RequireRoles("teacher", "admin"), h.Attendance.DeleteSession)
 			attendance.GET("/records", h.Attendance.ListRecords)
@@ -150,6 +159,12 @@ func New(cfg *config.Config, h *handler.Handlers) *gin.Engine {
 			quests.POST("", middleware.RequireRoles("teacher", "admin"), h.Quest.Create)
 			quests.POST("/generate", middleware.RequireRoles("teacher", "admin"), h.Quest.Generate)
 			quests.POST("/submit", h.Quest.Submit)
+		}
+
+		character := protected.Group("/character")
+		{
+			character.GET("", h.Character.GetSummary)
+			character.POST("/equip", middleware.RequireRoles("student"), h.Character.Equip)
 		}
 
 		ai := protected.Group("/ai")

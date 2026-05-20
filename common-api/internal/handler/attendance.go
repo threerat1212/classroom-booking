@@ -26,6 +26,21 @@ func (h *AttendanceHandler) ListSessions(c *gin.Context) {
 	response.OK(c, items)
 }
 
+func (h *AttendanceHandler) GetSession(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		response.BadRequest(c, "VALIDATION_ERROR", "invalid session id")
+		return
+	}
+
+	item, err := h.service.GetSession(c.Request.Context(), id)
+	if err != nil {
+		response.NotFound(c, "attendance session")
+		return
+	}
+	response.OK(c, item)
+}
+
 func (h *AttendanceHandler) CreateSession(c *gin.Context) {
 	var req model.CreateAttendanceSessionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -73,7 +88,13 @@ func (h *AttendanceHandler) CreateRecord(c *gin.Context) {
 		response.BadRequest(c, "VALIDATION_ERROR", err.Error())
 		return
 	}
-	item, err := h.service.UpsertRecord(c.Request.Context(), req)
+	userID, _ := c.Get("userID")
+	markedBy, err := uuid.Parse(userID.(string))
+	if err != nil {
+		response.InternalError(c, "invalid user id in context")
+		return
+	}
+	item, err := h.service.UpsertRecord(c.Request.Context(), req, markedBy)
 	if err != nil {
 		response.InternalError(c, err.Error())
 		return
@@ -87,7 +108,13 @@ func (h *AttendanceHandler) UpdateRecord(c *gin.Context) {
 		response.BadRequest(c, "VALIDATION_ERROR", err.Error())
 		return
 	}
-	item, err := h.service.UpsertRecord(c.Request.Context(), req)
+	userID, _ := c.Get("userID")
+	markedBy, err := uuid.Parse(userID.(string))
+	if err != nil {
+		response.InternalError(c, "invalid user id in context")
+		return
+	}
+	item, err := h.service.UpsertRecord(c.Request.Context(), req, markedBy)
 	if err != nil {
 		response.InternalError(c, err.Error())
 		return

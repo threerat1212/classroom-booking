@@ -37,6 +37,8 @@ type Services struct {
 	AI           *AIService
 	Quest        *QuestService
 	Achievement  *AchievementService
+	Comment      *CommentService
+	Character    *CharacterService
 }
 
 func NewServices(db *pgxpool.Pool, cfg *config.Config) *Services {
@@ -56,6 +58,8 @@ func NewServices(db *pgxpool.Pool, cfg *config.Config) *Services {
 		AI:           NewAIService(db, cfg),
 		Quest:        NewQuestService(db),
 		Achievement:  NewAchievementService(db),
+		Comment:      NewCommentService(db),
+		Character:    NewCharacterService(db),
 	}
 	svcs.Quest.SetAI(svcs.AI)
 	svcs.Quest.SetAchievements(svcs.Achievement)

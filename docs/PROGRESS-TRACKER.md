@@ -28,7 +28,30 @@
 | 3.5 | Frontend shared components | 8 | [x] complete |
 | 3.6 | Frontend pages (admin, teacher, student) | 25 | [x] complete (22/25) |
 | 4 | curl testing | 15 | [x] complete (15/15 verified) |
-| 5 | UX/QA testing | 18 | [ ] pending |
+| 5 | UX/QA testing | 18 | [~] in-progress (character/flexboard/comments verified) |
+
+---
+
+## Latest Update — Gamification Character, Comments, and Flexboard
+
+Date: 2026-05-20
+
+- [x] Added `000034_gamification_character` migration for character cosmetics, unlock inventory, and equipped character state.
+- [x] Added character backend models, service, handler, and routes: `GET /api/v1/character`, `POST /api/v1/character/equip`.
+- [x] Wired title rewards to unlock associated character cosmetics through `awardTitleTx`.
+- [x] Added student character wardrobe page with layered 2D SVG sprite preview and equip actions.
+- [x] Added sidebar link for `My Character`.
+- [x] Added attendance flexboard route for projector-style live character display.
+- [x] Extended attendance records with student name, equipped title, and equipped character cosmetics.
+- [x] Added missing `GET /api/v1/attendance/sessions/:id` route used by attendance detail and flexboard pages.
+- [x] Fixed attendance service SQL to match schema (`full_name`, `check_in_at`, `check_out_at`, `marked_by`).
+- [x] Added assignment discussion comments API and frontend discussion UI.
+- [x] Tightened AI tutor system prompt for classroom-only scope.
+- [x] Verified backend with `go test ./...` and `go build ./cmd/api`.
+- [x] Verified frontend with `npm run type-check` and `npm run build`.
+- [x] Local API smoke passed for character summary/equip, attendance session/records, and comments create/list/update/delete.
+- [x] Local browser smoke passed for `/student/character`, `/attendance/[id]/flexboard`, and assignment discussion.
+- [!] Tried `npx claude-smart@0.2.31 install --host codex`; package inspection looked normal, but install stopped at `spawn EPERM` because the local Codex CLI cannot be spawned from this shell.
 
 ---
 
@@ -328,8 +351,8 @@ Goal: Build a complete mental model of docs, skills, and patterns before touchin
 ### Shared
 - [x] 16. Calendar view (`app/(app)/calendar/page.tsx`).
 - [x] 17. Booking form (`app/(app)/bookings/new/page.tsx`).
-- [ ] 18. Discussion comments component.
-- [ ] 19. AI helper chat placeholder.
+- [x] 18. Discussion comments component.
+- [x] 19. AI helper chat placeholder.
 - [x] 20. Profile page (`app/(app)/profile/page.tsx`).
 - [x] 21. Settings page (`app/(app)/settings/page.tsx`).
 - [x] 22. Loading.tsx shells.
@@ -369,7 +392,7 @@ Scripts created at `scripts/curl-test.sh` and `scripts/curl-test.ps1`. Run after
 - [ ] 8. Attendance marking flow.
 - [ ] 9. Data export download flow.
 - [ ] 10. Notification receive and dismiss.
-- [ ] 11. Discussion/comment on assignment.
+- [x] 11. Discussion/comment on assignment.
 - [ ] 12. Badge award visibility.
 - [ ] 13. Responsive layout on mobile/tablet.
 - [ ] 14. Role-based route protection.

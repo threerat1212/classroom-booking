@@ -38,6 +38,14 @@ type AttendanceRecord struct {
 	Notes        *string    `json:"notes,omitempty"`
 	CreatedAt    time.Time  `json:"created_at"`
 	UpdatedAt    time.Time  `json:"updated_at"`
+
+	// Student character details for the Flexboard
+	StudentName    *string `json:"student_name,omitempty"`
+	StudentTitle   *string `json:"student_title,omitempty"`
+	EquippedHair   *string `json:"equipped_hair,omitempty"`
+	EquippedHat    *string `json:"equipped_hat,omitempty"`
+	EquippedOutfit *string `json:"equipped_outfit,omitempty"`
+	EquippedAura   *string `json:"equipped_aura,omitempty"`
 }
 
 type UpsertAttendanceRecordRequest struct {

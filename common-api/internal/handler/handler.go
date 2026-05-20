@@ -21,6 +21,8 @@ type Handlers struct {
 	AI           *AIHandler
 	Quest        *QuestHandler
 	Achievement  *AchievementHandler
+	Comment      *CommentHandler
+	Character    *CharacterHandler
 }
 
 func NewHandlers(services *service.Services, cfg *config.Config) *Handlers {
@@ -40,5 +42,7 @@ func NewHandlers(services *service.Services, cfg *config.Config) *Handlers {
 		AI:           NewAIHandler(services.AI),
 		Quest:        NewQuestHandler(services.Quest),
 		Achievement:  NewAchievementHandler(services.Achievement),
+		Comment:      NewCommentHandler(services.Comment),
+		Character:    NewCharacterHandler(services.Character),
 	}
 }

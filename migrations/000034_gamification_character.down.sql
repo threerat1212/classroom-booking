@@ -1,0 +1,3 @@
+DROP TABLE IF EXISTS user_characters CASCADE;
+DROP TABLE IF EXISTS user_unlocked_items CASCADE;
+DROP TABLE IF EXISTS character_items CASCADE;
