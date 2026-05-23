@@ -15,6 +15,10 @@ import {
   LogIn,
   Building2,
   User,
+  Globe,
+  Phone,
+  Mail,
+  FileText
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -27,6 +31,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { apiFetch, apiErrorMessage } from '@/lib/http/client'
+import { useLanguage } from '@/lib/context/language-context'
 
 interface Room {
   id: string
@@ -40,12 +45,6 @@ interface Room {
   amenities: string[]
   status: string
 }
-
-const PURPOSES = [
-  { value: 'meeting', label: 'ประชุม', icon: Users },
-  { value: 'event', label: 'จัดกิจกรรม', icon: Calendar },
-  { value: 'other', label: 'อื่นๆ', icon: MapPin },
-]
 
 function useMeetingRooms() {
   const [rooms, setRooms] = useState<Room[]>([])
@@ -67,54 +66,58 @@ function useMeetingRooms() {
   return { rooms, loading, error }
 }
 
-function RoomCard({ room, selected, onClick }: { room: Room; selected: boolean; onClick: () => void }) {
+function RoomCard({ room, selected, onClick, t, lang }: { room: Room; selected: boolean; onClick: () => void; t: any; lang: string }) {
   return (
     <motion.button
-      whileHover={{ scale: 1.02 }}
-      whileTap={{ scale: 0.98 }}
+      whileHover={{ scale: 1.01 }}
+      whileTap={{ scale: 0.99 }}
       onClick={onClick}
-      className={`relative w-full rounded-xl border p-4 text-left transition-all ${
+      className={`relative w-full rounded-xl border p-5 text-left transition-all ${
         selected
-          ? 'border-blue-500 bg-blue-500/10 ring-1 ring-blue-500'
-          : 'border-white/10 bg-white/5 hover:bg-white/10'
+          ? 'border-blue-500 bg-blue-500/5 ring-1 ring-blue-500/50'
+          : 'border-white/5 bg-slate-900/40 hover:bg-slate-900/60'
       }`}
     >
-      <div className="flex items-start justify-between">
+      {selected && (
+        <div className="absolute inset-0 border-beam pointer-events-none" />
+      )}
+
+      <div className="relative z-10 flex items-start justify-between">
         <div>
-          <h3 className="text-base font-semibold text-white">{room.name}</h3>
-          <p className="mt-0.5 text-xs text-slate-400">{room.code}</p>
+          <h3 className="text-base font-bold text-white tracking-tight">{room.name}</h3>
+          <p className="mt-1 text-xs text-slate-400 font-mono">{room.code}</p>
         </div>
         <span
-          className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
+          className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold tracking-wider ${
             room.status === 'available'
-              ? 'bg-emerald-500/15 text-emerald-400'
-              : 'bg-amber-500/15 text-amber-400'
+              ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+              : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
           }`}
         >
-          {room.status === 'available' ? 'ว่าง' : room.status}
+          {room.status === 'available' ? (lang === 'th' ? 'ว่าง' : 'Available') : room.status}
         </span>
       </div>
-      <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-400">
+
+      <div className="relative z-10 mt-4 flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-slate-400 border-t border-white/5 pt-3">
         <span className="flex items-center gap-1">
-          <Users className="h-3 w-3" />
-          {room.capacity} คน
+          <Users className="h-3.5 w-3.5 text-slate-500" />
+          {room.capacity} {t('capacity_people')}
         </span>
         <span className="flex items-center gap-1">
-          <Building2 className="h-3 w-3" />
-          ชั้น {room.floor} {room.building}
-        </span>
-        <span className="flex items-center gap-1">
-          <MapPin className="h-3 w-3" />
-          {room.room_type}
+          <Building2 className="h-3.5 w-3.5 text-slate-500" />
+          {t('floor_label')} {room.floor} · {room.building}
         </span>
       </div>
-      <p className="mt-2 text-xs text-slate-500 line-clamp-2">{room.description}</p>
+      {room.description && (
+        <p className="relative z-10 mt-3 text-xs text-slate-500 line-clamp-2 leading-relaxed">{room.description}</p>
+      )}
     </motion.button>
   )
 }
 
 export default function MeetingRoomsPage() {
   const router = useRouter()
+  const { lang, setLang, t } = useLanguage()
   const { rooms, loading, error } = useMeetingRooms()
 
   const [selectedRoom, setSelectedRoom] = useState('')
@@ -142,7 +145,7 @@ export default function MeetingRoomsPage() {
       try {
         ;(ref.current as any).showPicker()
       } catch {
-        // Some browsers reject showPicker when the click is replayed or automated.
+        // Fallback
       }
     }
   }
@@ -186,24 +189,34 @@ export default function MeetingRoomsPage() {
   }
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-slate-950">
-      {/* Background */}
+    <div className="relative min-h-screen overflow-hidden bg-[#05070c] bg-grid-lines">
+      {/* Background Orbs */}
       <div className="pointer-events-none absolute inset-0">
-        <div className="absolute -left-20 -top-20 h-96 w-96 rounded-full bg-blue-600/10 blur-[100px]" />
-        <div className="absolute -bottom-20 -right-20 h-96 w-96 rounded-full bg-indigo-600/10 blur-[100px]" />
-        <div className="absolute left-1/3 top-1/2 h-64 w-64 rounded-full bg-violet-600/5 blur-[80px]" />
+        <div className="absolute -left-20 -top-20 h-96 w-96 rounded-full bg-blue-500/5 blur-[100px]" />
+        <div className="absolute -bottom-20 -right-20 h-96 w-96 rounded-full bg-indigo-500/5 blur-[100px]" />
       </div>
 
       {/* Header */}
-      <header className="relative z-10 border-b border-white/5 bg-slate-900/50 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
+      <header className="relative z-10 border-b border-white/5 bg-slate-950/40 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <Link href="/" className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600">
-              <Building2 className="h-4 w-4 text-white" />
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-md">
+              <Building2 className="h-4.5 w-4.5 text-white" />
             </div>
-            <span className="text-lg font-bold text-white">RoomBooking</span>
+            <span className="text-lg font-bold text-white tracking-tight">RoomBooking</span>
           </Link>
           <div className="flex items-center gap-3">
+            {/* Language Switcher */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setLang(lang === 'th' ? 'en' : 'th')}
+              className="text-slate-400 hover:text-white hover:bg-white/5 border border-white/5 px-3 rounded-lg"
+            >
+              <Globe className="mr-1.5 h-3.5 w-3.5" />
+              <span>{lang === 'th' ? 'EN' : 'TH'}</span>
+            </Button>
+
             <Button
               variant="ghost"
               size="sm"
@@ -211,7 +224,7 @@ export default function MeetingRoomsPage() {
               className="text-slate-400 hover:bg-white/5 hover:text-white"
             >
               <ArrowLeft className="mr-1 h-4 w-4" />
-              หน้าหลัก
+              {t('home')}
             </Button>
             <Button
               variant="outline"
@@ -220,25 +233,25 @@ export default function MeetingRoomsPage() {
               className="border-white/10 bg-white/5 text-white hover:bg-white/10 hover:text-white"
             >
               <LogIn className="mr-2 h-4 w-4" />
-              เข้าสู่ระบบ
+              {t('login')}
             </Button>
           </div>
         </div>
       </header>
 
-      <main className="relative z-10 mx-auto max-w-6xl px-4 py-10">
-        {/* Hero */}
+      <main className="relative z-10 mx-auto max-w-6xl px-6 py-12">
+        {/* Title */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="mb-8"
+          transition={{ duration: 0.5 }}
+          className="mb-10"
         >
-          <h1 className="text-2xl font-bold text-white sm:text-3xl">
-            จองห้องประชุม
+          <h1 className="text-3xl font-extrabold text-white tracking-tight sm:text-4xl">
+            {t('public_booking_title')}
           </h1>
-          <p className="mt-1 text-sm text-slate-400">
-            เลือกห้องประชุมและกรอกข้อมูลเพื่อจองได้ทันที
+          <p className="mt-2 text-sm text-slate-400 leading-relaxed max-w-xl">
+            {t('public_booking_subtitle')}
           </p>
         </motion.div>
 
@@ -246,21 +259,23 @@ export default function MeetingRoomsPage() {
           {success ? (
             <motion.div
               key="success"
-              initial={{ opacity: 0, scale: 0.95 }}
+              initial={{ opacity: 0, scale: 0.98 }}
               animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="mx-auto max-w-md rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-8 text-center backdrop-blur-sm"
+              exit={{ opacity: 0, scale: 0.98 }}
+              className="mx-auto max-w-md rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-8 text-center backdrop-blur-sm shadow-xl"
             >
-              <CheckCircle2 className="mx-auto h-12 w-12 text-emerald-400" />
-              <h2 className="mt-4 text-xl font-semibold text-white">จองสำเร็จ!</h2>
-              <p className="mt-2 text-sm text-slate-300">
-                คำขอจองของคุณถูกส่งแล้ว เจ้าหน้าที่จะตรวจสอบและแจ้งผลทางอีเมล
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-400">
+                <CheckCircle2 className="h-8 w-8" />
+              </div>
+              <h2 className="mt-5 text-xl font-bold text-white tracking-tight">{t('booking_success_title')}</h2>
+              <p className="mt-3 text-sm text-slate-400 leading-relaxed">
+                {t('booking_success_desc')}
               </p>
               <Button
-                className="mt-6 bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/20"
+                className="mt-8 bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-md shadow-blue-500/10 hover:from-blue-600 hover:to-indigo-700 w-full"
                 onClick={() => setSuccess(false)}
               >
-                จองเพิ่ม
+                {t('book_more')}
               </Button>
             </motion.div>
           ) : (
@@ -269,34 +284,37 @@ export default function MeetingRoomsPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="grid gap-8 lg:grid-cols-5"
+              className="grid gap-8 lg:grid-cols-5 items-start"
             >
               {/* Room Selection */}
               <div className="lg:col-span-2">
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur-sm">
-                  <h2 className="flex items-center gap-2 text-lg font-semibold text-white">
+                <div className="glass-panel rounded-2xl p-6 shadow-xl backdrop-blur-md">
+                  <h2 className="flex items-center gap-2.5 text-base font-bold text-white border-b border-white/5 pb-4 mb-4">
                     <Building2 className="h-5 w-5 text-blue-400" />
-                    เลือกห้องประชุม
+                    {t('select_meeting_room')}
                   </h2>
+
                   {loading ? (
-                    <div className="mt-4 space-y-3">
+                    <div className="space-y-3">
                       {Array.from({ length: 3 }).map((_, i) => (
-                        <div key={i} className="h-24 animate-pulse rounded-xl bg-white/5" />
+                        <div key={i} className="h-28 animate-pulse rounded-xl bg-white/5" />
                       ))}
                     </div>
                   ) : error ? (
-                    <div className="mt-4 flex items-center gap-2 rounded-lg bg-red-500/10 p-3 text-sm text-red-400">
-                      <AlertCircle className="h-4 w-4" />
-                      {error}
+                    <div className="flex items-center gap-2.5 rounded-lg bg-red-500/5 border border-red-500/20 p-4 text-xs text-red-400">
+                      <AlertCircle className="h-4 w-4 shrink-0" />
+                      <span>{error}</span>
                     </div>
                   ) : (
-                    <div className="mt-4 space-y-3">
+                    <div className="space-y-3.5 max-h-[500px] overflow-y-auto pr-1">
                       {rooms.map((room) => (
                         <RoomCard
                           key={room.id}
                           room={room}
                           selected={selectedRoom === room.id}
                           onClick={() => setSelectedRoom(room.id)}
+                          t={t}
+                          lang={lang}
                         />
                       ))}
                     </div>
@@ -308,50 +326,47 @@ export default function MeetingRoomsPage() {
               <div className="lg:col-span-3">
                 <form
                   onSubmit={handleSubmit}
-                  className="rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur-sm"
+                  className="glass-panel rounded-2xl p-6 shadow-xl backdrop-blur-md space-y-6"
                 >
-                  <h2 className="flex items-center gap-2 text-lg font-semibold text-white">
+                  <h2 className="flex items-center gap-2.5 text-base font-bold text-white border-b border-white/5 pb-4">
                     <Calendar className="h-5 w-5 text-blue-400" />
-                    ข้อมูลการจอง
+                    {t('booking_info')}
                   </h2>
 
-                  <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                  <div className="grid gap-5 sm:grid-cols-2">
                     <div className="space-y-2">
-                      <Label className="text-sm text-slate-300">หัวข้อการจอง</Label>
+                      <Label className="text-xs font-semibold text-slate-300">{t('booking_title_label')}</Label>
                       <Input
                         value={title}
                         onChange={(e) => setTitle(e.target.value)}
-                        placeholder="เช่น ประชุมทีมสัปดาห์"
+                        placeholder={t('booking_title_placeholder')}
                         required
-                        className="border-white/10 bg-white/5 text-white placeholder:text-slate-600 focus-visible:ring-blue-500"
+                        className="glass-input text-white placeholder:text-slate-600 focus-visible:ring-0 focus-visible:ring-offset-0 text-sm h-10 px-3.5 rounded-lg"
                       />
                     </div>
 
                     <div className="space-y-2">
-                      <Label className="text-sm text-slate-300">วัตถุประสงค์</Label>
+                      <Label className="text-xs font-semibold text-slate-300">{t('purpose_label')}</Label>
                       <Select value={purpose} onValueChange={setPurpose} required>
-                        <SelectTrigger className="border-white/10 bg-white/5 text-white focus:ring-blue-500">
-                          <SelectValue placeholder="เลือกวัตถุประสงค์" />
+                        <SelectTrigger className="glass-input border-white/10 bg-white/5 text-white focus:ring-0 focus:ring-offset-0 text-sm h-10 px-3.5 rounded-lg">
+                          <SelectValue placeholder={t('purpose_placeholder')} />
                         </SelectTrigger>
-                        <SelectContent className="border-white/10 bg-slate-900">
-                          {PURPOSES.map((p) => (
-                            <SelectItem
-                              key={p.value}
-                              value={p.value}
-                              className="text-white focus:bg-white/10 focus:text-white"
-                            >
-                              <span className="flex items-center gap-2">
-                                <p.icon className="h-4 w-4" />
-                                {p.label}
-                              </span>
-                            </SelectItem>
-                          ))}
+                        <SelectContent className="border-white/5 bg-[#0d0f17] text-white">
+                          <SelectItem value="meeting" className="text-slate-200 focus:bg-white/5 focus:text-white py-2">
+                            {t('purpose_meeting')}
+                          </SelectItem>
+                          <SelectItem value="event" className="text-slate-200 focus:bg-white/5 focus:text-white py-2">
+                            {t('purpose_event')}
+                          </SelectItem>
+                          <SelectItem value="other" className="text-slate-200 focus:bg-white/5 focus:text-white py-2">
+                            {t('purpose_other')}
+                          </SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
 
                     <div className="space-y-2">
-                      <Label className="text-sm text-slate-300">วัน-เวลาเริ่มต้น</Label>
+                      <Label className="text-xs font-semibold text-slate-300">{t('start_time')}</Label>
                       <Input
                         ref={startTimeRef}
                         type="datetime-local"
@@ -360,12 +375,12 @@ export default function MeetingRoomsPage() {
                         onChange={(e) => setStartTime(e.target.value)}
                         onClick={() => openPicker(startTimeRef)}
                         required
-                        className="border-white/10 bg-white/5 text-white [color-scheme:dark] focus-visible:ring-blue-500 cursor-pointer"
+                        className="glass-input text-white [color-scheme:dark] focus-visible:ring-0 focus-visible:ring-offset-0 text-sm h-10 px-3.5 rounded-lg cursor-pointer"
                       />
                     </div>
 
                     <div className="space-y-2">
-                      <Label className="text-sm text-slate-300">วัน-เวลาสิ้นสุด</Label>
+                      <Label className="text-xs font-semibold text-slate-300">{t('end_time')}</Label>
                       <Input
                         ref={endTimeRef}
                         type="datetime-local"
@@ -374,90 +389,104 @@ export default function MeetingRoomsPage() {
                         onChange={(e) => setEndTime(e.target.value)}
                         onClick={() => openPicker(endTimeRef)}
                         required
-                        className="border-white/10 bg-white/5 text-white [color-scheme:dark] focus-visible:ring-blue-500 cursor-pointer"
+                        className="glass-input text-white [color-scheme:dark] focus-visible:ring-0 focus-visible:ring-offset-0 text-sm h-10 px-3.5 rounded-lg cursor-pointer"
                       />
                     </div>
                   </div>
 
-                  <div className="mt-4 space-y-2">
-                    <Label className="text-sm text-slate-300">รายละเอียดเพิ่มเติม (ถ้ามี)</Label>
+                  <div className="space-y-2">
+                    <Label className="text-xs font-semibold text-slate-300">{t('description_label')}</Label>
                     <textarea
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
                       rows={3}
-                      placeholder="อุปกรณ์ที่ต้องการ, จำนวนผู้เข้าร่วม, ฯลฯ"
-                      className="w-full rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                      placeholder={t('description_placeholder')}
+                      className="w-full glass-input rounded-lg px-3.5 py-2.5 text-sm text-white placeholder:text-slate-600 focus-visible:outline-none focus:ring-0"
                     />
                   </div>
 
-                  <div className="mt-6 border-t border-white/10 pt-6">
-                    <h3 className="flex items-center gap-2 text-base font-semibold text-white">
+                  {/* Requester Profile */}
+                  <div className="border-t border-white/5 pt-6 space-y-4">
+                    <h3 className="flex items-center gap-2 text-sm font-bold text-white">
                       <User className="h-4 w-4 text-blue-400" />
-                      ข้อมูลผู้จอง
+                      {t('requester_section')}
                     </h3>
-                    <div className="mt-4 grid gap-4 sm:grid-cols-2">
+
+                    <div className="grid gap-5 sm:grid-cols-2">
                       <div className="space-y-2">
-                        <Label className="text-sm text-slate-300">ชื่อ-นามสกุล</Label>
-                        <Input
-                          value={requesterName}
-                          onChange={(e) => setRequesterName(e.target.value)}
-                          placeholder="ชื่อผู้จอง"
-                          required
-                          className="border-white/10 bg-white/5 text-white placeholder:text-slate-600 focus-visible:ring-blue-500"
-                        />
+                        <Label className="text-xs font-semibold text-slate-300">{t('requester_name')}</Label>
+                        <div className="relative">
+                          <User className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
+                          <Input
+                            value={requesterName}
+                            onChange={(e) => setRequesterName(e.target.value)}
+                            placeholder={lang === 'th' ? 'กรอกชื่อผู้จอง' : 'Enter requester name'}
+                            required
+                            className="glass-input text-white placeholder:text-slate-600 focus-visible:ring-0 focus-visible:ring-offset-0 text-sm h-10 pl-9.5 pr-3.5 rounded-lg"
+                          />
+                        </div>
                       </div>
+
                       <div className="space-y-2">
-                        <Label className="text-sm text-slate-300">อีเมล</Label>
-                        <Input
-                          type="email"
-                          value={requesterEmail}
-                          onChange={(e) => setRequesterEmail(e.target.value)}
-                          placeholder="email@example.com"
-                          required
-                          className="border-white/10 bg-white/5 text-white placeholder:text-slate-600 focus-visible:ring-blue-500"
-                        />
+                        <Label className="text-xs font-semibold text-slate-300">{t('requester_email')}</Label>
+                        <div className="relative">
+                          <Mail className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
+                          <Input
+                            type="email"
+                            value={requesterEmail}
+                            onChange={(e) => setRequesterEmail(e.target.value)}
+                            placeholder="email@example.com"
+                            required
+                            className="glass-input text-white placeholder:text-slate-600 focus-visible:ring-0 focus-visible:ring-offset-0 text-sm h-10 pl-9.5 pr-3.5 rounded-lg"
+                          />
+                        </div>
                       </div>
+
                       <div className="space-y-2 sm:col-span-2">
-                        <Label className="text-sm text-slate-300">เบอร์โทรศัพท์</Label>
-                        <Input
-                          type="tel"
-                          value={requesterPhone}
-                          onChange={(e) => setRequesterPhone(e.target.value)}
-                          placeholder="081-234-5678"
-                          className="border-white/10 bg-white/5 text-white placeholder:text-slate-600 focus-visible:ring-blue-500"
-                        />
+                        <Label className="text-xs font-semibold text-slate-300">{t('requester_phone')}</Label>
+                        <div className="relative">
+                          <Phone className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
+                          <Input
+                            type="tel"
+                            value={requesterPhone}
+                            onChange={(e) => setRequesterPhone(e.target.value)}
+                            placeholder="081-234-5678"
+                            className="glass-input text-white placeholder:text-slate-600 focus-visible:ring-0 focus-visible:ring-offset-0 text-sm h-10 pl-9.5 pr-3.5 rounded-lg"
+                          />
+                        </div>
                       </div>
                     </div>
                   </div>
 
                   {submitError && (
                     <motion.div
-                      initial={{ opacity: 0, y: -10 }}
+                      initial={{ opacity: 0, y: -8 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="mt-4 flex items-center gap-2 rounded-lg bg-red-500/10 p-3 text-sm text-red-400"
+                      className="flex items-center gap-2.5 rounded-lg bg-red-500/5 border border-red-500/20 p-4 text-xs text-red-400"
                     >
                       <AlertCircle className="h-4 w-4 shrink-0" />
-                      {submitError}
+                      <span>{submitError}</span>
                     </motion.div>
                   )}
 
-                  <div className="mt-6 flex items-center justify-between">
+                  <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-t border-white/5 pt-5">
                     <Button
                       type="button"
-                      variant="outline"
+                      variant="ghost"
                       onClick={() => router.push('/login')}
-                      className="border-white/10 bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white"
+                      className="border border-white/5 bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white justify-between rounded-lg h-10 px-4 text-xs"
                     >
-                      หรือ เข้าสู่ระบบ
-                      <ChevronRight className="ml-2 h-4 w-4" />
+                      <span>{lang === 'th' ? 'หรือ เข้าสู่ระบบระบบห้องเรียน' : 'Or sign in to classrooms'}</span>
+                      <ChevronRight className="ml-1.5 h-3.5 w-3.5" />
                     </Button>
+
                     <Button
                       type="submit"
                       disabled={submitting || !selectedRoom}
-                      className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/20 hover:from-blue-600 hover:to-indigo-700 disabled:opacity-50"
+                      className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-md shadow-blue-500/10 hover:from-blue-600 hover:to-indigo-700 disabled:opacity-50 justify-center h-10 px-5 rounded-lg text-sm font-semibold"
                     >
-                      {submitting ? 'กำลังส่ง...' : 'ยืนยันการจอง'}
-                      <ChevronRight className="ml-2 h-4 w-4" />
+                      {submitting ? t('submitting_booking') : t('submit_booking')}
+                      <ChevronRight className="ml-1.5 h-4 w-4" />
                     </Button>
                   </div>
                 </form>
@@ -467,8 +496,8 @@ export default function MeetingRoomsPage() {
         </AnimatePresence>
 
         {/* Footer */}
-        <div className="mt-16 text-center text-xs text-slate-600">
-          <p>ระบบจองห้องประชุมและห้องเรียน · สำหรับบุคลากรและนักศึกษา</p>
+        <div className="mt-20 text-center text-xs text-slate-500">
+          <p>{t('footer_text')}</p>
         </div>
       </main>
     </div>
