@@ -19,6 +19,7 @@ func New(cfg *config.Config, h *handler.Handlers) *gin.Engine {
 	r.GET("/health", func(c *gin.Context) {
 		response.OK(c, gin.H{"status": "ok"})
 	})
+	r.Static("/uploads", cfg.UploadDir)
 
 	api := r.Group("/api/v1")
 
@@ -41,6 +42,9 @@ func New(cfg *config.Config, h *handler.Handlers) *gin.Engine {
 	protected.Use(middleware.AuthMiddleware(cfg.JWTSecret))
 	{
 		protected.GET("/auth/me", h.Auth.Me)
+		protected.POST("/uploads", h.Upload.Upload)
+		protected.GET("/uploads/:id/access", h.Upload.Access)
+		protected.GET("/uploads/:id/download", h.Upload.Download)
 
 		users := protected.Group("/users")
 		users.Use(middleware.RequireRoles("admin", "teacher"))
@@ -159,13 +163,15 @@ func New(cfg *config.Config, h *handler.Handlers) *gin.Engine {
 			quests.POST("", middleware.RequireRoles("teacher", "admin"), h.Quest.Create)
 			quests.POST("/generate", middleware.RequireRoles("teacher", "admin"), h.Quest.Generate)
 			quests.POST("/submit", h.Quest.Submit)
+			quests.POST("/:id/use-hint-token", middleware.RequireRoles("student"), h.Quest.UseHintToken)
 		}
 
-		character := protected.Group("/character")
+		rewards := protected.Group("/rewards")
 		{
-			character.GET("", h.Character.GetSummary)
-			character.POST("/equip", middleware.RequireRoles("student"), h.Character.Equip)
-			character.POST("/purchase", middleware.RequireRoles("student"), h.Character.Purchase)
+			rewards.GET("", h.Reward.ListShop)
+			rewards.POST("/redeem", middleware.RequireRoles("student"), h.Reward.Redeem)
+			rewards.GET("/redemptions", h.Reward.ListRedemptions)
+			rewards.PATCH("/redemptions/:id", middleware.RequireRoles("teacher", "admin"), h.Reward.UpdateRedemption)
 		}
 
 		ai := protected.Group("/ai")

@@ -149,3 +149,36 @@ func (h *QuestHandler) Submit(c *gin.Context) {
 	}
 	response.OK(c, attempt)
 }
+
+func (h *QuestHandler) UseHintToken(c *gin.Context) {
+	userIDStr, exists := c.Get("userID")
+	if !exists {
+		response.Unauthorized(c, "UNAUTHORIZED")
+		return
+	}
+	userID, err := uuid.Parse(userIDStr.(string))
+	if err != nil {
+		response.BadRequest(c, "VALIDATION_ERROR", "invalid user id")
+		return
+	}
+
+	questID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		response.BadRequest(c, "VALIDATION_ERROR", "invalid quest id")
+		return
+	}
+
+	result, err := h.service.UseHintToken(c.Request.Context(), userID, questID)
+	if err != nil {
+		switch err {
+		case model.ErrForbidden:
+			response.Forbidden(c, "no Hint Token available or quest is locked")
+		case model.ErrNotFound:
+			response.NotFound(c, "quest")
+		default:
+			response.InternalError(c, err.Error())
+		}
+		return
+	}
+	response.OK(c, result)
+}

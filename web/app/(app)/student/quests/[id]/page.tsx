@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Zap, Clock, Lightbulb, Send, ArrowLeft, CheckCircle, Sparkles, Star, Lock, Coins } from 'lucide-react'
 import { apiFetch } from '@/lib/http/client'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
 
 interface Quest {
@@ -22,6 +22,7 @@ interface Quest {
   quest_kind?: 'standard' | 'special'
   required_title_name?: string
   unlock_note?: string
+  hint_tokens_available: number
 }
 
 interface AttemptResult {
@@ -30,6 +31,13 @@ interface AttemptResult {
   feedback: string
   exp_earned: number
   gold_earned: number
+}
+
+interface QuestHintResult {
+  hint: string
+  hint_tokens_available: number
+  redemption_id: string
+  used_at: string
 }
 
 const diffMap: Record<string, { label: string; color: string }> = {
@@ -42,8 +50,10 @@ const diffMap: Record<string, { label: string; color: string }> = {
 export default function QuestDetailPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
+  const queryClient = useQueryClient()
   const [answer, setAnswer] = useState('')
   const [showHints, setShowHints] = useState(false)
+  const [tokenHint, setTokenHint] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [result, setResult] = useState<AttemptResult | null>(null)
   const { refreshUser } = useCurrentUser()
@@ -55,6 +65,24 @@ export default function QuestDetailPage() {
       return res.data
     },
     enabled: !!id,
+  })
+
+  const hintMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiFetch<{ data: QuestHintResult }>(`/api/v1/quests/${id}/use-hint-token`, {
+        method: 'POST',
+      })
+      return res.data
+    },
+    onSuccess: (data) => {
+      setTokenHint(data.hint)
+      queryClient.setQueryData<Quest | undefined>(['quest', id], (current) => (
+        current ? { ...current, hint_tokens_available: data.hint_tokens_available } : current
+      ))
+    },
+    onError: (err: any) => {
+      alert(err?.message || 'ไม่สามารถใช้ Hint Token ได้')
+    },
   })
 
   const handleSubmit = async () => {
@@ -171,6 +199,45 @@ export default function QuestDetailPage() {
             </AnimatePresence>
           </div>
         )}
+
+        <div className="mt-4 rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <div className="flex items-center gap-2 text-sm font-semibold text-cyan-100">
+                <Lightbulb className="h-4 w-4 text-cyan-300" />
+                AI Hint Token
+              </div>
+              <p className="mt-1 text-xs leading-5 text-slate-400">
+                ใช้ Hint Token ที่แลกจาก Reward Shop เพื่อให้ AI ช่วยใบ้เฉพาะ Quest นี้ โดยไม่เฉลยคำตอบ
+              </p>
+            </div>
+            <button
+              onClick={() => hintMutation.mutate()}
+              disabled={hintMutation.isPending || (quest.hint_tokens_available ?? 0) <= 0 || !!result}
+              className="inline-flex items-center justify-center gap-2 rounded-lg border border-cyan-400/20 bg-cyan-400/10 px-3 py-2 text-xs font-semibold text-cyan-100 transition-colors hover:bg-cyan-400/15 disabled:cursor-not-allowed disabled:opacity-45"
+            >
+              {hintMutation.isPending ? (
+                <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-cyan-100 border-t-transparent" />
+              ) : (
+                <Lightbulb className="h-3.5 w-3.5" />
+              )}
+              ใช้ Token ({quest.hint_tokens_available ?? 0})
+            </button>
+          </div>
+          {tokenHint && (
+            <div className="mt-3 rounded-lg border border-cyan-400/20 bg-slate-950/50 p-3 text-sm leading-6 text-cyan-50">
+              {tokenHint}
+            </div>
+          )}
+          {(quest.hint_tokens_available ?? 0) <= 0 && (
+            <button
+              onClick={() => router.push('/student/rewards')}
+              className="mt-3 text-xs font-semibold text-cyan-300 hover:text-cyan-100"
+            >
+              ไปแลก Hint Token ที่ Reward Shop
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Answer Input */}

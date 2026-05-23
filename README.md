@@ -52,6 +52,10 @@ cp .env.example .env
 
 Edit `.env` with your database credentials and JWT secrets.
 
+For scalable production file uploads, set `STORAGE_PROVIDER=r2` and provide
+`R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, and `R2_BUCKET`.
+Local development can keep `STORAGE_PROVIDER=local`.
+
 ### 2. Start Database
 
 ```bash

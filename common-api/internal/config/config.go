@@ -12,6 +12,14 @@ type Config struct {
 	JWTRefreshSecret  string `mapstructure:"JWT_REFRESH_SECRET"`
 	APIPort           string `mapstructure:"API_PORT"`
 	UploadDir         string `mapstructure:"UPLOAD_DIR"`
+	StorageProvider   string `mapstructure:"STORAGE_PROVIDER"`
+	R2AccountID       string `mapstructure:"R2_ACCOUNT_ID"`
+	R2AccessKeyID     string `mapstructure:"R2_ACCESS_KEY_ID"`
+	R2SecretAccessKey string `mapstructure:"R2_SECRET_ACCESS_KEY"`
+	R2Bucket          string `mapstructure:"R2_BUCKET"`
+	R2Endpoint        string `mapstructure:"R2_ENDPOINT"`
+	R2Region          string `mapstructure:"R2_REGION"`
+	R2PresignTTL      int    `mapstructure:"R2_PRESIGN_TTL_SECONDS"`
 	GoogleClientID    string `mapstructure:"GOOGLE_CLIENT_ID"`
 	TeacherInviteCode string `mapstructure:"TEACHER_INVITE_CODE"`
 	AIProvider        string `mapstructure:"AI_PROVIDER"`
@@ -27,6 +35,9 @@ type Config struct {
 func Load() *Config {
 	viper.SetDefault("API_PORT", "8080")
 	viper.SetDefault("UPLOAD_DIR", "./uploads")
+	viper.SetDefault("STORAGE_PROVIDER", "local")
+	viper.SetDefault("R2_REGION", "auto")
+	viper.SetDefault("R2_PRESIGN_TTL_SECONDS", 900)
 	viper.SetDefault("AI_PROVIDER", "openrouter")
 	viper.SetDefault("AI_BASE_URL", "https://openrouter.ai/api/v1/chat/completions")
 	viper.SetDefault("AI_MODEL", "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free")
@@ -47,6 +58,14 @@ func Load() *Config {
 	_ = viper.BindEnv("GOOGLE_CLIENT_ID")
 	_ = viper.BindEnv("TEACHER_INVITE_CODE")
 	_ = viper.BindEnv("UPLOAD_DIR")
+	_ = viper.BindEnv("STORAGE_PROVIDER")
+	_ = viper.BindEnv("R2_ACCOUNT_ID")
+	_ = viper.BindEnv("R2_ACCESS_KEY_ID")
+	_ = viper.BindEnv("R2_SECRET_ACCESS_KEY")
+	_ = viper.BindEnv("R2_BUCKET")
+	_ = viper.BindEnv("R2_ENDPOINT")
+	_ = viper.BindEnv("R2_REGION")
+	_ = viper.BindEnv("R2_PRESIGN_TTL_SECONDS")
 	_ = viper.BindEnv("AI_PROVIDER")
 	_ = viper.BindEnv("AI_API_KEY")
 	_ = viper.BindEnv("AI_BASE_URL")

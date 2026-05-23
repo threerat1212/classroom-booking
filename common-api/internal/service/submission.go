@@ -57,7 +57,7 @@ func normalizeGradeCode(score, maxScore int, override *string) (string, error) {
 
 func (s *SubmissionService) List(ctx context.Context, assignmentID, studentID *uuid.UUID) ([]*model.Submission, error) {
 	rows, err := s.db.Query(ctx,
-		`SELECT id, assignment_id, student_id, content, file_urls, external_link, submitted_at, status, score, grade_code, feedback, graded_by, graded_at, created_at, updated_at
+		`SELECT id, assignment_id, student_id, content, file_urls, external_link, submitted_at, status, round(score)::int, grade_code, feedback, graded_by, graded_at, created_at, updated_at
 		 FROM submissions WHERE deleted_at IS NULL
 		   AND ($1::uuid IS NULL OR assignment_id = $1)
 		   AND ($2::uuid IS NULL OR student_id = $2)
@@ -80,7 +80,7 @@ func (s *SubmissionService) List(ctx context.Context, assignmentID, studentID *u
 func (s *SubmissionService) Get(ctx context.Context, id uuid.UUID) (*model.Submission, error) {
 	var sub model.Submission
 	err := s.db.QueryRow(ctx,
-		`SELECT id, assignment_id, student_id, content, file_urls, external_link, submitted_at, status, score, grade_code, feedback, graded_by, graded_at, created_at, updated_at
+		`SELECT id, assignment_id, student_id, content, file_urls, external_link, submitted_at, status, round(score)::int, grade_code, feedback, graded_by, graded_at, created_at, updated_at
 		 FROM submissions WHERE id = $1 AND deleted_at IS NULL`, id,
 	).Scan(&sub.ID, &sub.AssignmentID, &sub.StudentID, &sub.Content, &sub.FileURLs, &sub.ExternalLink, &sub.SubmittedAt, &sub.Status, &sub.Score, &sub.GradeCode, &sub.Feedback, &sub.GradedBy, &sub.GradedAt, &sub.CreatedAt, &sub.UpdatedAt)
 	if err != nil {
@@ -102,7 +102,7 @@ func (s *SubmissionService) Create(ctx context.Context, req model.CreateSubmissi
 	err = s.db.QueryRow(ctx,
 		`INSERT INTO submissions (assignment_id, student_id, content, file_urls, external_link, submitted_at, status)
 		 VALUES ($1, $2, $3, $4, $5, now(), 'submitted')
-		 RETURNING id, assignment_id, student_id, content, file_urls, external_link, submitted_at, status, score, grade_code, feedback, graded_by, graded_at, created_at, updated_at`,
+		 RETURNING id, assignment_id, student_id, content, file_urls, external_link, submitted_at, status, round(score)::int, grade_code, feedback, graded_by, graded_at, created_at, updated_at`,
 		aid, sid, req.Content, req.FileURLs, req.ExternalLink,
 	).Scan(&sub.ID, &sub.AssignmentID, &sub.StudentID, &sub.Content, &sub.FileURLs, &sub.ExternalLink, &sub.SubmittedAt, &sub.Status, &sub.Score, &sub.GradeCode, &sub.Feedback, &sub.GradedBy, &sub.GradedAt, &sub.CreatedAt, &sub.UpdatedAt)
 	if err != nil {
@@ -120,7 +120,7 @@ func (s *SubmissionService) Update(ctx context.Context, id uuid.UUID, req model.
 			external_link = COALESCE($4, external_link),
 			updated_at = now()
 		 WHERE id = $1 AND deleted_at IS NULL
-		 RETURNING id, assignment_id, student_id, content, file_urls, external_link, submitted_at, status, score, grade_code, feedback, graded_by, graded_at, created_at, updated_at`,
+		 RETURNING id, assignment_id, student_id, content, file_urls, external_link, submitted_at, status, round(score)::int, grade_code, feedback, graded_by, graded_at, created_at, updated_at`,
 		id, req.Content, req.FileURLs, req.ExternalLink,
 	).Scan(&sub.ID, &sub.AssignmentID, &sub.StudentID, &sub.Content, &sub.FileURLs, &sub.ExternalLink, &sub.SubmittedAt, &sub.Status, &sub.Score, &sub.GradeCode, &sub.Feedback, &sub.GradedBy, &sub.GradedAt, &sub.CreatedAt, &sub.UpdatedAt)
 	if err != nil {
@@ -174,7 +174,7 @@ func (s *SubmissionService) Grade(ctx context.Context, id uuid.UUID, req model.G
 			status = 'graded',
 			updated_at = now()
 		 WHERE id = $1 AND deleted_at IS NULL
-		 RETURNING id, assignment_id, student_id, content, file_urls, external_link, submitted_at, status, score, grade_code, feedback, graded_by, graded_at, created_at, updated_at`,
+		 RETURNING id, assignment_id, student_id, content, file_urls, external_link, submitted_at, status, round(score)::int, grade_code, feedback, graded_by, graded_at, created_at, updated_at`,
 		id, req.Score, gradeCode, req.Feedback, gb,
 	).Scan(&sub.ID, &sub.AssignmentID, &sub.StudentID, &sub.Content, &sub.FileURLs, &sub.ExternalLink, &sub.SubmittedAt, &sub.Status, &sub.Score, &sub.GradeCode, &sub.Feedback, &sub.GradedBy, &sub.GradedAt, &sub.CreatedAt, &sub.UpdatedAt)
 	if err != nil {

@@ -7,31 +7,32 @@ import (
 )
 
 type LearningQuest struct {
-	ID                uuid.UUID  `json:"id"`
-	TeacherID         uuid.UUID  `json:"teacher_id"`
-	ClassroomID       *uuid.UUID `json:"classroom_id,omitempty"`
-	ClassroomName     *string    `json:"classroom_name,omitempty"`
-	Title             string     `json:"title"`
-	Topic             string     `json:"topic"`
-	Description       string     `json:"description"`
-	Difficulty        string     `json:"difficulty"`
-	Question          string     `json:"question"`
-	Answer            *string    `json:"answer,omitempty"`
-	Hints             []string   `json:"hints"`
-	Explanation       *string    `json:"explanation,omitempty"`
-	ExpReward         int        `json:"exp_reward"`
-	GoldReward        int        `json:"gold_reward"`
-	TimeLimitMinutes  *int       `json:"time_limit_minutes,omitempty"`
-	Status            string     `json:"status"`
-	QuestKind         string     `json:"quest_kind"`
-	RequiredTitleCode *string    `json:"required_title_code,omitempty"`
-	RequiredTitleName *string    `json:"required_title_name,omitempty"`
-	UnlockNote        *string    `json:"unlock_note,omitempty"`
-	IsLocked          bool       `json:"is_locked,omitempty"`
-	LockedReason      *string    `json:"locked_reason,omitempty"`
-	CreatedAt         time.Time  `json:"created_at"`
-	UpdatedAt         time.Time  `json:"updated_at"`
-	IsCompleted       bool       `json:"is_completed,omitempty"`
+	ID                  uuid.UUID  `json:"id"`
+	TeacherID           uuid.UUID  `json:"teacher_id"`
+	ClassroomID         *uuid.UUID `json:"classroom_id,omitempty"`
+	ClassroomName       *string    `json:"classroom_name,omitempty"`
+	Title               string     `json:"title"`
+	Topic               string     `json:"topic"`
+	Description         string     `json:"description"`
+	Difficulty          string     `json:"difficulty"`
+	Question            string     `json:"question"`
+	Answer              *string    `json:"answer,omitempty"`
+	Hints               []string   `json:"hints"`
+	Explanation         *string    `json:"explanation,omitempty"`
+	ExpReward           int        `json:"exp_reward"`
+	GoldReward          int        `json:"gold_reward"`
+	TimeLimitMinutes    *int       `json:"time_limit_minutes,omitempty"`
+	Status              string     `json:"status"`
+	QuestKind           string     `json:"quest_kind"`
+	RequiredTitleCode   *string    `json:"required_title_code,omitempty"`
+	RequiredTitleName   *string    `json:"required_title_name,omitempty"`
+	UnlockNote          *string    `json:"unlock_note,omitempty"`
+	IsLocked            bool       `json:"is_locked,omitempty"`
+	LockedReason        *string    `json:"locked_reason,omitempty"`
+	CreatedAt           time.Time  `json:"created_at"`
+	UpdatedAt           time.Time  `json:"updated_at"`
+	IsCompleted         bool       `json:"is_completed,omitempty"`
+	HintTokensAvailable int        `json:"hint_tokens_available"`
 }
 
 type QuestAttempt struct {
@@ -75,4 +76,11 @@ type GenerateQuestRequest struct {
 type SubmitQuestRequest struct {
 	QuestID string `json:"quest_id" binding:"required"`
 	Answer  string `json:"answer" binding:"required"`
+}
+
+type QuestHintResponse struct {
+	Hint                string    `json:"hint"`
+	HintTokensAvailable int       `json:"hint_tokens_available"`
+	RedemptionID        uuid.UUID `json:"redemption_id"`
+	UsedAt              time.Time `json:"used_at"`
 }

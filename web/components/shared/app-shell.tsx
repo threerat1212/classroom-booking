@@ -10,7 +10,7 @@ import { useLanguage } from '@/lib/context/language-context'
 import { 
   Calendar, Home, LogOut, Settings, Users, BookOpen, 
   ClipboardList, Award, UserCircle, DoorOpen, Bell, 
-  LayoutDashboard, ChevronRight, Sparkles, Building2, Trophy, Zap, Globe
+  LayoutDashboard, ChevronRight, Sparkles, Building2, Trophy, Zap, Globe, Gift
 } from 'lucide-react'
 
 interface NavSection {
@@ -50,6 +50,7 @@ const navSections: NavSection[] = [
       { href: '/classrooms', labelKey: 'nav_classrooms', icon: BookOpen, roles: ['teacher', 'admin'] },
       { href: '/assignments', labelKey: 'nav_assignments', icon: ClipboardList, roles: ['teacher', 'admin'] },
       { href: '/teacher/quests', labelKey: 'nav_quests', icon: Zap, roles: ['teacher', 'admin'] },
+      { href: '/teacher/rewards', labelKey: 'nav_reward_requests', icon: Gift, roles: ['teacher', 'admin'] },
       { href: '/attendance', labelKey: 'nav_attendance', icon: Users, roles: ['teacher', 'admin'] },
       { href: '/grades', labelKey: 'nav_grades', icon: Award, roles: ['teacher', 'admin'] },
     ],
@@ -62,9 +63,9 @@ const navSections: NavSection[] = [
       { href: '/student/assignments', labelKey: 'nav_my_assignments', icon: BookOpen, roles: ['student'] },
       { href: '/student/quests', labelKey: 'nav_quests', icon: Zap, roles: ['student'] },
       { href: '/student/leaderboard', labelKey: 'nav_leaderboard', icon: Trophy, roles: ['student'] },
+      { href: '/student/rewards', labelKey: 'nav_rewards', icon: Gift, roles: ['student'] },
       { href: '/student/notifications', labelKey: 'nav_notifications', icon: Bell, roles: ['student'], badge: 0 },
       { href: '/student/badges', labelKey: 'nav_badges', icon: Award, roles: ['student'] },
-      { href: '/student/character', labelKey: 'nav_character', icon: UserCircle, roles: ['student'] },
     ],
   },
   {

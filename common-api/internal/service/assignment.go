@@ -235,7 +235,8 @@ func (s *AssignmentService) assignmentForGradebook(ctx context.Context, id uuid.
 func (s *AssignmentService) gradebookForClassroomAssignment(ctx context.Context, assignmentID, roomID uuid.UUID, maxScore *int) ([]*model.AssignmentGradebookRow, error) {
 	rows, err := s.db.Query(ctx, `
 		SELECT u.id, u.full_name, u.email,
-		       sub.id, COALESCE(sub.status::text, 'missing'), sub.score, sub.grade_code, sub.feedback, sub.submitted_at, sub.graded_at
+		       sub.id, COALESCE(sub.status::text, 'missing'), round(sub.score)::int, sub.grade_code,
+		       sub.content, COALESCE(sub.file_urls, '{}'::text[]), sub.external_link, sub.feedback, sub.submitted_at, sub.graded_at
 		FROM classroom_members cm
 		JOIN users u ON u.id = cm.student_id AND u.deleted_at IS NULL
 		LEFT JOIN submissions sub ON sub.assignment_id = $1 AND sub.student_id = u.id AND sub.deleted_at IS NULL
@@ -251,7 +252,8 @@ func (s *AssignmentService) gradebookForClassroomAssignment(ctx context.Context,
 func (s *AssignmentService) gradebookForOpenAssignment(ctx context.Context, assignmentID uuid.UUID, maxScore *int) ([]*model.AssignmentGradebookRow, error) {
 	rows, err := s.db.Query(ctx, `
 		SELECT u.id, u.full_name, u.email,
-		       sub.id, sub.status, sub.score, sub.grade_code, sub.feedback, sub.submitted_at, sub.graded_at
+		       sub.id, sub.status, round(sub.score)::int, sub.grade_code,
+		       sub.content, COALESCE(sub.file_urls, '{}'::text[]), sub.external_link, sub.feedback, sub.submitted_at, sub.graded_at
 		FROM submissions sub
 		JOIN users u ON u.id = sub.student_id AND u.deleted_at IS NULL
 		WHERE sub.assignment_id = $1 AND sub.deleted_at IS NULL
@@ -274,7 +276,7 @@ func scanGradebookRows(rows gradebookScanner, maxScore int) ([]*model.Assignment
 	for rows.Next() {
 		var row model.AssignmentGradebookRow
 		var gradeCode *string
-		if err := rows.Scan(&row.StudentID, &row.StudentName, &row.StudentEmail, &row.SubmissionID, &row.Status, &row.Score, &gradeCode, &row.Feedback, &row.SubmittedAt, &row.GradedAt); err != nil {
+		if err := rows.Scan(&row.StudentID, &row.StudentName, &row.StudentEmail, &row.SubmissionID, &row.Status, &row.Score, &gradeCode, &row.Content, &row.FileURLs, &row.ExternalLink, &row.Feedback, &row.SubmittedAt, &row.GradedAt); err != nil {
 			return nil, err
 		}
 		row.MaxScore = maxScore

@@ -7,16 +7,16 @@ import (
 )
 
 type AttendanceSession struct {
-	ID         uuid.UUID  `json:"id"`
-	RoomID     uuid.UUID  `json:"room_id"`
-	TeacherID  uuid.UUID  `json:"teacher_id"`
+	ID          uuid.UUID `json:"id"`
+	RoomID      uuid.UUID `json:"room_id"`
+	TeacherID   uuid.UUID `json:"teacher_id"`
 	SessionDate time.Time `json:"session_date"`
-	StartTime  time.Time  `json:"start_time"`
-	EndTime    time.Time  `json:"end_time"`
-	Status     string     `json:"status"`
-	QRCode     *string    `json:"qr_code,omitempty"`
-	CreatedAt  time.Time  `json:"created_at"`
-	UpdatedAt  time.Time  `json:"updated_at"`
+	StartTime   time.Time `json:"start_time"`
+	EndTime     time.Time `json:"end_time"`
+	Status      string    `json:"status"`
+	QRCode      *string   `json:"qr_code,omitempty"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
 }
 
 type CreateAttendanceSessionRequest struct {
@@ -39,13 +39,8 @@ type AttendanceRecord struct {
 	CreatedAt    time.Time  `json:"created_at"`
 	UpdatedAt    time.Time  `json:"updated_at"`
 
-	// Student character details for the Flexboard
-	StudentName    *string `json:"student_name,omitempty"`
-	StudentTitle   *string `json:"student_title,omitempty"`
-	EquippedHair   *string `json:"equipped_hair,omitempty"`
-	EquippedHat    *string `json:"equipped_hat,omitempty"`
-	EquippedOutfit *string `json:"equipped_outfit,omitempty"`
-	EquippedAura   *string `json:"equipped_aura,omitempty"`
+	StudentName  *string `json:"student_name,omitempty"`
+	StudentTitle *string `json:"student_title,omitempty"`
 }
 
 type UpsertAttendanceRecordRequest struct {

@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, ExternalLink, FileText, Link as LinkIcon, Loader2, PlayCircle, Plus, Sparkles, Trash2 } from 'lucide-react'
+import { ArrowLeft, ExternalLink, FileText, Link as LinkIcon, Loader2, PlayCircle, Plus, Sparkles, Trash2, Upload } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -19,6 +19,7 @@ import {
   listLearningMaterials,
 } from '@/lib/api/classrooms'
 import { listAssignments } from '@/lib/api/assignments'
+import { openUploadedFile, uploadFile } from '@/lib/api/uploads'
 
 const materialIcons = {
   text: FileText,
@@ -92,11 +93,15 @@ function MaterialCard({ material, canManage, onDelete }: { material: LearningMat
       {material.file_urls.length > 0 && (
         <div className="mt-4 flex flex-wrap gap-2">
           {material.file_urls.map((url, index) => (
-            <Button key={`${url}-${index}`} asChild variant="outline" size="sm">
-              <a href={url} target="_blank" rel="noreferrer">
-                File {index + 1}
-                <ExternalLink className="ml-2 h-3.5 w-3.5" />
-              </a>
+            <Button
+              key={`${url}-${index}`}
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => openUploadedFile(url).catch((err) => toast.error(apiErrorMessage(err)))}
+            >
+              File {index + 1}
+              <ExternalLink className="ml-2 h-3.5 w-3.5" />
             </Button>
           ))}
         </div>
@@ -178,6 +183,20 @@ export default function ClassroomDetailPage() {
     onError: (err) => toast.error(apiErrorMessage(err)),
   })
 
+  const uploadMaterialMutation = useMutation({
+    mutationFn: async (files: File[]) => {
+      const uploaded = await Promise.all(files.map((file) => uploadFile(file, 'learning_material', id).then((res) => res.data)))
+      return uploaded
+    },
+    onSuccess: (files) => {
+      const currentUrls = fileUrls.split('\n').map((item) => item.trim()).filter(Boolean)
+      setMaterialType('file')
+      setFileUrls([...currentUrls, ...files.map((file) => file.url)].join('\n'))
+      toast.success('File uploaded')
+    },
+    onError: (err) => toast.error(apiErrorMessage(err)),
+  })
+
   const deleteMutation = useMutation({
     mutationFn: (materialId: string) => deleteLearningMaterial(id, materialId),
     onSuccess: () => {
@@ -189,6 +208,7 @@ export default function ClassroomDetailPage() {
 
   const classroom = classroomQuery.data?.data
   const materials = materialsQuery.data ?? []
+  const materialFileUrls = fileUrls.split('\n').map((item) => item.trim()).filter(Boolean)
 
   return (
     <div className="space-y-6">
@@ -234,8 +254,44 @@ export default function ClassroomDetailPage() {
             <Input value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Short description" />
             <Textarea value={content} onChange={(event) => setContent(event.target.value)} placeholder="Lesson notes or summary" className="lg:col-span-2" />
             <Textarea value={fileUrls} onChange={(event) => setFileUrls(event.target.value)} placeholder="File URLs, one per line" className="lg:col-span-2" />
+            <div className="lg:col-span-2">
+              <label
+                htmlFor="material-files"
+                className="flex min-h-24 cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-white/15 bg-white/[0.04] px-4 py-4 text-center transition hover:border-blue-400/60 hover:bg-blue-500/5"
+              >
+                {uploadMaterialMutation.isPending ? (
+                  <Loader2 className="h-5 w-5 animate-spin text-blue-300" />
+                ) : (
+                  <Upload className="h-5 w-5 text-blue-300" />
+                )}
+                <span className="mt-2 text-sm font-semibold text-white">Upload files from this device</span>
+                <span className="mt-1 text-xs text-slate-500">PDF, Word, PowerPoint, Excel, text, or images up to 25MB</span>
+              </label>
+              <input
+                id="material-files"
+                type="file"
+                multiple
+                accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.png,.jpg,.jpeg,.webp"
+                className="sr-only"
+                disabled={uploadMaterialMutation.isPending}
+                onChange={(event) => {
+                  const files = Array.from(event.target.files ?? [])
+                  if (files.length > 0) uploadMaterialMutation.mutate(files)
+                  event.target.value = ''
+                }}
+              />
+              {materialFileUrls.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {materialFileUrls.map((item, index) => (
+                    <span key={`${item}-${index}`} className="max-w-full truncate rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs text-slate-300">
+                      File {index + 1}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
-          <Button type="submit" className="mt-4" disabled={createMutation.isPending || !title.trim()}>
+          <Button type="submit" className="mt-4" disabled={createMutation.isPending || uploadMaterialMutation.isPending || !title.trim()}>
             {createMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
             Add Material
           </Button>

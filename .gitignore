@@ -29,6 +29,7 @@ common-api/tmp/
 # ====== PostgreSQL local ======
 pg/
 pgdata/
+pgdata-codex/
 pg.zip
 pg.log
 *.backup
@@ -46,10 +47,15 @@ dist/
 build/
 coverage/
 .playwright-cli/
+*-codex.log
+*-codex.err
 
 # ====== Uploads (runtime) ======
 uploads/
 common-api/uploads/
+
+# ====== Local agent scratch ======
+.claude/
 
 # ====== Windsurf ======
 .windsurf/

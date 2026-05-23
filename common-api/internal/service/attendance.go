@@ -81,11 +81,9 @@ func (s *AttendanceService) ListRecords(ctx context.Context, sessionID, studentI
 	rows, err := s.db.Query(ctx,
 		`SELECT
 			ar.id, ar.session_id, ar.student_id, ar.status, ar.check_in_at, ar.check_out_at, ar.notes, ar.created_at, ar.updated_at,
-			u.full_name as student_name, u.rank_title as student_title,
-			uc.equipped_hair, uc.equipped_hat, uc.equipped_outfit, uc.equipped_aura
+			u.full_name as student_name, u.rank_title as student_title
 		 FROM attendance_records ar
 		 LEFT JOIN users u ON u.id = ar.student_id
-		 LEFT JOIN user_characters uc ON uc.user_id = ar.student_id
 		 WHERE ar.deleted_at IS NULL
 		   AND ($1::uuid IS NULL OR ar.session_id = $1)
 		   AND ($2::uuid IS NULL OR ar.student_id = $2)
@@ -100,7 +98,6 @@ func (s *AttendanceService) ListRecords(ctx context.Context, sessionID, studentI
 		if err := rows.Scan(
 			&r.ID, &r.SessionID, &r.StudentID, &r.Status, &r.CheckInTime, &r.CheckOutTime, &r.Notes, &r.CreatedAt, &r.UpdatedAt,
 			&r.StudentName, &r.StudentTitle,
-			&r.EquippedHair, &r.EquippedHat, &r.EquippedOutfit, &r.EquippedAura,
 		); err != nil {
 			return nil, err
 		}

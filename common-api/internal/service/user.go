@@ -66,8 +66,8 @@ var levelUnlockRules = []model.LevelUnlock{
 	{Level: 15, Title: "Streak Rewards", Description: "Bonus badges for consistent study streaks.", Category: "rewards"},
 	{Level: 20, Title: "Peer Challenge", Description: "Challenge classmates on the same quest set.", Category: "social"},
 	{Level: 30, Title: "Master Quest", Description: "Long-form mastery quests for major topics.", Category: "mastery"},
-	{Level: 40, Title: "Seasonal Leaderboard", Description: "Compete in seasonal rankings and rare badges.", Category: "season"},
-	{Level: 50, Title: "Legend Hall of Fame", Description: "Legend title, profile effect, and hall of fame visibility.", Category: "legend"},
+	{Level: 40, Title: "Quest Arc Leaderboard", Description: "Compete in 2-4 week learning-arc rankings and rare achievements.", Category: "arc"},
+	{Level: 50, Title: "Grade Hall of Fame", Description: "Legend title, profile effect, and grade-level hall visibility.", Category: "legend"},
 }
 
 func unlocksForLevel(level int) []model.LevelUnlock {

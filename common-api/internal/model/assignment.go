@@ -30,6 +30,9 @@ type AssignmentGradebookRow struct {
 	MaxScore     int        `json:"max_score"`
 	Percent      *float64   `json:"percent,omitempty"`
 	GradeCode    string     `json:"grade_code"`
+	Content      *string    `json:"content,omitempty"`
+	FileURLs     []string   `json:"file_urls,omitempty"`
+	ExternalLink *string    `json:"external_link,omitempty"`
 	Feedback     *string    `json:"feedback,omitempty"`
 	SubmittedAt  *time.Time `json:"submitted_at,omitempty"`
 	GradedAt     *time.Time `json:"graded_at,omitempty"`

@@ -2,12 +2,15 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"classroom-api/internal/model"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -93,6 +96,13 @@ func (s *QuestService) GetForUser(ctx context.Context, id, userID uuid.UUID, rol
 	}
 	if err := s.assertQuestAccess(ctx, quest, userID, role); err != nil {
 		return nil, err
+	}
+	if role == "student" {
+		count, err := s.countAvailableReward(ctx, userID, "hint_token")
+		if err != nil {
+			return nil, err
+		}
+		quest.HintTokensAvailable = count
 	}
 	return quest, nil
 }
@@ -334,6 +344,151 @@ func (s *QuestService) Submit(ctx context.Context, studentID, questID uuid.UUID,
 	}
 
 	return &attempt, nil
+}
+
+func (s *QuestService) UseHintToken(ctx context.Context, studentID, questID uuid.UUID) (*model.QuestHintResponse, error) {
+	quest, err := s.getQuest(ctx, questID, false)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, model.ErrNotFound
+		}
+		return nil, err
+	}
+	if err := s.assertQuestAccess(ctx, quest, studentID, "student"); err != nil {
+		return nil, err
+	}
+
+	available, err := s.countAvailableReward(ctx, studentID, "hint_token")
+	if err != nil {
+		return nil, err
+	}
+	if available <= 0 {
+		return nil, model.ErrForbidden
+	}
+
+	hint, err := s.generateQuestHint(ctx, quest)
+	if err != nil {
+		return nil, err
+	}
+
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(ctx)
+
+	var redemptionID uuid.UUID
+	if err := tx.QueryRow(ctx, `
+		SELECT rr.id
+		FROM reward_redemptions rr
+		JOIN reward_items ri ON ri.id = rr.reward_id
+		WHERE rr.user_id = $1
+		  AND ri.code = 'hint_token'
+		  AND rr.status = 'fulfilled'
+		ORDER BY rr.requested_at
+		FOR UPDATE OF rr SKIP LOCKED
+		LIMIT 1`, studentID).Scan(&redemptionID); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, model.ErrForbidden
+		}
+		return nil, err
+	}
+
+	var usedAt time.Time
+	if err := tx.QueryRow(ctx, `
+		UPDATE reward_redemptions
+		SET status = 'used',
+		    note = $2,
+		    resolved_at = now(),
+		    resolved_by = $3
+		WHERE id = $1
+		RETURNING resolved_at`,
+		redemptionID,
+		fmt.Sprintf("Used for AI hint on quest %s: %s", quest.ID, quest.Title),
+		studentID,
+	).Scan(&usedAt); err != nil {
+		return nil, err
+	}
+
+	var remaining int
+	if err := tx.QueryRow(ctx, `
+		SELECT COUNT(*)::int
+		FROM reward_redemptions rr
+		JOIN reward_items ri ON ri.id = rr.reward_id
+		WHERE rr.user_id = $1
+		  AND ri.code = 'hint_token'
+		  AND rr.status = 'fulfilled'`, studentID).Scan(&remaining); err != nil {
+		return nil, err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
+	}
+
+	return &model.QuestHintResponse{
+		Hint:                hint,
+		HintTokensAvailable: remaining,
+		RedemptionID:        redemptionID,
+		UsedAt:              usedAt,
+	}, nil
+}
+
+func (s *QuestService) countAvailableReward(ctx context.Context, userID uuid.UUID, rewardCode string) (int, error) {
+	var count int
+	err := s.db.QueryRow(ctx, `
+		SELECT COUNT(*)::int
+		FROM reward_redemptions rr
+		JOIN reward_items ri ON ri.id = rr.reward_id
+		WHERE rr.user_id = $1
+		  AND ri.code = $2
+		  AND rr.status = 'fulfilled'`, userID, rewardCode).Scan(&count)
+	return count, err
+}
+
+func (s *QuestService) generateQuestHint(ctx context.Context, quest *model.LearningQuest) (string, error) {
+	if s.ai != nil {
+		aiCtx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
+		defer cancel()
+
+		systemPrompt := `You are an AI hint coach for a classroom Learning Quest.
+Respond in Thai unless the quest itself is in English.
+Give exactly one useful hint in 1-3 short sentences.
+Do not reveal the final answer, do not solve every step, and do not mention that you are restricted.
+Guide the student with a question, clue, or first step they can try next.`
+		userPrompt := fmt.Sprintf(`Quest title: %s
+Topic: %s
+Difficulty: %s
+Question:
+%s
+
+Existing teacher/AI hints:
+%s
+
+Create a fresh hint that helps the student move forward without giving away the answer.`,
+			quest.Title,
+			quest.Topic,
+			quest.Difficulty,
+			quest.Question,
+			strings.Join(quest.Hints, "\n"),
+		)
+
+		hint, err := s.ai.callAIWithOptions(aiCtx, systemPrompt, userPrompt, aiRequestOptions{temperature: floatPtr(0.45)})
+		if err == nil {
+			hint = cleanGeneratedText(hint, 500)
+			if hint != "" {
+				return hint, nil
+			}
+		}
+	}
+
+	for _, hint := range quest.Hints {
+		hint = strings.TrimSpace(hint)
+		if hint != "" {
+			return hint, nil
+		}
+	}
+
+	return "ลองแยกโจทย์ออกเป็นข้อมูลที่ให้มา สิ่งที่ต้องหา และสูตรหรือแนวคิดที่เกี่ยวข้องก่อน แล้วค่อยทำทีละขั้นครับ", nil
 }
 
 func (s *QuestService) Generate(ctx context.Context, topic string, teacherID, classroomID uuid.UUID) ([]*model.LearningQuest, error) {

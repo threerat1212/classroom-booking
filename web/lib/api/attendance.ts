@@ -21,10 +21,6 @@ export interface AttendanceRecord {
   notes?: string
   student_name?: string
   student_title?: string
-  equipped_hair?: string
-  equipped_hat?: string
-  equipped_outfit?: string
-  equipped_aura?: string
 }
 
 export interface CreateSessionPayload {

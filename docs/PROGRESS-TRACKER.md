@@ -28,29 +28,29 @@
 | 3.5 | Frontend shared components | 8 | [x] complete |
 | 3.6 | Frontend pages (admin, teacher, student) | 25 | [x] complete (22/25) |
 | 4 | curl testing | 15 | [x] complete (15/15 verified) |
-| 5 | UX/QA testing | 18 | [~] in-progress (character/flexboard/comments verified) |
+| 5 | UX/QA testing | 18 | [~] in-progress (reward shop/flexboard/comments verified) |
 
 ---
 
-## Latest Update — Gamification Character, Comments, and Flexboard
+## Latest Update — Reward Shop, Comments, and Flexboard
 
-Date: 2026-05-20
+Date: 2026-05-23
 
-- [x] Added `000034_gamification_character` migration for character cosmetics, unlock inventory, and equipped character state.
-- [x] Added character backend models, service, handler, and routes: `GET /api/v1/character`, `POST /api/v1/character/equip`.
-- [x] Wired title rewards to unlock associated character cosmetics through `awardTitleTx`.
-- [x] Added student character wardrobe page with layered 2D SVG sprite preview and equip actions.
-- [x] Added sidebar link for `My Character`.
-- [x] Added attendance flexboard route for projector-style live character display.
-- [x] Extended attendance records with student name, equipped title, and equipped character cosmetics.
+- [x] Added `000036_reward_shop` migration for quest-based rewards, redemption history, and teacher/admin review.
+- [x] Added reward backend models, service, handler, and routes: `GET /api/v1/rewards`, `POST /api/v1/rewards/redeem`, `GET /api/v1/rewards/redemptions`, `PATCH /api/v1/rewards/redemptions/:id`.
+- [x] Removed the retired avatar/customization backend and frontend surfaces.
+- [x] Added student Reward Shop page with category tabs, Gold balance, redemption limits, and history.
+- [x] Added sidebar link for `Reward Shop`.
+- [x] Simplified attendance flexboard into a roster-focused projector display.
+- [x] Extended attendance records with student name, equipped title, and attendance status only.
 - [x] Added missing `GET /api/v1/attendance/sessions/:id` route used by attendance detail and flexboard pages.
 - [x] Fixed attendance service SQL to match schema (`full_name`, `check_in_at`, `check_out_at`, `marked_by`).
 - [x] Added assignment discussion comments API and frontend discussion UI.
 - [x] Tightened AI tutor system prompt for classroom-only scope.
 - [x] Verified backend with `go test ./...` and `go build ./cmd/api`.
 - [x] Verified frontend with `npm run type-check` and `npm run build`.
-- [x] Local API smoke passed for character summary/equip, attendance session/records, and comments create/list/update/delete.
-- [x] Local browser smoke passed for `/student/character`, `/attendance/[id]/flexboard`, and assignment discussion.
+- [x] Local API smoke passed for Reward Shop, attendance session/records, and comments create/list/update/delete.
+- [x] Local browser smoke passed for `/student/rewards`, `/attendance/[id]/flexboard`, and assignment discussion.
 - [!] Tried `npx claude-smart@0.2.31 install --host codex`; package inspection looked normal, but install stopped at `spawn EPERM` because the local Codex CLI cannot be spawned from this shell.
 
 ---
@@ -393,7 +393,7 @@ Scripts created at `scripts/curl-test.sh` and `scripts/curl-test.ps1`. Run after
 - [ ] 9. Data export download flow.
 - [ ] 10. Notification receive and dismiss.
 - [x] 11. Discussion/comment on assignment.
-- [ ] 12. Badge award visibility.
+- [ ] 12. Reward Shop and badge award visibility.
 - [ ] 13. Responsive layout on mobile/tablet.
 - [ ] 14. Role-based route protection.
 - [ ] 15. Error states and empty states.

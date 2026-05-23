@@ -23,6 +23,9 @@ export interface AssignmentGradebookRow {
   max_score: number
   percent?: number
   grade_code: string
+  content?: string
+  file_urls?: string[]
+  external_link?: string
   feedback?: string
   submitted_at?: string
   graded_at?: string

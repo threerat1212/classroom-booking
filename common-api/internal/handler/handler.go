@@ -22,7 +22,8 @@ type Handlers struct {
 	Quest        *QuestHandler
 	Achievement  *AchievementHandler
 	Comment      *CommentHandler
-	Character    *CharacterHandler
+	Reward       *RewardHandler
+	Upload       *UploadHandler
 }
 
 func NewHandlers(services *service.Services, cfg *config.Config) *Handlers {
@@ -43,6 +44,7 @@ func NewHandlers(services *service.Services, cfg *config.Config) *Handlers {
 		Quest:        NewQuestHandler(services.Quest),
 		Achievement:  NewAchievementHandler(services.Achievement),
 		Comment:      NewCommentHandler(services.Comment),
-		Character:    NewCharacterHandler(services.Character),
+		Reward:       NewRewardHandler(services.Reward),
+		Upload:       NewUploadHandler(services.Upload),
 	}
 }

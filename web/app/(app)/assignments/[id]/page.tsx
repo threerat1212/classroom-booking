@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, Trash2, Edit2, X, Check, CornerDownRight, Send, MessageSquare, Calendar, Award, MapPin, AlignLeft, Download, Loader2 } from 'lucide-react'
+import { ArrowLeft, Trash2, Edit2, X, Check, CornerDownRight, Send, MessageSquare, Calendar, Award, MapPin, AlignLeft, Download, Loader2, ExternalLink, Paperclip } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -11,10 +11,20 @@ import { Textarea } from '@/components/ui/textarea'
 import { downloadAssignmentGradebook, getAssignment, deleteAssignment, listAssignmentGradebook } from '@/lib/api/assignments'
 import { gradeSubmission } from '@/lib/api/submissions'
 import { listComments, createComment, updateComment, deleteComment } from '@/lib/api/comments'
+import { openUploadedFile } from '@/lib/api/uploads'
 import { assignmentKeys } from '@/lib/query/keys'
 import { apiErrorMessage } from '@/lib/http/client'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
 import { toast } from 'sonner'
+
+function fileLabel(url: string, index: number) {
+  const raw = url.split('/').pop()?.split('?')[0] || ''
+  try {
+    return decodeURIComponent(raw) || `File ${index + 1}`
+  } catch {
+    return raw || `File ${index + 1}`
+  }
+}
 
 export default function AssignmentDetailPage() {
   const router = useRouter()
@@ -399,11 +409,12 @@ export default function AssignmentDetailPage() {
               </div>
 
               <div className="mt-4 overflow-x-auto">
-                <table className="w-full min-w-[760px] text-left text-sm">
+                <table className="w-full min-w-[920px] text-left text-sm">
                   <thead className="text-xs uppercase text-slate-500">
                     <tr className="border-b border-white/10">
                       <th className="py-2 pr-3">Student</th>
                       <th className="py-2 pr-3">Status</th>
+                      <th className="py-2 pr-3">Work</th>
                       <th className="py-2 pr-3">Score</th>
                       <th className="py-2 pr-3">Grade</th>
                       <th className="py-2 pr-3">Feedback</th>
@@ -413,13 +424,13 @@ export default function AssignmentDetailPage() {
                   <tbody>
                     {gradebookQuery.isLoading ? (
                       <tr>
-                        <td colSpan={6} className="py-8 text-center text-slate-400">
+                        <td colSpan={7} className="py-8 text-center text-slate-400">
                           <Loader2 className="mx-auto h-5 w-5 animate-spin" />
                         </td>
                       </tr>
                     ) : (gradebookQuery.data ?? []).length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="py-8 text-center text-slate-400">No students or submissions yet</td>
+                        <td colSpan={7} className="py-8 text-center text-slate-400">No students or submissions yet</td>
                       </tr>
                     ) : (
                       (gradebookQuery.data ?? []).map((row) => {
@@ -435,6 +446,37 @@ export default function AssignmentDetailPage() {
                               <p className="text-xs text-slate-500">{row.student_email}</p>
                             </td>
                             <td className="py-3 pr-3 text-slate-300">{row.status}</td>
+                            <td className="py-3 pr-3">
+                              {row.submission_id ? (
+                                <div className="max-w-[240px] space-y-1.5">
+                                  {row.content && (
+                                    <p className="max-h-10 overflow-hidden text-xs leading-5 text-slate-400">{row.content}</p>
+                                  )}
+                                  {row.external_link && (
+                                    <a href={row.external_link} target="_blank" rel="noreferrer" className="inline-flex max-w-full items-center gap-1 text-xs text-blue-300 hover:text-blue-200">
+                                      <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+                                      <span className="truncate">External link</span>
+                                    </a>
+                                  )}
+                                  {(row.file_urls ?? []).map((url, index) => (
+                                    <button
+                                      key={`${url}-${index}`}
+                                      type="button"
+                                      onClick={() => openUploadedFile(url).catch((err) => toast.error(apiErrorMessage(err)))}
+                                      className="flex max-w-full items-center gap-1 text-xs text-emerald-300 hover:text-emerald-200"
+                                    >
+                                      <Paperclip className="h-3.5 w-3.5 shrink-0" />
+                                      <span className="truncate">{fileLabel(url, index)}</span>
+                                    </button>
+                                  ))}
+                                  {!row.content && !row.external_link && (row.file_urls ?? []).length === 0 && (
+                                    <span className="text-xs text-slate-500">No attachment</span>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="text-xs text-slate-500">-</span>
+                              )}
+                            </td>
                             <td className="py-3 pr-3">
                               <Input
                                 type="number"
