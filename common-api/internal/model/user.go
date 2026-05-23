@@ -14,6 +14,7 @@ type User struct {
 	StudentID  *string    `json:"student_id,omitempty"`
 	EmployeeID *string    `json:"employee_id,omitempty"`
 	Department *string    `json:"department,omitempty"`
+	GradeLevel *string    `json:"grade_level,omitempty"`
 	Phone      *string    `json:"phone,omitempty"`
 	AvatarURL  *string    `json:"avatar_url,omitempty"`
 	Status     string     `json:"status"`
@@ -56,6 +57,7 @@ type CreateUserRequest struct {
 	StudentID  *string `json:"student_id,omitempty"`
 	EmployeeID *string `json:"employee_id,omitempty"`
 	Department *string `json:"department,omitempty"`
+	GradeLevel *string `json:"grade_level,omitempty" binding:"omitempty,oneof=M3 M4"`
 	Phone      *string `json:"phone,omitempty"`
 	AvatarURL  *string `json:"avatar_url,omitempty"`
 }
@@ -66,6 +68,7 @@ type UpdateUserRequest struct {
 	StudentID  *string `json:"student_id,omitempty"`
 	EmployeeID *string `json:"employee_id,omitempty"`
 	Department *string `json:"department,omitempty"`
+	GradeLevel *string `json:"grade_level,omitempty" binding:"omitempty,oneof=M3 M4"`
 	Phone      *string `json:"phone,omitempty"`
 	Status     *string `json:"status,omitempty" binding:"omitempty,oneof=active inactive suspended"`
 }

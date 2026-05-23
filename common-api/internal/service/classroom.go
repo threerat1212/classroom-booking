@@ -30,8 +30,9 @@ func (s *ClassroomService) List(ctx context.Context, userID, role string) ([]*mo
 	}
 
 	const selectClassrooms = `
-		SELECT r.id, r.name, r.code, r.capacity, r.description, r.teacher_id, u.full_name,
-		       r.join_code, COUNT(cm.student_id)::bigint AS student_count, %s AS joined_at,
+		SELECT r.id, r.name, r.code, r.capacity, r.description, r.grade_level, r.class_section,
+		       r.teacher_id, u.full_name, r.join_code, COUNT(cm.student_id)::bigint AS student_count,
+		       %s AS is_primary, %s AS joined_at,
 		       r.created_at, r.updated_at
 		FROM rooms r
 		LEFT JOIN users u ON u.id = r.teacher_id
@@ -45,11 +46,11 @@ func (s *ClassroomService) List(ctx context.Context, userID, role string) ([]*mo
 
 	switch role {
 	case "admin":
-		return s.queryClassrooms(ctx, fmt.Sprintf(selectClassrooms, "NULL::timestamptz", "", "", ""))
+		return s.queryClassrooms(ctx, fmt.Sprintf(selectClassrooms, "false", "NULL::timestamptz", "", "", ""))
 	case "teacher":
-		return s.queryClassrooms(ctx, fmt.Sprintf(selectClassrooms, "NULL::timestamptz", "", "AND r.teacher_id = $1", ""), uid)
+		return s.queryClassrooms(ctx, fmt.Sprintf(selectClassrooms, "false", "NULL::timestamptz", "", "AND r.teacher_id = $1", ""), uid)
 	case "student":
-		return s.queryClassrooms(ctx, fmt.Sprintf(selectClassrooms, "my_membership.joined_at", "JOIN classroom_members my_membership ON my_membership.room_id = r.id AND my_membership.student_id = $1", "", ", my_membership.joined_at"), uid)
+		return s.queryClassrooms(ctx, fmt.Sprintf(selectClassrooms, "my_membership.is_primary", "my_membership.joined_at", "JOIN classroom_members my_membership ON my_membership.room_id = r.id AND my_membership.student_id = $1", "", ", my_membership.is_primary, my_membership.joined_at"), uid)
 	default:
 		return []*model.Classroom{}, nil
 	}
@@ -75,16 +76,26 @@ func (s *ClassroomService) Create(ctx context.Context, req model.CreateClassroom
 	if code == "" {
 		code = "CLS-" + joinCode
 	}
+	gradeLevel := strings.ToUpper(strings.TrimSpace(valueOrEmpty(req.GradeLevel)))
+	var gradeLevelPtr *string
+	if gradeLevel != "" {
+		gradeLevelPtr = &gradeLevel
+	}
+	classSection := strings.TrimSpace(valueOrEmpty(req.ClassSection))
+	var classSectionPtr *string
+	if classSection != "" {
+		classSectionPtr = &classSection
+	}
 
 	var classroom model.Classroom
 	err = s.db.QueryRow(ctx, `
-		INSERT INTO rooms (name, code, room_type, capacity, description, status, teacher_id, join_code)
-		VALUES ($1, $2, 'classroom', $3, $4, 'available', $5, $6)
-		RETURNING id, name, code, capacity, description, teacher_id,
-		          (SELECT full_name FROM users WHERE id = $5),
-		          join_code, 0::bigint, NULL::timestamptz, created_at, updated_at`,
-		strings.TrimSpace(req.Name), code, capacity, req.Description, tid, joinCode,
-	).Scan(&classroom.ID, &classroom.Name, &classroom.Code, &classroom.Capacity, &classroom.Description, &classroom.TeacherID, &classroom.TeacherName, &classroom.JoinCode, &classroom.StudentCount, &classroom.JoinedAt, &classroom.CreatedAt, &classroom.UpdatedAt)
+		INSERT INTO rooms (name, code, room_type, capacity, description, grade_level, class_section, status, teacher_id, join_code)
+		VALUES ($1, $2, 'classroom', $3, $4, $5, $6, 'available', $7, $8)
+		RETURNING id, name, code, capacity, description, grade_level, class_section, teacher_id,
+		          (SELECT full_name FROM users WHERE id = $7),
+		          join_code, 0::bigint, false, NULL::timestamptz, created_at, updated_at`,
+		strings.TrimSpace(req.Name), code, capacity, req.Description, gradeLevelPtr, classSectionPtr, tid, joinCode,
+	).Scan(&classroom.ID, &classroom.Name, &classroom.Code, &classroom.Capacity, &classroom.Description, &classroom.GradeLevel, &classroom.ClassSection, &classroom.TeacherID, &classroom.TeacherName, &classroom.JoinCode, &classroom.StudentCount, &classroom.IsPrimary, &classroom.JoinedAt, &classroom.CreatedAt, &classroom.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -114,11 +125,17 @@ func (s *ClassroomService) Join(ctx context.Context, studentID string, req model
 		return nil, err
 	}
 
+	var hasPrimary bool
+	err = s.db.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM classroom_members WHERE student_id = $1 AND is_primary = true)`, sid).Scan(&hasPrimary)
+	if err != nil {
+		return nil, err
+	}
+
 	_, err = s.db.Exec(ctx, `
-		INSERT INTO classroom_members (room_id, student_id)
-		VALUES ($1, $2)
+		INSERT INTO classroom_members (room_id, student_id, is_primary)
+		VALUES ($1, $2, $3)
 		ON CONFLICT DO NOTHING`,
-		classroomID, sid,
+		classroomID, sid, !hasPrimary,
 	)
 	if err != nil {
 		return nil, err
@@ -136,8 +153,9 @@ func (s *ClassroomService) Get(ctx context.Context, classroomID uuid.UUID, userI
 	switch role {
 	case "admin":
 		items, err := s.queryClassrooms(ctx, `
-			SELECT r.id, r.name, r.code, r.capacity, r.description, r.teacher_id, u.full_name,
-			       r.join_code, COUNT(cm.student_id)::bigint AS student_count, NULL::timestamptz AS joined_at,
+			SELECT r.id, r.name, r.code, r.capacity, r.description, r.grade_level, r.class_section,
+			       r.teacher_id, u.full_name, r.join_code, COUNT(cm.student_id)::bigint AS student_count,
+			       false AS is_primary, NULL::timestamptz AS joined_at,
 			       r.created_at, r.updated_at
 			FROM rooms r
 			LEFT JOIN users u ON u.id = r.teacher_id
@@ -153,8 +171,9 @@ func (s *ClassroomService) Get(ctx context.Context, classroomID uuid.UUID, userI
 		return items[0], nil
 	case "teacher":
 		items, err := s.queryClassrooms(ctx, `
-			SELECT r.id, r.name, r.code, r.capacity, r.description, r.teacher_id, u.full_name,
-			       r.join_code, COUNT(cm.student_id)::bigint AS student_count, NULL::timestamptz AS joined_at,
+			SELECT r.id, r.name, r.code, r.capacity, r.description, r.grade_level, r.class_section,
+			       r.teacher_id, u.full_name, r.join_code, COUNT(cm.student_id)::bigint AS student_count,
+			       false AS is_primary, NULL::timestamptz AS joined_at,
 			       r.created_at, r.updated_at
 			FROM rooms r
 			LEFT JOIN users u ON u.id = r.teacher_id
@@ -177,8 +196,9 @@ func (s *ClassroomService) Get(ctx context.Context, classroomID uuid.UUID, userI
 
 func (s *ClassroomService) GetForStudent(ctx context.Context, classroomID, studentID uuid.UUID) (*model.Classroom, error) {
 	rows, err := s.db.Query(ctx, `
-		SELECT r.id, r.name, r.code, r.capacity, r.description, r.teacher_id, u.full_name,
-		       r.join_code, COUNT(cm.student_id)::bigint AS student_count, my_membership.joined_at,
+		SELECT r.id, r.name, r.code, r.capacity, r.description, r.grade_level, r.class_section,
+		       r.teacher_id, u.full_name, r.join_code, COUNT(cm.student_id)::bigint AS student_count,
+		       my_membership.is_primary, my_membership.joined_at,
 		       r.created_at, r.updated_at
 		FROM rooms r
 		JOIN classroom_members my_membership ON my_membership.room_id = r.id AND my_membership.student_id = $2
@@ -187,7 +207,7 @@ func (s *ClassroomService) GetForStudent(ctx context.Context, classroomID, stude
 		WHERE r.id = $1
 		  AND r.deleted_at IS NULL
 		  AND r.room_type = 'classroom'
-		GROUP BY r.id, u.full_name, my_membership.joined_at`,
+		GROUP BY r.id, u.full_name, my_membership.is_primary, my_membership.joined_at`,
 		classroomID, studentID,
 	)
 	if err != nil {
@@ -322,12 +342,19 @@ func scanClassrooms(rows pgx.Rows) ([]*model.Classroom, error) {
 	items := make([]*model.Classroom, 0)
 	for rows.Next() {
 		var c model.Classroom
-		if err := rows.Scan(&c.ID, &c.Name, &c.Code, &c.Capacity, &c.Description, &c.TeacherID, &c.TeacherName, &c.JoinCode, &c.StudentCount, &c.JoinedAt, &c.CreatedAt, &c.UpdatedAt); err != nil {
+		if err := rows.Scan(&c.ID, &c.Name, &c.Code, &c.Capacity, &c.Description, &c.GradeLevel, &c.ClassSection, &c.TeacherID, &c.TeacherName, &c.JoinCode, &c.StudentCount, &c.IsPrimary, &c.JoinedAt, &c.CreatedAt, &c.UpdatedAt); err != nil {
 			return nil, err
 		}
 		items = append(items, &c)
 	}
 	return items, rows.Err()
+}
+
+func valueOrEmpty(value *string) string {
+	if value == nil {
+		return ""
+	}
+	return *value
 }
 
 func (s *ClassroomService) uniqueJoinCode(ctx context.Context) (string, error) {

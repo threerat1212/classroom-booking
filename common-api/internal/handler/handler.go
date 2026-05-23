@@ -24,6 +24,7 @@ type Handlers struct {
 	Comment      *CommentHandler
 	Reward       *RewardHandler
 	Upload       *UploadHandler
+	Dashboard    *DashboardHandler
 }
 
 func NewHandlers(services *service.Services, cfg *config.Config) *Handlers {
@@ -46,5 +47,6 @@ func NewHandlers(services *service.Services, cfg *config.Config) *Handlers {
 		Comment:      NewCommentHandler(services.Comment),
 		Reward:       NewRewardHandler(services.Reward),
 		Upload:       NewUploadHandler(services.Upload),
+		Dashboard:    NewDashboardHandler(services.Dashboard),
 	}
 }

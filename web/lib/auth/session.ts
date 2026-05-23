@@ -11,6 +11,7 @@ export interface StoredUser {
   level?: number
   gold_balance?: number
   rank_title?: string
+  grade_level?: string
 }
 
 interface TokenClaims {

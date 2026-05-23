@@ -69,6 +69,7 @@ func New(cfg *config.Config, h *handler.Handlers) *gin.Engine {
 		{
 			classrooms.GET("", h.Classroom.List)
 			classrooms.GET("/:id", h.Classroom.Get)
+			classrooms.GET("/:id/dashboard", h.Dashboard.Classroom)
 			classrooms.POST("", middleware.RequireRoles("teacher", "admin"), h.Classroom.Create)
 			classrooms.POST("/join", middleware.RequireRoles("student"), h.Classroom.Join)
 			classrooms.GET("/:id/materials", h.Classroom.ListMaterials)
@@ -148,6 +149,7 @@ func New(cfg *config.Config, h *handler.Handlers) *gin.Engine {
 
 		protected.GET("/leaderboard", h.User.Leaderboard)
 		protected.GET("/unlocks", h.User.Unlocks)
+		protected.GET("/community-dashboard", h.Dashboard.Community)
 
 		achievements := protected.Group("/achievements")
 		{

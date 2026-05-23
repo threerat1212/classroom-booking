@@ -49,6 +49,7 @@ coverage/
 .playwright-cli/
 *-codex.log
 *-codex.err
+*-codex.err.log
 
 # ====== Uploads (runtime) ======
 uploads/

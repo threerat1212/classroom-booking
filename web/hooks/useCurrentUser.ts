@@ -14,6 +14,7 @@ function normalizeUser(user: StoredUser): StoredUser {
     level: user.level,
     gold_balance: user.gold_balance,
     rank_title: user.rank_title,
+    grade_level: user.grade_level,
   }
 }
 

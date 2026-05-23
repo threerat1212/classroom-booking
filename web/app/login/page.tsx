@@ -45,7 +45,7 @@ export default function LoginPage() {
     setError('')
     setLoading(true)
     try {
-      const res = await apiFetch<{ data: { access_token: string; user: { id: string; email: string; full_name: string; role: string; xp?: number; level?: number; gold_balance?: number; rank_title?: string } } }>(
+      const res = await apiFetch<{ data: { access_token: string; user: { id: string; email: string; full_name: string; role: string; xp?: number; level?: number; gold_balance?: number; rank_title?: string; grade_level?: string } } }>(
         '/api/v1/auth/login',
         {
           method: 'POST',
@@ -62,9 +62,10 @@ export default function LoginPage() {
         level: res.data.user.level,
         gold_balance: res.data.user.gold_balance,
         rank_title: res.data.user.rank_title,
+        grade_level: res.data.user.grade_level,
       })
       document.cookie = `access_token=${res.data.access_token}; path=/; max-age=86400`
-      router.push('/dashboard')
+      router.push(res.data.user.role === 'student' ? '/community' : '/dashboard')
     } catch (err: any) {
       setError(err?.message || 'Login failed')
     } finally {

@@ -6,10 +6,13 @@ export interface Classroom {
   code: string
   capacity: number
   description?: string
+  grade_level?: string
+  class_section?: string
   teacher_id?: string
   teacher_name?: string
   join_code?: string
   student_count: number
+  is_primary?: boolean
   joined_at?: string
   created_at: string
   updated_at: string
@@ -36,6 +39,8 @@ export interface CreateClassroomInput {
   code?: string
   capacity?: number
   description?: string
+  grade_level?: string
+  class_section?: string
 }
 
 export interface CreateLearningMaterialInput {

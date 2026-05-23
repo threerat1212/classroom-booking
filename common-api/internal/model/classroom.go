@@ -12,10 +12,13 @@ type Classroom struct {
 	Code         string     `json:"code"`
 	Capacity     int32      `json:"capacity"`
 	Description  *string    `json:"description,omitempty"`
+	GradeLevel   *string    `json:"grade_level,omitempty"`
+	ClassSection *string    `json:"class_section,omitempty"`
 	TeacherID    *uuid.UUID `json:"teacher_id,omitempty"`
 	TeacherName  *string    `json:"teacher_name,omitempty"`
 	JoinCode     *string    `json:"join_code,omitempty"`
 	StudentCount int64      `json:"student_count"`
+	IsPrimary    bool       `json:"is_primary,omitempty"`
 	JoinedAt     *time.Time `json:"joined_at,omitempty"`
 	CreatedAt    time.Time  `json:"created_at"`
 	UpdatedAt    time.Time  `json:"updated_at"`
@@ -38,10 +41,12 @@ type LearningMaterial struct {
 }
 
 type CreateClassroomRequest struct {
-	Name        string  `json:"name" binding:"required"`
-	Code        string  `json:"code,omitempty"`
-	Capacity    int32   `json:"capacity" binding:"omitempty,min=1"`
-	Description *string `json:"description,omitempty"`
+	Name         string  `json:"name" binding:"required"`
+	Code         string  `json:"code,omitempty"`
+	Capacity     int32   `json:"capacity" binding:"omitempty,min=1"`
+	Description  *string `json:"description,omitempty"`
+	GradeLevel   *string `json:"grade_level,omitempty" binding:"omitempty,oneof=M3 M4"`
+	ClassSection *string `json:"class_section,omitempty"`
 }
 
 type CreateLearningMaterialRequest struct {

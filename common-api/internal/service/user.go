@@ -56,6 +56,16 @@ type UserService struct {
 
 func NewUserService(db *pgxpool.Pool) *UserService { return &UserService{db: db} }
 
+const userSelectColumns = `id, email, full_name, role, student_id, employee_id, department, grade_level, phone, avatar_url, status, xp, level, gold_balance, rank_title, last_login_at, created_at, updated_at`
+
+type rowScanner interface {
+	Scan(dest ...any) error
+}
+
+func scanUser(row rowScanner, u *model.User) error {
+	return row.Scan(&u.ID, &u.Email, &u.FullName, &u.Role, &u.StudentID, &u.EmployeeID, &u.Department, &u.GradeLevel, &u.Phone, &u.AvatarURL, &u.Status, &u.XP, &u.Level, &u.Gold, &u.RankTitle, &u.LastLogin, &u.CreatedAt, &u.UpdatedAt)
+}
+
 var levelUnlockRules = []model.LevelUnlock{
 	{Level: 1, Title: "Easy / Medium Quests", Description: "Start practice quests, hints, XP, and leaderboard ranking.", Category: "quests"},
 	{Level: 2, Title: "Hard Quests + Daily Quest", Description: "Unlock harder practice and a daily review target.", Category: "quests"},
@@ -101,7 +111,7 @@ func (s *UserService) LevelProgress(ctx context.Context, userID uuid.UUID) (*mod
 
 func (s *UserService) List(ctx context.Context) ([]*model.User, error) {
 	rows, err := s.db.Query(ctx,
-		`SELECT id, email, full_name, role, student_id, employee_id, department, phone, avatar_url, status, xp, level, gold_balance, rank_title, last_login_at, created_at, updated_at
+		`SELECT `+userSelectColumns+`
 		 FROM users WHERE deleted_at IS NULL ORDER BY created_at DESC`)
 	if err != nil {
 		return nil, err
@@ -111,7 +121,7 @@ func (s *UserService) List(ctx context.Context) ([]*model.User, error) {
 	users := make([]*model.User, 0)
 	for rows.Next() {
 		var u model.User
-		if err := rows.Scan(&u.ID, &u.Email, &u.FullName, &u.Role, &u.StudentID, &u.EmployeeID, &u.Department, &u.Phone, &u.AvatarURL, &u.Status, &u.XP, &u.Level, &u.Gold, &u.RankTitle, &u.LastLogin, &u.CreatedAt, &u.UpdatedAt); err != nil {
+		if err := scanUser(rows, &u); err != nil {
 			return nil, err
 		}
 		users = append(users, &u)
@@ -121,10 +131,11 @@ func (s *UserService) List(ctx context.Context) ([]*model.User, error) {
 
 func (s *UserService) Get(ctx context.Context, id uuid.UUID) (*model.User, error) {
 	var u model.User
-	err := s.db.QueryRow(ctx,
-		`SELECT id, email, full_name, role, student_id, employee_id, department, phone, avatar_url, status, xp, level, gold_balance, rank_title, last_login_at, created_at, updated_at
+	row := s.db.QueryRow(ctx,
+		`SELECT `+userSelectColumns+`
 		 FROM users WHERE id = $1 AND deleted_at IS NULL`, id,
-	).Scan(&u.ID, &u.Email, &u.FullName, &u.Role, &u.StudentID, &u.EmployeeID, &u.Department, &u.Phone, &u.AvatarURL, &u.Status, &u.XP, &u.Level, &u.Gold, &u.RankTitle, &u.LastLogin, &u.CreatedAt, &u.UpdatedAt)
+	)
+	err := scanUser(row, &u)
 	if err != nil {
 		return nil, err
 	}
@@ -138,12 +149,13 @@ func (s *UserService) Create(ctx context.Context, req model.CreateUserRequest) (
 	}
 
 	var u model.User
-	err = s.db.QueryRow(ctx,
-		`INSERT INTO users (email, password_hash, full_name, role, student_id, employee_id, department, phone, avatar_url)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-		 RETURNING id, email, full_name, role, student_id, employee_id, department, phone, avatar_url, status, xp, level, gold_balance, rank_title, last_login_at, created_at, updated_at`,
-		req.Email, hash, req.FullName, req.Role, req.StudentID, req.EmployeeID, req.Department, req.Phone, req.AvatarURL,
-	).Scan(&u.ID, &u.Email, &u.FullName, &u.Role, &u.StudentID, &u.EmployeeID, &u.Department, &u.Phone, &u.AvatarURL, &u.Status, &u.XP, &u.Level, &u.Gold, &u.RankTitle, &u.LastLogin, &u.CreatedAt, &u.UpdatedAt)
+	row := s.db.QueryRow(ctx,
+		`INSERT INTO users (email, password_hash, full_name, role, student_id, employee_id, department, grade_level, phone, avatar_url)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+		 RETURNING `+userSelectColumns,
+		req.Email, hash, req.FullName, req.Role, req.StudentID, req.EmployeeID, req.Department, req.GradeLevel, req.Phone, req.AvatarURL,
+	)
+	err = scanUser(row, &u)
 	if err != nil {
 		return nil, err
 	}
@@ -152,20 +164,22 @@ func (s *UserService) Create(ctx context.Context, req model.CreateUserRequest) (
 
 func (s *UserService) Update(ctx context.Context, id uuid.UUID, req model.UpdateUserRequest) (*model.User, error) {
 	var u model.User
-	err := s.db.QueryRow(ctx,
+	row := s.db.QueryRow(ctx,
 		`UPDATE users SET
 			full_name = COALESCE($2, full_name),
 			role = COALESCE($3, role),
 			student_id = COALESCE($4, student_id),
 			employee_id = COALESCE($5, employee_id),
 			department = COALESCE($6, department),
-			phone = COALESCE($7, phone),
-			status = COALESCE($8, status),
+			grade_level = COALESCE($7, grade_level),
+			phone = COALESCE($8, phone),
+			status = COALESCE($9, status),
 			updated_at = now()
 		 WHERE id = $1 AND deleted_at IS NULL
-		 RETURNING id, email, full_name, role, student_id, employee_id, department, phone, avatar_url, status, xp, level, gold_balance, rank_title, last_login_at, created_at, updated_at`,
-		id, req.FullName, req.Role, req.StudentID, req.EmployeeID, req.Department, req.Phone, req.Status,
-	).Scan(&u.ID, &u.Email, &u.FullName, &u.Role, &u.StudentID, &u.EmployeeID, &u.Department, &u.Phone, &u.AvatarURL, &u.Status, &u.XP, &u.Level, &u.Gold, &u.RankTitle, &u.LastLogin, &u.CreatedAt, &u.UpdatedAt)
+		 RETURNING `+userSelectColumns,
+		id, req.FullName, req.Role, req.StudentID, req.EmployeeID, req.Department, req.GradeLevel, req.Phone, req.Status,
+	)
+	err := scanUser(row, &u)
 	if err != nil {
 		return nil, err
 	}
@@ -181,9 +195,9 @@ func (s *UserService) GetByEmail(ctx context.Context, email string) (*model.User
 	var u model.User
 	var hash string
 	err := s.db.QueryRow(ctx,
-		`SELECT id, email, password_hash, full_name, role, student_id, employee_id, department, phone, avatar_url, status, xp, level, gold_balance, rank_title, last_login_at, created_at, updated_at
+		`SELECT id, email, password_hash, full_name, role, student_id, employee_id, department, grade_level, phone, avatar_url, status, xp, level, gold_balance, rank_title, last_login_at, created_at, updated_at
 		 FROM users WHERE email = $1 AND deleted_at IS NULL`, email,
-	).Scan(&u.ID, &u.Email, &hash, &u.FullName, &u.Role, &u.StudentID, &u.EmployeeID, &u.Department, &u.Phone, &u.AvatarURL, &u.Status, &u.XP, &u.Level, &u.Gold, &u.RankTitle, &u.LastLogin, &u.CreatedAt, &u.UpdatedAt)
+	).Scan(&u.ID, &u.Email, &hash, &u.FullName, &u.Role, &u.StudentID, &u.EmployeeID, &u.Department, &u.GradeLevel, &u.Phone, &u.AvatarURL, &u.Status, &u.XP, &u.Level, &u.Gold, &u.RankTitle, &u.LastLogin, &u.CreatedAt, &u.UpdatedAt)
 	if err != nil {
 		return nil, "", err
 	}
@@ -195,7 +209,7 @@ func (s *UserService) Leaderboard(ctx context.Context, limit int) ([]*model.User
 		limit = 20
 	}
 	rows, err := s.db.Query(ctx,
-		`SELECT id, email, full_name, role, student_id, employee_id, department, phone, avatar_url, status, xp, level, gold_balance, rank_title, last_login_at, created_at, updated_at
+		`SELECT `+userSelectColumns+`
 		 FROM users WHERE deleted_at IS NULL AND role = 'student' ORDER BY xp DESC, level DESC LIMIT $1`, limit)
 	if err != nil {
 		return nil, err
@@ -205,7 +219,7 @@ func (s *UserService) Leaderboard(ctx context.Context, limit int) ([]*model.User
 	users := make([]*model.User, 0)
 	for rows.Next() {
 		var u model.User
-		if err := rows.Scan(&u.ID, &u.Email, &u.FullName, &u.Role, &u.StudentID, &u.EmployeeID, &u.Department, &u.Phone, &u.AvatarURL, &u.Status, &u.XP, &u.Level, &u.Gold, &u.RankTitle, &u.LastLogin, &u.CreatedAt, &u.UpdatedAt); err != nil {
+		if err := scanUser(rows, &u); err != nil {
 			return nil, err
 		}
 		users = append(users, &u)
@@ -234,12 +248,13 @@ func (s *UserService) AddXP(ctx context.Context, userID uuid.UUID, amount int, a
 
 	// update user first so a history-table issue cannot silently block rewards.
 	var u model.User
-	err = s.db.QueryRow(ctx,
+	row := s.db.QueryRow(ctx,
 		`UPDATE users SET xp = $2, level = $3, rank_title = $4, updated_at = now()
 		 WHERE id = $1 AND deleted_at IS NULL
-		 RETURNING id, email, full_name, role, student_id, employee_id, department, phone, avatar_url, status, xp, level, gold_balance, rank_title, last_login_at, created_at, updated_at`,
+		 RETURNING `+userSelectColumns,
 		userID, newXp, newLevel, newRank,
-	).Scan(&u.ID, &u.Email, &u.FullName, &u.Role, &u.StudentID, &u.EmployeeID, &u.Department, &u.Phone, &u.AvatarURL, &u.Status, &u.XP, &u.Level, &u.Gold, &u.RankTitle, &u.LastLogin, &u.CreatedAt, &u.UpdatedAt)
+	)
+	err = scanUser(row, &u)
 	if err != nil {
 		return nil, err
 	}
