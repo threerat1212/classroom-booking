@@ -4,6 +4,7 @@ import (
 	"classroom-api/internal/model"
 	"classroom-api/internal/service"
 	"classroom-api/pkg/response"
+	"errors"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -95,6 +96,14 @@ func (h *BookingHandler) Update(c *gin.Context) {
 	}
 	booking, err := h.service.Update(c.Request.Context(), id, req)
 	if err != nil {
+		if errors.Is(err, model.ErrBookingOverlap) {
+			response.Conflict(c, "BOOKING_OVERLAP", "The requested time overlaps with an existing booking")
+			return
+		}
+		if errors.Is(err, model.ErrInvalidBookingTime) {
+			response.BadRequest(c, "VALIDATION_ERROR", "end_time must be after start_time")
+			return
+		}
 		response.NotFound(c, "booking")
 		return
 	}

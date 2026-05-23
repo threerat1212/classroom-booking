@@ -48,6 +48,7 @@ type PublicCreateBookingRequest struct {
 }
 
 type UpdateBookingRequest struct {
+	RoomID      *string    `json:"room_id,omitempty" binding:"omitempty,uuid"`
 	Title       *string    `json:"title,omitempty"`
 	Description *string    `json:"description,omitempty"`
 	Purpose     *string    `json:"purpose,omitempty" binding:"omitempty,oneof=class meeting exam event other"`

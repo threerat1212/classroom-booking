@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, CheckCircle, XCircle, Clock, MapPin, Calendar, AlignLeft } from 'lucide-react'
+import { ArrowLeft, CheckCircle, XCircle, MapPin, Calendar, AlignLeft, Pencil } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -26,7 +26,7 @@ export default function BookingDetailPage() {
   const id = params.id as string
   const qc = useQueryClient()
   const { user } = useCurrentUser()
-  const isAdmin = user?.role === 'admin' || user?.role === 'teacher'
+  const isAdmin = user?.role === 'admin'
   const [rejectReason, setRejectReason] = useState('')
   const [showRejectInput, setShowRejectInput] = useState(false)
 
@@ -105,12 +105,20 @@ export default function BookingDetailPage() {
             {b.status}
           </Badge>
         </div>
-        <Button variant="destructive" size="sm" onClick={() => {
-          if (!confirm('Are you sure? This action cannot be undone.')) return
-          deleteMutation.mutate()
-        }} disabled={deleteMutation.isPending}>
-          {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
-        </Button>
+        {isAdmin && (
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => router.push(`/bookings/${id}/edit`)}>
+              <Pencil className="mr-2 h-4 w-4" />
+              Edit
+            </Button>
+            <Button variant="destructive" size="sm" onClick={() => {
+              if (!confirm('Are you sure? This action cannot be undone.')) return
+              deleteMutation.mutate()
+            }} disabled={deleteMutation.isPending}>
+              {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
+            </Button>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">

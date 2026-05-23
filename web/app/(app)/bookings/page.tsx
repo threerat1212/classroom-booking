@@ -2,30 +2,23 @@
 
 import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus } from 'lucide-react'
+import { CheckCircle, Eye, Pencil, Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { DataTable } from '@/components/shared/data-table'
 import { StatusBadge } from '@/components/shared/status-badge'
-import { RowActions } from '@/components/shared/row-actions'
 import { FilterBar } from '@/components/shared/filter-bar'
-import { apiFetch } from '@/lib/http/client'
-import { useQuery } from '@tanstack/react-query'
-
-interface Booking {
-  id: string
-  room_id: string
-  title: string
-  purpose: string
-  start_time: string
-  end_time: string
-  status: string
-}
+import { approveBooking, deleteBooking, listBookings, type Booking } from '@/lib/api/bookings'
+import { bookingKeys } from '@/lib/query/keys'
+import { apiErrorMessage } from '@/lib/http/client'
+import { useCurrentUser } from '@/hooks/useCurrentUser'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
 
 function useBookings() {
   return useQuery({
-    queryKey: ['bookings'],
+    queryKey: bookingKeys.lists(),
     queryFn: async () => {
-      const res = await apiFetch<{ data: Booking[] | null }>('/api/v1/bookings')
+      const res = await listBookings()
       return res.data || []
     },
   })
@@ -33,9 +26,40 @@ function useBookings() {
 
 export default function BookingsPage() {
   const router = useRouter()
+  const qc = useQueryClient()
+  const { user } = useCurrentUser()
   const { data: bookings, isLoading, error, refetch } = useBookings()
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
+  const isAdmin = user?.role === 'admin'
+
+  const approveMutation = useMutation({
+    mutationFn: approveBooking,
+    onSuccess: () => {
+      toast.success('Booking approved')
+      qc.invalidateQueries({ queryKey: bookingKeys.lists() })
+    },
+    onError: (err) => toast.error(apiErrorMessage(err)),
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteBooking,
+    onSuccess: () => {
+      toast.success('Booking deleted')
+      qc.invalidateQueries({ queryKey: bookingKeys.lists() })
+    },
+    onError: (err) => toast.error(apiErrorMessage(err)),
+  })
+
+  const handleApprove = (booking: Booking) => {
+    if (!confirm(`Approve "${booking.title}"?`)) return
+    approveMutation.mutate(booking.id)
+  }
+
+  const handleDelete = (booking: Booking) => {
+    if (!confirm(`Delete "${booking.title}"? This action cannot be undone.`)) return
+    deleteMutation.mutate(booking.id)
+  }
 
   const filteredBookings = useMemo(() => {
     if (!bookings) return bookings
@@ -85,7 +109,56 @@ export default function BookingsPage() {
           { key: 'end', header: 'End', cell: (b) => new Date(b.end_time).toLocaleString() },
           { key: 'status', header: 'Status', cell: (b) => <StatusBadge status={b.status} /> },
           { key: 'actions', header: '', cell: (b) => (
-            <RowActions onView={() => router.push(`/bookings/${b.id}`)} />
+            <div className="flex items-center justify-end gap-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-slate-400 hover:bg-white/5 hover:text-slate-200"
+                onClick={() => router.push(`/bookings/${b.id}`)}
+                aria-label={`View ${b.title}`}
+                title="View"
+              >
+                <Eye className="h-4 w-4" />
+              </Button>
+              {isAdmin && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-slate-400 hover:bg-white/5 hover:text-slate-200"
+                  onClick={() => router.push(`/bookings/${b.id}/edit`)}
+                  aria-label={`Edit ${b.title}`}
+                  title="Edit"
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+              )}
+              {isAdmin && b.status === 'pending' && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-emerald-400 hover:bg-emerald-500/10 hover:text-emerald-300"
+                  onClick={() => handleApprove(b)}
+                  disabled={approveMutation.isPending}
+                  aria-label={`Approve ${b.title}`}
+                  title="Approve"
+                >
+                  <CheckCircle className="h-4 w-4" />
+                </Button>
+              )}
+              {isAdmin && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-red-400 hover:bg-red-500/10 hover:text-red-300"
+                  onClick={() => handleDelete(b)}
+                  disabled={deleteMutation.isPending}
+                  aria-label={`Delete ${b.title}`}
+                  title="Delete"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
           )},
         ]}
         data={filteredBookings}

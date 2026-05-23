@@ -78,15 +78,7 @@ func New(cfg *config.Config, h *handler.Handlers) *gin.Engine {
 		}
 
 		bookings := protected.Group("/bookings")
-		{
-			bookings.GET("", h.Booking.List)
-			bookings.GET("/:id", h.Booking.Get)
-			bookings.POST("", h.Booking.Create)
-			bookings.PUT("/:id", h.Booking.Update)
-			bookings.DELETE("/:id", h.Booking.Delete)
-			bookings.PATCH("/:id/approve", middleware.RequireRoles("admin"), h.Booking.Approve)
-			bookings.PATCH("/:id/reject", middleware.RequireRoles("admin"), h.Booking.Reject)
-		}
+		registerBookingRoutes(bookings, h.Booking)
 
 		assignments := protected.Group("/assignments")
 		{
@@ -188,4 +180,14 @@ func New(cfg *config.Config, h *handler.Handlers) *gin.Engine {
 	}
 
 	return r
+}
+
+func registerBookingRoutes(bookings *gin.RouterGroup, h *handler.BookingHandler) {
+	bookings.GET("", h.List)
+	bookings.GET("/:id", h.Get)
+	bookings.POST("", h.Create)
+	bookings.PUT("/:id", middleware.RequireRoles("admin"), h.Update)
+	bookings.DELETE("/:id", middleware.RequireRoles("admin"), h.Delete)
+	bookings.PATCH("/:id/approve", middleware.RequireRoles("admin"), h.Approve)
+	bookings.PATCH("/:id/reject", middleware.RequireRoles("admin"), h.Reject)
 }

@@ -130,18 +130,66 @@ func (s *BookingService) PublicCreate(ctx context.Context, req model.PublicCreat
 }
 
 func (s *BookingService) Update(ctx context.Context, id uuid.UUID, req model.UpdateBookingRequest) (*model.Booking, error) {
-	var b model.Booking
+	var current struct {
+		RoomID    uuid.UUID
+		StartTime time.Time
+		EndTime   time.Time
+	}
+
 	err := s.db.QueryRow(ctx,
+		`SELECT room_id, start_time, end_time
+		 FROM bookings
+		 WHERE id = $1 AND deleted_at IS NULL`,
+		id,
+	).Scan(&current.RoomID, &current.StartTime, &current.EndTime)
+	if err != nil {
+		return nil, err
+	}
+
+	roomID := current.RoomID
+	if req.RoomID != nil {
+		parsedRoomID, err := uuid.Parse(*req.RoomID)
+		if err != nil {
+			return nil, err
+		}
+		roomID = parsedRoomID
+	}
+
+	startTime := current.StartTime
+	if req.StartTime != nil {
+		startTime = *req.StartTime
+	}
+
+	endTime := current.EndTime
+	if req.EndTime != nil {
+		endTime = *req.EndTime
+	}
+
+	if !endTime.After(startTime) {
+		return nil, model.ErrInvalidBookingTime
+	}
+
+	overlaps, err := s.countOverlaps(ctx, roomID, startTime.Format(time.RFC3339), endTime.Format(time.RFC3339), id)
+	if err != nil {
+		return nil, err
+	}
+	if overlaps > 0 {
+		return nil, model.ErrBookingOverlap
+	}
+
+	var b model.Booking
+	err = s.db.QueryRow(ctx,
 		`UPDATE bookings SET
-			title = COALESCE($2, title),
-			description = COALESCE($3, description),
-			purpose = COALESCE($4, purpose),
-			start_time = COALESCE($5, start_time),
-			end_time = COALESCE($6, end_time),
+			room_id = $2,
+			title = COALESCE($3, title),
+			description = COALESCE($4, description),
+			purpose = COALESCE($5, purpose),
+			start_time = $6,
+			end_time = $7,
 			updated_at = now()
 		 WHERE id = $1 AND deleted_at IS NULL
 		 RETURNING id, room_id, requester_id, approver_id, title, description, purpose, start_time, end_time, status, rejection_reason, approved_at, created_at, updated_at, requester_name, requester_email, requester_phone`,
-		id, req.Title, req.Description, req.Purpose, req.StartTime, req.EndTime,
+		id, roomID, req.Title, req.Description, req.Purpose, startTime, endTime,
 	).Scan(&b.ID, &b.RoomID, &b.RequesterID, &b.ApproverID, &b.Title, &b.Description, &b.Purpose, &b.StartTime, &b.EndTime, &b.Status, &b.RejectionReason, &b.ApprovedAt, &b.CreatedAt, &b.UpdatedAt, &b.RequesterName, &b.RequesterEmail, &b.RequesterPhone)
 	if err != nil {
 		return nil, err
