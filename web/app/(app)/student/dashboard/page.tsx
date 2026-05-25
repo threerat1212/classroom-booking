@@ -228,12 +228,12 @@ export default function StudentDashboardPage() {
           </div>
         </div>
 
-        <aside className="overflow-hidden rounded-xl border border-blue-100 bg-white shadow-sm">
-          <div className="relative h-44 overflow-hidden bg-gradient-to-br from-sky-400 via-sky-200 to-white">
-            <div className="absolute left-0 top-0 h-full w-full bg-[radial-gradient(circle_at_20%_22%,rgba(255,255,255,0.9)_0_11%,transparent_12%),radial-gradient(circle_at_78%_24%,rgba(255,255,255,0.82)_0_10%,transparent_11%)]" />
-            <div className="absolute -bottom-3 left-0 h-20 w-28 rounded-tr-[42px] bg-emerald-300/45" />
-            <div className="absolute -bottom-5 left-16 h-24 w-32 rounded-t-full bg-emerald-200/55" />
-            <div className="absolute bottom-0 right-7 h-24 w-44 rounded-t-2xl border border-white/75 bg-white/62 shadow-sm backdrop-blur-[1px]">
+        <aside className="rounded-xl border border-blue-100 bg-white shadow-sm">
+          <div className="relative h-44 overflow-hidden rounded-t-xl bg-gradient-to-br from-sky-400 via-sky-200 to-white">
+            <div className="absolute left-0 top-0 h-full w-full bg-[radial-gradient(circle_at_18%_24%,rgba(255,255,255,0.9)_0_11%,transparent_12%),radial-gradient(circle_at_84%_22%,rgba(255,255,255,0.78)_0_9%,transparent_10%)]" />
+            <div className="absolute -bottom-4 left-0 h-20 w-32 rounded-tr-[48px] bg-emerald-300/45" />
+            <div className="absolute -bottom-7 left-20 h-24 w-36 rounded-t-full bg-emerald-200/55" />
+            <div className="absolute bottom-0 right-7 h-24 w-44 rounded-t-2xl border border-white/75 bg-white/65 shadow-sm backdrop-blur-[1px]">
               <div className="h-6 rounded-t-2xl bg-blue-100/75" />
               <div className="grid grid-cols-4 gap-1.5 p-3">
                 {Array.from({ length: 8 }).map((_, index) => (
@@ -241,18 +241,16 @@ export default function StudentDashboardPage() {
                 ))}
               </div>
             </div>
-            <div className="absolute right-16 top-8 h-16 w-px bg-blue-500/65" />
-            <div className="absolute right-16 top-8 h-6 w-9 rounded-r-sm bg-gradient-to-r from-rose-400 via-white to-blue-500 shadow-sm" />
-            <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-white/80 to-transparent" />
-            <div className="absolute left-1/2 top-5 -translate-x-1/2">
+            <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-white/90 to-transparent" />
+            <div className="absolute left-1/2 top-7 -translate-x-1/2">
               <StudentCharacterAvatar
                 name={user?.full_name}
-                className="soft-float h-32 w-32 border-4 border-white shadow-xl ring-1 ring-blue-100"
+                className="h-28 w-28 border-[5px] border-white shadow-xl ring-1 ring-blue-100"
               />
             </div>
           </div>
-          <div className="-mt-5 p-5 pt-0">
-            <div className="inline-flex items-center rounded-xl bg-blue-600 px-3 py-1 text-lg font-black text-white shadow-sm">Lv. {level}</div>
+          <div className="relative -mt-4 p-5 pt-0">
+            <div className="relative z-10 inline-flex items-center rounded-xl bg-blue-600 px-3 py-1 text-lg font-black text-white shadow-sm shadow-blue-200">Lv. {level}</div>
             <div className="mt-3 flex items-center gap-3">
               <h2 className="min-w-0 flex-1 truncate text-base font-black text-slate-950">{rankTitle}</h2>
               <span className="shrink-0 text-xs font-bold text-slate-500">{xp.toLocaleString()} / {nextLevelXp.toLocaleString()} XP</span>

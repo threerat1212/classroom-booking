@@ -26,24 +26,7 @@ function isRegisterRole(value: string): value is RegisterRole {
   return REGISTER_ROLES.includes(value as RegisterRole)
 }
 
-function FloatingOrb({ className, delay = 0 }: { className: string; delay?: number }) {
-  return (
-    <motion.div
-      className={`absolute rounded-full blur-3xl opacity-40 ${className}`}
-      animate={{
-        y: [0, -30, 0],
-        x: [0, 15, 0],
-        scale: [1, 1.1, 1],
-      }}
-      transition={{
-        duration: 8,
-        repeat: Infinity,
-        delay,
-        ease: 'easeInOut',
-      }}
-    />
-  )
-}
+const fieldClass = 'h-10 rounded-xl border-slate-200 bg-white text-slate-950 shadow-sm placeholder:text-slate-400 focus-visible:ring-blue-500 focus-visible:ring-offset-1'
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -130,18 +113,7 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-slate-950 p-4">
-      <div className="absolute inset-0 bg-gradient-to-br from-indigo-950 via-slate-900 to-blue-950" />
-      <FloatingOrb className="top-20 left-1/4 h-72 w-72 bg-blue-600" delay={0} />
-      <FloatingOrb className="bottom-20 right-1/4 h-96 w-96 bg-indigo-600" delay={2} />
-      <FloatingOrb className="top-1/2 left-10 h-48 w-48 bg-purple-600" delay={4} />
-      <div
-        className="absolute inset-0 opacity-[0.03]"
-        style={{
-          backgroundImage: `linear-gradient(rgba(255,255,255,.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.1) 1px, transparent 1px)`,
-          backgroundSize: '60px 60px',
-        }}
-      />
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-to-br from-slate-50 via-white to-blue-50/70 p-4 text-slate-950">
 
       <motion.div
         initial={{ opacity: 0, y: 20, scale: 0.95 }}
@@ -149,14 +121,14 @@ export default function RegisterPage() {
         transition={{ duration: 0.5, ease: 'easeOut' }}
         className="relative z-10 w-full max-w-md"
       >
-        <div className="relative rounded-2xl border border-white/10 bg-white/5 p-8 shadow-2xl backdrop-blur-xl">
+        <div className="relative rounded-3xl border border-slate-200 bg-white p-8 shadow-xl shadow-slate-200/70">
           {/* Top utility bar: back to home + lang switcher */}
           <div className="absolute right-5 top-5 flex items-center gap-2">
             <button
               type="button"
               onClick={() => setLang(lang === 'th' ? 'en' : 'th')}
               aria-label={t('language')}
-              className="flex items-center gap-1 rounded-md border border-white/5 bg-white/5 px-2.5 py-1 text-xs text-slate-400 transition-colors hover:text-white"
+              className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-bold text-slate-600 shadow-sm transition-colors hover:bg-slate-50 hover:text-slate-950"
             >
               <Globe className="h-3.5 w-3.5" />
               <span>{lang === 'th' ? 'EN' : 'TH'}</span>
@@ -166,7 +138,7 @@ export default function RegisterPage() {
             <Link
               href="/"
               aria-label={t('home')}
-              className="flex items-center gap-1 rounded-md border border-white/5 bg-white/5 px-2.5 py-1 text-xs text-slate-400 transition-colors hover:text-white"
+              className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-bold text-slate-600 shadow-sm transition-colors hover:bg-slate-50 hover:text-slate-950"
             >
               <ArrowLeft className="h-3.5 w-3.5" />
               <span>{t('home')}</span>
@@ -182,10 +154,10 @@ export default function RegisterPage() {
             <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/25">
               <DoorOpen className="h-7 w-7" />
             </div>
-            <h1 className="mt-5 text-2xl font-bold text-white tracking-tight">
+            <h1 className="mt-5 text-2xl font-black text-slate-950 tracking-tight">
               {t('register_title')}
             </h1>
-            <p className="mt-1.5 text-sm text-slate-400">
+            <p className="mt-1.5 text-sm font-medium text-slate-500">
               {t('register_subtitle')}
             </p>
           </motion.div>
@@ -198,8 +170,8 @@ export default function RegisterPage() {
               animate={{ opacity: 1, scale: 1 }}
             >
               <CheckCircle className="h-12 w-12 text-emerald-400" />
-              <p className="text-lg font-semibold text-white">{t('account_created')}</p>
-              <p className="text-sm text-slate-400">{t('redirecting')}</p>
+              <p className="text-lg font-bold text-slate-950">{t('account_created')}</p>
+              <p className="text-sm text-slate-500">{t('redirecting')}</p>
             </motion.div>
           ) : (
             <motion.form
@@ -210,7 +182,7 @@ export default function RegisterPage() {
               transition={{ delay: 0.3 }}
             >
               <div className="space-y-2">
-                <Label htmlFor="fullName" className="text-xs font-semibold text-slate-300">
+                <Label htmlFor="fullName" className="text-xs font-black text-slate-700">
                   {t('full_name')}
                 </Label>
                 <Input
@@ -222,12 +194,12 @@ export default function RegisterPage() {
                   autoComplete="name"
                   placeholder={t('full_name_placeholder')}
                   leftIcon={<User className="h-4 w-4" />}
-                  className="glass-input border-white/10 text-white placeholder:text-slate-500 focus-visible:ring-blue-400/40 focus-visible:ring-offset-0 text-sm h-10 rounded-lg"
+                  className={fieldClass}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-xs font-semibold text-slate-300">
+                <Label htmlFor="email" className="text-xs font-black text-slate-700">
                   {t('email')}
                 </Label>
                 <Input
@@ -239,12 +211,12 @@ export default function RegisterPage() {
                   autoComplete="email"
                   placeholder="you@school.edu"
                   leftIcon={<Mail className="h-4 w-4" />}
-                  className="glass-input border-white/10 text-white placeholder:text-slate-500 focus-visible:ring-blue-400/40 focus-visible:ring-offset-0 text-sm h-10 rounded-lg"
+                  className={fieldClass}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="role" className="text-xs font-semibold text-slate-300">
+                <Label htmlFor="role" className="text-xs font-black text-slate-700">
                   {t('role_label')}
                 </Label>
                 <Select
@@ -259,10 +231,10 @@ export default function RegisterPage() {
                   }}
                   required
                 >
-                  <SelectTrigger className="h-10 rounded-lg border-white/10 bg-white/5 text-white focus:ring-blue-400/40 focus:ring-offset-0 [&>span]:text-white [&>svg]:text-slate-400">
+                  <SelectTrigger className="h-10 rounded-xl border-slate-200 bg-white text-slate-950 shadow-sm focus:ring-blue-500 focus:ring-offset-1 [&>span]:text-slate-950 [&>svg]:text-slate-400">
                     <SelectValue placeholder={t('role_placeholder')} />
                   </SelectTrigger>
-                  <SelectContent className="border-white/10 bg-slate-900 text-white">
+                  <SelectContent className="border-slate-200 bg-white text-slate-950">
                     <SelectItem value="student">{t('student')}</SelectItem>
                     <SelectItem value="teacher">{t('teacher')}</SelectItem>
                     <SelectItem value="guest">{t('guest')}</SelectItem>
@@ -276,7 +248,7 @@ export default function RegisterPage() {
                   initial={{ opacity: 0, y: -6 }}
                   animate={{ opacity: 1, y: 0 }}
                 >
-                  <Label htmlFor="teacherInviteCode" className="text-xs font-semibold text-slate-300">
+                  <Label htmlFor="teacherInviteCode" className="text-xs font-black text-slate-700">
                     {t('teacher_invite_label')}
                   </Label>
                   <Input
@@ -288,13 +260,13 @@ export default function RegisterPage() {
                     autoComplete="off"
                     placeholder={t('teacher_invite_placeholder')}
                     leftIcon={<KeyRound className="h-4 w-4" />}
-                    className="glass-input border-white/10 text-white placeholder:text-slate-500 focus-visible:ring-blue-400/40 focus-visible:ring-offset-0 text-sm h-10 rounded-lg"
+                    className={fieldClass}
                   />
                 </motion.div>
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="password" className="text-xs font-semibold text-slate-300">
+                <Label htmlFor="password" className="text-xs font-black text-slate-700">
                   {t('password')}
                 </Label>
                 <div className="relative">
@@ -308,13 +280,13 @@ export default function RegisterPage() {
                     autoComplete="new-password"
                     placeholder={t('password_placeholder')}
                     leftIcon={<Lock className="h-4 w-4" />}
-                    className="glass-input border-white/10 text-white placeholder:text-slate-500 focus-visible:ring-blue-400/40 focus-visible:ring-offset-0 text-sm h-10 rounded-lg pr-10"
+                    className={`${fieldClass} pr-10`}
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword((v) => !v)}
                     aria-label={showPassword ? t('hide_password') : t('show_password')}
-                    className="absolute right-2 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-white/5 hover:text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/40"
+                    className="absolute right-2 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
@@ -322,7 +294,7 @@ export default function RegisterPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="confirmPassword" className="text-xs font-semibold text-slate-300">
+                <Label htmlFor="confirmPassword" className="text-xs font-black text-slate-700">
                   {t('confirm_password')}
                 </Label>
                 <div className="relative">
@@ -336,13 +308,13 @@ export default function RegisterPage() {
                     placeholder={t('confirm_password_placeholder')}
                     leftIcon={<Lock className="h-4 w-4" />}
                     error={confirmPassword.length > 0 && confirmPassword !== password}
-                    className="glass-input border-white/10 text-white placeholder:text-slate-500 focus-visible:ring-blue-400/40 focus-visible:ring-offset-0 text-sm h-10 rounded-lg pr-10"
+                    className={`${fieldClass} pr-10`}
                   />
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword((v) => !v)}
                     aria-label={showConfirmPassword ? t('hide_password') : t('show_password')}
-                    className="absolute right-2 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-white/5 hover:text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/40"
+                    className="absolute right-2 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                   >
                     {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
@@ -355,10 +327,10 @@ export default function RegisterPage() {
                   animate={{ opacity: 1, height: 'auto' }}
                   exit={{ opacity: 0, height: 0 }}
                   role="alert"
-                  className="flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2.5"
+                  className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5"
                 >
-                  <AlertCircle className="h-4 w-4 shrink-0 text-red-400" />
-                  <p className="text-sm text-red-300">{error}</p>
+                  <AlertCircle className="h-4 w-4 shrink-0 text-red-600" />
+                  <p className="text-sm font-semibold text-red-700">{error}</p>
                 </motion.div>
               )}
 
@@ -375,13 +347,13 @@ export default function RegisterPage() {
           )}
 
           <motion.p
-            className="mt-6 text-center text-sm text-slate-400"
+            className="mt-6 text-center text-sm font-medium text-slate-500"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.5 }}
           >
             {t('have_account')}{' '}
-            <Link href="/login" className="font-medium text-blue-400 transition-colors hover:text-blue-300">
+            <Link href="/login" className="font-black text-blue-600 transition-colors hover:text-blue-700">
               {t('signin_link')}
             </Link>
           </motion.p>

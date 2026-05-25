@@ -189,13 +189,7 @@ export default function MeetingRoomsPage() {
   }
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#05070c] bg-grid-lines">
-      {/* Background Orbs */}
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute -left-20 -top-20 h-96 w-96 rounded-full bg-blue-500/5 blur-[100px]" />
-        <div className="absolute -bottom-20 -right-20 h-96 w-96 rounded-full bg-indigo-500/5 blur-[100px]" />
-      </div>
-
+    <div className="legacy-light-surface relative min-h-screen overflow-hidden bg-gradient-to-br from-slate-50 via-white to-blue-50/70">
       {/* Header */}
       <header className="relative z-10 border-b border-white/5 bg-slate-950/40 backdrop-blur-xl">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">

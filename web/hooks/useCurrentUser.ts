@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { getStoredUser, setStoredUser, clearSession, StoredUser, USER_CHANGED_EVENT } from '@/lib/auth/session'
+import { getAccessToken, getStoredUser, setStoredUser, clearSession, StoredUser, USER_CHANGED_EVENT } from '@/lib/auth/session'
 import { apiFetch } from '@/lib/http/client'
 
 function normalizeUser(user: StoredUser): StoredUser {
@@ -33,9 +33,13 @@ export function useCurrentUser() {
   useEffect(() => {
     let cancelled = false
     const u = getStoredUser()
-    if (u) {
+    const token = getAccessToken()
+
+    if (u && token) {
       setUser(u)
       setIsLoading(false)
+    } else if (u && !token) {
+      clearSession()
     }
 
     const handleUserChange = (event: Event) => {
@@ -43,6 +47,14 @@ export function useCurrentUser() {
       setUser(nextUser)
     }
     window.addEventListener(USER_CHANGED_EVENT, handleUserChange)
+
+    if (!token) {
+      setIsLoading(false)
+      return () => {
+        cancelled = true
+        window.removeEventListener(USER_CHANGED_EVENT, handleUserChange)
+      }
+    }
 
     refreshUser()
       .then((nextUser) => {
