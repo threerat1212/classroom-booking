@@ -16,7 +16,6 @@ func CORSMiddleware() gin.HandlerFunc {
 				strings.HasPrefix(origin, "http://127.0.0.1:") ||
 				strings.HasPrefix(origin, "https://localhost:") ||
 				strings.HasPrefix(origin, "https://127.0.0.1:") ||
-				strings.HasSuffix(origin, ".netlify.app") ||
 				strings.HasSuffix(origin, ".onrender.com") ||
 				strings.HasSuffix(origin, ".vercel.app")
 		},
