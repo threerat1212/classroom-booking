@@ -6,11 +6,12 @@ import { CheckCircle, Eye, Pencil, Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { DataTable } from '@/components/shared/data-table'
 import { StatusBadge } from '@/components/shared/status-badge'
-import { FilterBar } from '@/components/shared/filter-bar'
+import { FilterBar, FilterSelect } from '@/components/shared/filter-bar'
 import { approveBooking, deleteBooking, listBookings, type Booking } from '@/lib/api/bookings'
 import { bookingKeys } from '@/lib/query/keys'
 import { apiErrorMessage } from '@/lib/http/client'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
+import { useLanguage } from '@/lib/context/language-context'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 
@@ -28,6 +29,7 @@ export default function BookingsPage() {
   const router = useRouter()
   const qc = useQueryClient()
   const { user } = useCurrentUser()
+  const { t } = useLanguage()
   const { data: bookings, isLoading, error, refetch } = useBookings()
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
@@ -36,7 +38,7 @@ export default function BookingsPage() {
   const approveMutation = useMutation({
     mutationFn: approveBooking,
     onSuccess: () => {
-      toast.success('Booking approved')
+      toast.success('อนุมัติการจองสำเร็จ')
       qc.invalidateQueries({ queryKey: bookingKeys.lists() })
     },
     onError: (err) => toast.error(apiErrorMessage(err)),
@@ -45,19 +47,19 @@ export default function BookingsPage() {
   const deleteMutation = useMutation({
     mutationFn: deleteBooking,
     onSuccess: () => {
-      toast.success('Booking deleted')
+      toast.success('ลบการจองสำเร็จ')
       qc.invalidateQueries({ queryKey: bookingKeys.lists() })
     },
     onError: (err) => toast.error(apiErrorMessage(err)),
   })
 
   const handleApprove = (booking: Booking) => {
-    if (!confirm(`Approve "${booking.title}"?`)) return
+    if (!confirm(`อนุมัติการจอง "${booking.title}"?`)) return
     approveMutation.mutate(booking.id)
   }
 
   const handleDelete = (booking: Booking) => {
-    if (!confirm(`Delete "${booking.title}"? This action cannot be undone.`)) return
+    if (!confirm(`ลบการจอง "${booking.title}"? ไม่สามารถย้อนกลับได้`)) return
     deleteMutation.mutate(booking.id)
   }
 
@@ -73,33 +75,37 @@ export default function BookingsPage() {
   }, [bookings, search, statusFilter])
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Bookings</h1>
-          <p className="mt-1 text-sm text-slate-400">Manage room reservations</p>
+    <div className="space-y-6 animate-fade-in-up">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-bold tracking-tight text-slate-950 sm:text-3xl">{t('bookings_title')}</h1>
+          <p className="mt-1 text-sm text-slate-500">{t('bookings_subtitle')}</p>
         </div>
-        <Button onClick={() => router.push('/bookings/new')} className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:from-blue-600 hover:to-indigo-700 shadow-lg shadow-blue-500/25">
-          <Plus className="mr-2 h-4 w-4" />
-          New Booking
+        <Button
+          variant="brand"
+          onClick={() => router.push('/bookings/new')}
+          leftIcon={<Plus className="h-4 w-4" />}
+          className="self-start sm:self-auto"
+        >
+          {t('bookings_add')}
         </Button>
       </div>
       <FilterBar
-        placeholder="Search bookings..."
+        placeholder={t('bookings_search')}
         onChange={(q) => setSearch(q)}
         onClear={() => { setSearch(''); setStatusFilter('') }}
       >
-        <select
+        <FilterSelect
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="h-9 rounded-lg border border-white/10 bg-white/5 px-2 text-sm text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          aria-label={t('all_status')}
         >
-          <option value="" className="bg-slate-900 text-slate-200">All Status</option>
-          <option value="pending" className="bg-slate-900 text-slate-200">Pending</option>
-          <option value="approved" className="bg-slate-900 text-slate-200">Approved</option>
-          <option value="rejected" className="bg-slate-900 text-slate-200">Rejected</option>
-          <option value="cancelled" className="bg-slate-900 text-slate-200">Cancelled</option>
-        </select>
+          <option value="">{t('all_status')}</option>
+          <option value="pending">{t('status_pending')}</option>
+          <option value="approved">{t('status_approved')}</option>
+          <option value="rejected">{t('status_rejected')}</option>
+          <option value="cancelled">{t('status_cancelled')}</option>
+        </FilterSelect>
       </FilterBar>
       <DataTable
         columns={[
@@ -113,10 +119,10 @@ export default function BookingsPage() {
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 text-slate-400 hover:bg-white/5 hover:text-slate-200"
+                className="h-8 w-8 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
                 onClick={() => router.push(`/bookings/${b.id}`)}
                 aria-label={`View ${b.title}`}
-                title="View"
+                title={t('view')}
               >
                 <Eye className="h-4 w-4" />
               </Button>
@@ -124,10 +130,10 @@ export default function BookingsPage() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 text-slate-400 hover:bg-white/5 hover:text-slate-200"
+                  className="h-8 w-8 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
                   onClick={() => router.push(`/bookings/${b.id}/edit`)}
                   aria-label={`Edit ${b.title}`}
-                  title="Edit"
+                  title={t('edit')}
                 >
                   <Pencil className="h-4 w-4" />
                 </Button>
@@ -136,11 +142,11 @@ export default function BookingsPage() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 text-emerald-400 hover:bg-emerald-500/10 hover:text-emerald-300"
+                  className="h-8 w-8 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700"
                   onClick={() => handleApprove(b)}
                   disabled={approveMutation.isPending}
                   aria-label={`Approve ${b.title}`}
-                  title="Approve"
+                  title={t('confirm')}
                 >
                   <CheckCircle className="h-4 w-4" />
                 </Button>
@@ -149,11 +155,11 @@ export default function BookingsPage() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 text-red-400 hover:bg-red-500/10 hover:text-red-300"
+                  className="h-8 w-8 text-red-500 hover:bg-red-50 hover:text-red-700"
                   onClick={() => handleDelete(b)}
                   disabled={deleteMutation.isPending}
                   aria-label={`Delete ${b.title}`}
-                  title="Delete"
+                  title={t('delete')}
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
@@ -164,10 +170,10 @@ export default function BookingsPage() {
         data={filteredBookings}
         isLoading={isLoading}
         isError={!!error}
-        errorMessage="Failed to load bookings"
+        errorMessage="ไม่สามารถโหลดข้อมูลการจองได้"
         onRetry={refetch}
-        emptyTitle="No bookings yet"
-        emptyMessage="Get started by creating your first booking."
+        emptyTitle={t('bookings_empty_title')}
+        emptyMessage={t('bookings_empty_message')}
       />
     </div>
   )

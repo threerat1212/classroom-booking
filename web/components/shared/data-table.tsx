@@ -61,22 +61,41 @@ export function DataTable<T>({
 
   return (
     <div className="space-y-4">
-      <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm">
+      <div className="space-y-3 sm:hidden">
+        {displayData.map((row, idx) => (
+          <div key={idx} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            {columns.map((col) => (
+              <div key={col.key} className="grid grid-cols-[6.5rem_minmax(0,1fr)] gap-3 border-b border-slate-100 py-2 last:border-b-0">
+                {col.header ? (
+                  <>
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{col.header}</div>
+                    <div className="min-w-0 text-sm text-slate-700">{col.cell(row)}</div>
+                  </>
+                ) : (
+                  <div className="col-span-2 flex justify-end">{col.cell(row)}</div>
+                )}
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+
+      <div className="hidden overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm sm:block">
         <Table>
           <TableHeader>
-            <TableRow className="border-b border-white/10 bg-white/5 hover:bg-white/5">
+            <TableRow className="border-b border-slate-200 bg-slate-50 hover:bg-slate-50">
               {columns.map((col) => (
-                <TableHead key={col.key} className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
+                <TableHead key={col.key} className="px-4 py-3.5 text-left text-xs font-bold uppercase tracking-wider text-slate-500">
                   {col.header}
                 </TableHead>
               ))}
             </TableRow>
           </TableHeader>
-          <TableBody className="divide-y divide-white/5">
+          <TableBody className="divide-y divide-slate-100">
             {displayData.map((row, idx) => (
-              <TableRow key={idx} className="group transition-colors hover:bg-white/5">
+              <TableRow key={idx} className="group transition-colors hover:bg-blue-50/40">
                 {columns.map((col) => (
-                  <TableCell key={col.key} className="px-4 py-3.5 text-sm text-slate-200">
+                  <TableCell key={col.key} className="px-4 py-3.5 text-sm text-slate-700">
                     {col.cell(row)}
                   </TableCell>
                 ))}

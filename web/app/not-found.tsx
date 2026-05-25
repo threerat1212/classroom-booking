@@ -1,20 +1,47 @@
 import Link from 'next/link'
-import { FileX } from 'lucide-react'
+import { ArrowLeft, Compass, Home } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 
 export default function NotFound() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-gray-50 px-4 text-center">
-      <div className="rounded-full bg-gray-100 p-4">
-        <FileX className="h-8 w-8 text-gray-400" />
+    <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-slate-50 via-white to-indigo-50/40 px-4 text-center">
+      <div
+        className="pointer-events-none absolute inset-0 opacity-[0.04]"
+        style={{
+          backgroundImage:
+            'linear-gradient(rgba(15,23,42,0.6) 1px, transparent 1px), linear-gradient(90deg, rgba(15,23,42,0.6) 1px, transparent 1px)',
+          backgroundSize: '64px 64px',
+        }}
+        aria-hidden="true"
+      />
+      <div className="relative z-10 flex max-w-md flex-col items-center">
+        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white shadow-lg ring-1 ring-blue-100">
+          <Compass className="h-8 w-8 text-blue-500" />
+        </div>
+        <p className="mt-5 text-sm font-semibold uppercase tracking-[0.18em] text-blue-600">
+          404
+        </p>
+        <h1 className="mt-1 text-3xl font-extrabold tracking-tight text-slate-950 sm:text-4xl">
+          ไม่พบหน้านี้
+        </h1>
+        <p className="mt-2 max-w-sm text-sm text-slate-500">
+          เส้นทางที่คุณเข้ามาอาจถูกย้ายหรือไม่มีอยู่อีกต่อไป
+        </p>
+        <div className="mt-6 flex flex-col gap-2 sm:flex-row">
+          <Button asChild variant="brand">
+            <Link href="/dashboard">
+              <Home className="mr-1.5 h-4 w-4" />
+              ไปหน้าแดชบอร์ด
+            </Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link href="/">
+              <ArrowLeft className="mr-1.5 h-4 w-4" />
+              กลับหน้าแรก
+            </Link>
+          </Button>
+        </div>
       </div>
-      <h1 className="text-4xl font-bold text-gray-900">404</h1>
-      <p className="text-sm text-gray-500">Page not found</p>
-      <Link
-        href="/dashboard"
-        className="rounded-md bg-blue-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
-      >
-        Go to Dashboard
-      </Link>
     </div>
   )
 }

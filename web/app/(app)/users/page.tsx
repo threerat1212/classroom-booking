@@ -8,6 +8,7 @@ import { StatusBadge } from '@/components/shared/status-badge'
 import { RowActions } from '@/components/shared/row-actions'
 import { apiFetch } from '@/lib/http/client'
 import { useQuery } from '@tanstack/react-query'
+import { useLanguage } from '@/lib/context/language-context'
 
 interface User {
   id: string
@@ -30,24 +31,29 @@ function useUsers() {
 
 export default function UsersPage() {
   const router = useRouter()
+  const { t } = useLanguage()
   const { data: users, isLoading, error, refetch } = useUsers()
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Users</h1>
-          <p className="mt-1 text-sm text-slate-400">Manage system users and roles</p>
+    <div className="space-y-6 animate-fade-in-up">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-bold tracking-tight text-slate-950 sm:text-3xl">{t('users_title')}</h1>
+          <p className="mt-1 text-sm text-slate-500">{t('users_subtitle')}</p>
         </div>
-        <Button onClick={() => router.push('/users/new')} className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:from-blue-600 hover:to-indigo-700 shadow-lg shadow-blue-500/25">
-          <Plus className="mr-2 h-4 w-4" />
-          Add User
+        <Button
+          variant="brand"
+          onClick={() => router.push('/users/new')}
+          leftIcon={<Plus className="h-4 w-4" />}
+          className="self-start sm:self-auto"
+        >
+          {t('users_add')}
         </Button>
       </div>
       <DataTable
         columns={[
-          { key: 'name', header: 'Name', cell: (u) => <span className="font-medium">{u.full_name}</span> },
-          { key: 'email', header: 'Email', cell: (u) => u.email },
+          { key: 'name', header: 'Name', cell: (u) => <span className="font-medium text-slate-900">{u.full_name}</span> },
+          { key: 'email', header: 'Email', cell: (u) => <span className="text-slate-600">{u.email}</span> },
           { key: 'role', header: 'Role', cell: (u) => <StatusBadge status={u.role} /> },
           { key: 'status', header: 'Status', cell: (u) => <StatusBadge status={u.status} /> },
           { key: 'created', header: 'Created', cell: (u) => new Date(u.created_at).toLocaleDateString() },
@@ -58,10 +64,10 @@ export default function UsersPage() {
         data={users}
         isLoading={isLoading}
         isError={!!error}
-        errorMessage="Failed to load users"
+        errorMessage="ไม่สามารถโหลดข้อมูลผู้ใช้ได้"
         onRetry={refetch}
-        emptyTitle="No users yet"
-        emptyMessage="Get started by adding your first user."
+        emptyTitle={t('users_empty_title')}
+        emptyMessage={t('users_empty_message')}
       />
     </div>
   )

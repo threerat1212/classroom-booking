@@ -1,7 +1,8 @@
-import * as React from 'react'
+'use client'
+
 import { ChevronLeft, ChevronRight, MoreHorizontal } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { buttonVariants } from '@/components/ui/button'
+import { useLanguage } from '@/lib/context/language-context'
 
 interface PaginationProps {
   page: number
@@ -13,6 +14,9 @@ interface PaginationProps {
   className?: string
 }
 
+const baseControlClasses =
+  'inline-flex h-9 min-w-[2.25rem] items-center justify-center rounded-md border border-slate-200 bg-white px-2 text-sm font-medium text-slate-700 shadow-sm transition-colors hover:bg-slate-50 hover:text-slate-900 disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1'
+
 export function Pagination({
   page,
   pageSize,
@@ -22,6 +26,7 @@ export function Pagination({
   pageSizeOptions = [10, 20, 50],
   className,
 }: PaginationProps) {
+  const { t } = useLanguage()
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
   const startItem = total === 0 ? 0 : (page - 1) * pageSize + 1
   const endItem = Math.min(page * pageSize, total)
@@ -55,11 +60,12 @@ export function Pagination({
   }
 
   return (
-    <div className={cn('flex flex-col items-center gap-4 sm:flex-row sm:justify-between', className)}>
-      <div className="text-sm text-slate-400">
-        Showing <span className="font-medium text-slate-200">{startItem}</span> to{' '}
-        <span className="font-medium text-slate-200">{endItem}</span> of{' '}
-        <span className="font-medium text-slate-200">{total}</span> results
+    <div className={cn('flex flex-col items-center gap-3 sm:flex-row sm:justify-between', className)}>
+      <div className="text-sm text-slate-500">
+        {t('showing_results')}{' '}
+        <span className="font-semibold text-slate-900">{startItem}</span> {t('to')}{' '}
+        <span className="font-semibold text-slate-900">{endItem}</span> {t('of')}{' '}
+        <span className="font-semibold text-slate-900">{total}</span> {t('results')}
       </div>
 
       <div className="flex items-center gap-2">
@@ -67,11 +73,12 @@ export function Pagination({
           <select
             value={pageSize}
             onChange={(e) => onPageSizeChange(Number(e.target.value))}
-            className="h-8 rounded-lg border border-white/10 bg-white/5 px-2 text-sm text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            className="h-9 rounded-md border border-slate-200 bg-white px-2 text-sm text-slate-700 shadow-sm transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1"
+            aria-label={t('per_page')}
           >
             {pageSizeOptions.map((size) => (
-              <option key={size} value={size} className="bg-slate-900 text-slate-200">
-                {size} / page
+              <option key={size} value={size}>
+                {size} / {t('per_page')}
               </option>
             ))}
           </select>
@@ -81,29 +88,25 @@ export function Pagination({
           <button
             onClick={() => onPageChange(page - 1)}
             disabled={page <= 1}
-            className={cn(
-              'inline-flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-sm text-slate-200 transition-colors hover:bg-white/10 disabled:pointer-events-none disabled:opacity-50',
-              page <= 1 && 'pointer-events-none opacity-50',
-            )}
-            aria-label="Previous page"
+            className={baseControlClasses}
+            aria-label={t('previous')}
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
 
           {getVisiblePages().map((p, idx) =>
             p === 'ellipsis' ? (
-              <span key={`ellipsis-${idx}`} className="flex h-8 w-8 items-center justify-center">
-                <MoreHorizontal className="h-4 w-4 text-slate-500" />
+              <span key={`ellipsis-${idx}`} className="flex h-9 w-9 items-center justify-center" aria-hidden="true">
+                <MoreHorizontal className="h-4 w-4 text-slate-400" />
               </span>
             ) : (
               <button
                 key={p}
                 onClick={() => onPageChange(p)}
                 className={cn(
-                  'h-8 min-w-[2rem] rounded-lg px-2 text-sm font-medium transition-colors',
-                  p === page
-                    ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/25'
-                    : 'border border-white/10 bg-white/5 text-slate-200 hover:bg-white/10',
+                  baseControlClasses,
+                  p === page &&
+                    'border-transparent bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-md shadow-blue-500/20 hover:from-blue-600 hover:to-indigo-700 hover:text-white',
                 )}
                 aria-label={`Page ${p}`}
                 aria-current={p === page ? 'page' : undefined}
@@ -116,11 +119,8 @@ export function Pagination({
           <button
             onClick={() => onPageChange(page + 1)}
             disabled={page >= totalPages}
-            className={cn(
-              'inline-flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-sm text-slate-200 transition-colors hover:bg-white/10 disabled:pointer-events-none disabled:opacity-50',
-              page >= totalPages && 'pointer-events-none opacity-50',
-            )}
-            aria-label="Next page"
+            className={baseControlClasses}
+            aria-label={t('next')}
           >
             <ChevronRight className="h-4 w-4" />
           </button>

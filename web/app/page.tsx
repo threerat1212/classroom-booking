@@ -1,15 +1,26 @@
 'use client'
 
+import { useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { LogIn, Building2, GraduationCap, ArrowRight, Users, Globe, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useLanguage } from '@/lib/context/language-context'
+import { useCurrentUser } from '@/hooks/useCurrentUser'
 
 export default function HomeDashboard() {
   const router = useRouter()
   const { lang, setLang, t } = useLanguage()
+  const { role, isLoading } = useCurrentUser()
+
+  useEffect(() => {
+    if (!isLoading && role) {
+      router.replace(role === 'student' ? '/student/dashboard' : '/dashboard')
+    }
+  }, [isLoading, role, router])
+
+  if (!isLoading && role) return null
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-[#05070c] bg-grid-lines">

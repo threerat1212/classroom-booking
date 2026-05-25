@@ -1,5 +1,7 @@
 'use client'
 
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { DoorOpen, CalendarDays, ClipboardList, Users, TrendingUp, ArrowUpRight } from 'lucide-react'
 import { useQueries } from '@tanstack/react-query'
@@ -17,7 +19,7 @@ interface User {
   role: string
 }
 
-function useDashboardStats(role: string | null) {
+function useDashboardStats(role: string | null, enabled: boolean) {
   const canReadUsers = role === 'admin' || role === 'teacher'
 
   return useQueries({
@@ -26,32 +28,35 @@ function useDashboardStats(role: string | null) {
         queryKey: roomKeys.lists(),
         queryFn: listRooms,
         select: (res: { data: unknown[] }) => res.data.length,
+        enabled,
       },
       {
         queryKey: bookingKeys.lists(),
         queryFn: listBookings,
         select: (res: { data: unknown[] }) => res.data.length,
+        enabled,
       },
       {
         queryKey: assignmentKeys.lists(),
         queryFn: listAssignments,
         select: (res: { data: unknown[] }) => res.data.length,
+        enabled,
       },
       {
         queryKey: userKeys.lists(),
         queryFn: async () => apiFetch<{ data: User[] }>('/api/v1/users'),
         select: (res: { data: User[] }) => res.data.filter((u) => u.role === 'student').length,
-        enabled: canReadUsers,
+        enabled: enabled && canReadUsers,
       },
     ],
   })
 }
 
 const KPI_CONFIG = [
-  { labelKey: 'total_rooms', icon: DoorOpen, gradient: 'from-blue-500/10 to-transparent', iconBg: 'bg-blue-500/10 text-blue-400', border: 'border-blue-500/10' },
-  { labelKey: 'active_bookings', icon: CalendarDays, gradient: 'from-emerald-500/10 to-transparent', iconBg: 'bg-emerald-500/10 text-emerald-400', border: 'border-emerald-500/10' },
-  { labelKey: 'assignments', icon: ClipboardList, gradient: 'from-amber-500/10 to-transparent', iconBg: 'bg-amber-500/10 text-amber-400', border: 'border-amber-500/10' },
-  { labelKey: 'students', icon: Users, gradient: 'from-violet-500/10 to-transparent', iconBg: 'bg-violet-500/10 text-violet-400', border: 'border-violet-500/10' },
+  { labelKey: 'total_rooms', icon: DoorOpen, accent: 'bg-blue-50 text-blue-700', border: 'border-blue-100' },
+  { labelKey: 'active_bookings', icon: CalendarDays, accent: 'bg-emerald-50 text-emerald-700', border: 'border-emerald-100' },
+  { labelKey: 'assignments', icon: ClipboardList, accent: 'bg-amber-50 text-amber-700', border: 'border-amber-100' },
+  { labelKey: 'students', icon: Users, accent: 'bg-violet-50 text-violet-700', border: 'border-violet-100' },
 ] as const
 
 function KPICard({ item, value, isLoading, index, t }: {
@@ -66,28 +71,22 @@ function KPICard({ item, value, isLoading, index, t }: {
       initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.08, duration: 0.4 }}
-      className={`group relative overflow-hidden rounded-2xl border ${item.border} bg-slate-900/30 p-6 backdrop-blur-sm transition-all duration-300 hover:scale-[1.01]`}
+      className={`rounded-xl border ${item.border} bg-white p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md`}
     >
-      {/* Light border beam indicator on hover */}
-      <div className="absolute inset-0 border-beam opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
-
-      <div className="relative z-10">
+      <div>
         <div className="flex items-center justify-between">
-          <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${item.iconBg}`}>
+          <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${item.accent}`}>
             <item.icon className="h-5 w-5" />
           </div>
-          <div className="flex items-center gap-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 text-[10px] font-semibold text-emerald-400">
-            <TrendingUp className="h-3 w-3" />
-            <span>+12%</span>
-          </div>
+          <ArrowUpRight className="h-4 w-4 text-slate-300" />
         </div>
 
         <div className="mt-5">
           {isLoading ? (
-            <Skeleton className="h-8 w-16 bg-white/5" />
+            <Skeleton className="h-8 w-16 bg-slate-100" />
           ) : (
             <motion.span
-              className="text-3xl font-extrabold text-white tracking-tight"
+              className="text-3xl font-black tracking-tight text-slate-950"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: index * 0.08 + 0.15 }}
@@ -98,27 +97,36 @@ function KPICard({ item, value, isLoading, index, t }: {
         </div>
 
         <div className="mt-2 flex items-center justify-between">
-          <p className="text-sm font-medium text-slate-400">{t(item.labelKey as any)}</p>
-          <ArrowUpRight className="h-4 w-4 text-slate-600 transition-colors group-hover:text-slate-400" />
+          <p className="text-sm font-bold text-slate-500">{t(item.labelKey as any)}</p>
+          <div className="flex items-center gap-1 rounded-full bg-slate-50 px-2 py-1 text-[10px] font-bold text-slate-500">
+            <TrendingUp className="h-3 w-3" />
+            <span>ล่าสุด</span>
+          </div>
         </div>
       </div>
-
-      {/* Glow effect */}
-      <div className={`absolute -bottom-8 -right-8 h-32 w-32 rounded-full bg-gradient-to-br ${item.gradient} opacity-20 blur-3xl`} />
     </motion.div>
   )
 }
 
 const QUICK_ACTIONS = [
-  { labelKey: 'new_booking', descKey: 'new_booking_desc', href: '/bookings/new', color: 'from-blue-500/10 to-transparent', border: 'border-blue-500/10', roles: ['admin', 'teacher'] },
-  { labelKey: 'new_assignment', descKey: 'new_assignment_desc', href: '/assignments/new', color: 'from-amber-500/10 to-transparent', border: 'border-amber-500/10', roles: ['admin', 'teacher'] },
-  { labelKey: 'view_calendar', descKey: 'view_calendar_desc', href: '/calendar', color: 'from-emerald-500/10 to-transparent', border: 'border-emerald-500/10', roles: ['admin', 'teacher', 'student', 'guest'] },
+  { labelKey: 'new_booking', descKey: 'new_booking_desc', href: '/bookings/new', border: 'border-blue-100', roles: ['admin', 'teacher'] },
+  { labelKey: 'new_assignment', descKey: 'new_assignment_desc', href: '/assignments/new', border: 'border-amber-100', roles: ['admin', 'teacher'] },
+  { labelKey: 'view_calendar', descKey: 'view_calendar_desc', href: '/calendar', border: 'border-emerald-100', roles: ['admin', 'teacher', 'student', 'guest'] },
 ]
 
 export default function DashboardPage() {
-  const { role } = useCurrentUser()
+  const router = useRouter()
+  const { role, isLoading } = useCurrentUser()
   const { t } = useLanguage()
-  const stats = useDashboardStats(role)
+  const stats = useDashboardStats(role, !isLoading && role !== 'student')
+
+  useEffect(() => {
+    if (!isLoading && role === 'student') {
+      router.replace('/student/dashboard')
+    }
+  }, [isLoading, role, router])
+
+  if (!isLoading && role === 'student') return null
 
   const visibleActions = QUICK_ACTIONS.filter((a) => !role || a.roles.includes(role))
 
@@ -130,8 +138,8 @@ export default function DashboardPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
       >
-        <h1 className="text-3xl font-extrabold text-white tracking-tight">{t('dashboard_title')}</h1>
-        <p className="mt-1.5 text-sm text-slate-400">{t('dashboard_subtitle')}</p>
+        <h1 className="text-3xl font-black tracking-tight text-slate-950">{t('dashboard_title')}</h1>
+        <p className="mt-1.5 text-sm font-medium text-slate-500">{t('dashboard_subtitle')}</p>
       </motion.div>
 
       {/* KPI Grid - Bento Style */}
@@ -157,7 +165,7 @@ export default function DashboardPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.35 }}
       >
-        <h2 className="mb-4 text-base font-bold text-white tracking-tight">{t('quick_actions')}</h2>
+        <h2 className="mb-4 text-base font-black tracking-tight text-slate-950">{t('quick_actions')}</h2>
         <div className={`grid grid-cols-1 gap-4 ${visibleActions.length === 1 ? '' : 'sm:grid-cols-3'}`}>
           {visibleActions.map((action, i) => (
             <motion.a
@@ -166,15 +174,13 @@ export default function DashboardPage() {
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4 + i * 0.08 }}
-              className={`group flex items-center justify-between rounded-2xl border ${action.border} bg-slate-900/30 p-5 backdrop-blur-sm transition-all duration-300 hover:scale-[1.01] relative`}
+              className={`group flex items-center justify-between rounded-xl border ${action.border} bg-white p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md`}
             >
-              <div className="absolute inset-0 border-beam opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
-
-              <div className="relative z-10">
-                <p className="font-bold text-white tracking-tight">{t(action.labelKey as any)}</p>
-                <p className="text-xs text-slate-400 mt-1">{t(action.descKey as any)}</p>
+              <div>
+                <p className="font-black tracking-tight text-slate-950">{t(action.labelKey as any)}</p>
+                <p className="mt-1 text-xs font-semibold text-slate-500">{t(action.descKey as any)}</p>
               </div>
-              <ArrowUpRight className="h-5 w-5 text-slate-500 transition-colors group-hover:text-white" />
+              <ArrowUpRight className="h-5 w-5 text-slate-400 transition-colors group-hover:text-blue-600" />
             </motion.a>
           ))}
         </div>

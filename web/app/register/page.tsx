@@ -14,9 +14,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { DoorOpen, AlertCircle, Loader2, CheckCircle } from 'lucide-react'
+import { DoorOpen, AlertCircle, CheckCircle, ArrowLeft, Globe, Mail, Lock, User, Eye, EyeOff, KeyRound } from 'lucide-react'
 import { apiFetch, isApiError } from '@/lib/http/client'
 import { setAccessToken, setStoredUser } from '@/lib/auth/session'
+import { useLanguage } from '@/lib/context/language-context'
 
 const REGISTER_ROLES = ['student', 'teacher', 'guest'] as const
 type RegisterRole = (typeof REGISTER_ROLES)[number]
@@ -46,6 +47,7 @@ function FloatingOrb({ className, delay = 0 }: { className: string; delay?: numb
 
 export default function RegisterPage() {
   const router = useRouter()
+  const { lang, setLang, t } = useLanguage()
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -55,23 +57,25 @@ export default function RegisterPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
 
     if (password !== confirmPassword) {
-      setError('Passwords do not match')
+      setError(t('passwords_do_not_match'))
       return
     }
 
     if (!isRegisterRole(role)) {
-      setError('Please choose a valid role')
+      setError(t('invalid_role'))
       return
     }
 
     if (role === 'teacher' && teacherInviteCode.trim() === '') {
-      setError('Teacher invite code is required')
+      setError(t('teacher_invite_required'))
       return
     }
 
@@ -104,21 +108,21 @@ export default function RegisterPage() {
       document.cookie = `access_token=${res.data.access_token}; path=/; max-age=86400`
       setSuccess(true)
       setTimeout(() => {
-        router.push('/dashboard')
+        router.push(role === 'student' ? '/student/dashboard' : '/dashboard')
       }, 800)
     } catch (err) {
       if (isApiError(err) && err.code === 'VALIDATION_ERROR' && err.message.includes('RegisterRequest.Role')) {
-        setError('Please choose a valid role')
+        setError(t('invalid_role'))
       } else if (isApiError(err) && err.code === 'EMAIL_EXISTS') {
-        setError('This email is already registered')
+        setError(t('email_exists'))
       } else if (isApiError(err) && err.code === 'TEACHER_INVITE_REQUIRED') {
-        setError('Teacher invite code is required')
+        setError(t('teacher_invite_required'))
       } else if (isApiError(err) && err.code === 'INVALID_TEACHER_INVITE') {
-        setError('Teacher invite code is invalid')
+        setError(t('invalid_invite'))
       } else if (isApiError(err) && err.code === 'TEACHER_INVITE_NOT_CONFIGURED') {
-        setError('Teacher signup is not configured yet')
+        setError(t('invalid_invite'))
       } else {
-        setError(err instanceof Error ? err.message : 'Registration failed')
+        setError(err instanceof Error ? err.message : t('register_failed'))
       }
     } finally {
       setLoading(false)
@@ -145,7 +149,30 @@ export default function RegisterPage() {
         transition={{ duration: 0.5, ease: 'easeOut' }}
         className="relative z-10 w-full max-w-md"
       >
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-8 shadow-2xl backdrop-blur-xl">
+        <div className="relative rounded-2xl border border-white/10 bg-white/5 p-8 shadow-2xl backdrop-blur-xl">
+          {/* Top utility bar: back to home + lang switcher */}
+          <div className="absolute right-5 top-5 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setLang(lang === 'th' ? 'en' : 'th')}
+              aria-label={t('language')}
+              className="flex items-center gap-1 rounded-md border border-white/5 bg-white/5 px-2.5 py-1 text-xs text-slate-400 transition-colors hover:text-white"
+            >
+              <Globe className="h-3.5 w-3.5" />
+              <span>{lang === 'th' ? 'EN' : 'TH'}</span>
+            </button>
+          </div>
+          <div className="absolute left-5 top-5">
+            <Link
+              href="/"
+              aria-label={t('home')}
+              className="flex items-center gap-1 rounded-md border border-white/5 bg-white/5 px-2.5 py-1 text-xs text-slate-400 transition-colors hover:text-white"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              <span>{t('home')}</span>
+            </Link>
+          </div>
+
           <motion.div
             className="flex flex-col items-center text-center"
             initial={{ opacity: 0, y: -10 }}
@@ -156,34 +183,35 @@ export default function RegisterPage() {
               <DoorOpen className="h-7 w-7" />
             </div>
             <h1 className="mt-5 text-2xl font-bold text-white tracking-tight">
-              Create Account
+              {t('register_title')}
             </h1>
             <p className="mt-1.5 text-sm text-slate-400">
-              Join to manage rooms, bookings, and assignments
+              {t('register_subtitle')}
             </p>
           </motion.div>
 
           {success ? (
             <motion.div
+              role="status"
               className="mt-8 flex flex-col items-center gap-3"
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
             >
-              <CheckCircle className="h-12 w-12 text-green-400" />
-              <p className="text-lg font-medium text-white">Account created!</p>
-              <p className="text-sm text-slate-400">Redirecting to dashboard...</p>
+              <CheckCircle className="h-12 w-12 text-emerald-400" />
+              <p className="text-lg font-semibold text-white">{t('account_created')}</p>
+              <p className="text-sm text-slate-400">{t('redirecting')}</p>
             </motion.div>
           ) : (
             <motion.form
               onSubmit={handleSubmit}
-              className="mt-8 space-y-5"
+              className="mt-8 space-y-4"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.3 }}
             >
               <div className="space-y-2">
-                <Label htmlFor="fullName" className="text-sm font-medium text-slate-300">
-                  Full Name
+                <Label htmlFor="fullName" className="text-xs font-semibold text-slate-300">
+                  {t('full_name')}
                 </Label>
                 <Input
                   id="fullName"
@@ -192,14 +220,15 @@ export default function RegisterPage() {
                   onChange={(e) => setFullName(e.target.value)}
                   required
                   autoComplete="name"
-                  placeholder="John Doe"
-                  className="border-white/10 bg-white/5 text-white placeholder:text-slate-500 focus-visible:ring-blue-500 focus-visible:ring-offset-0 focus-visible:bg-white/10 transition-colors"
+                  placeholder={t('full_name_placeholder')}
+                  leftIcon={<User className="h-4 w-4" />}
+                  className="glass-input border-white/10 text-white placeholder:text-slate-500 focus-visible:ring-blue-400/40 focus-visible:ring-offset-0 text-sm h-10 rounded-lg"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-sm font-medium text-slate-300">
-                  Email
+                <Label htmlFor="email" className="text-xs font-semibold text-slate-300">
+                  {t('email')}
                 </Label>
                 <Input
                   id="email"
@@ -209,13 +238,14 @@ export default function RegisterPage() {
                   required
                   autoComplete="email"
                   placeholder="you@school.edu"
-                  className="border-white/10 bg-white/5 text-white placeholder:text-slate-500 focus-visible:ring-blue-500 focus-visible:ring-offset-0 focus-visible:bg-white/10 transition-colors"
+                  leftIcon={<Mail className="h-4 w-4" />}
+                  className="glass-input border-white/10 text-white placeholder:text-slate-500 focus-visible:ring-blue-400/40 focus-visible:ring-offset-0 text-sm h-10 rounded-lg"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="role" className="text-sm font-medium text-slate-300">
-                  Role
+                <Label htmlFor="role" className="text-xs font-semibold text-slate-300">
+                  {t('role_label')}
                 </Label>
                 <Select
                   value={role}
@@ -229,13 +259,13 @@ export default function RegisterPage() {
                   }}
                   required
                 >
-                  <SelectTrigger className="border-white/10 bg-white/5 text-white focus:ring-blue-500 focus:ring-offset-0 [&>span]:text-white [&>svg]:text-slate-400">
-                    <SelectValue placeholder="Select role" />
+                  <SelectTrigger className="h-10 rounded-lg border-white/10 bg-white/5 text-white focus:ring-blue-400/40 focus:ring-offset-0 [&>span]:text-white [&>svg]:text-slate-400">
+                    <SelectValue placeholder={t('role_placeholder')} />
                   </SelectTrigger>
-                  <SelectContent className="bg-slate-900 border-white/10 text-white">
-                    <SelectItem value="student">Student</SelectItem>
-                    <SelectItem value="teacher">Teacher</SelectItem>
-                    <SelectItem value="guest">Guest</SelectItem>
+                  <SelectContent className="border-white/10 bg-slate-900 text-white">
+                    <SelectItem value="student">{t('student')}</SelectItem>
+                    <SelectItem value="teacher">{t('teacher')}</SelectItem>
+                    <SelectItem value="guest">{t('guest')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -246,8 +276,8 @@ export default function RegisterPage() {
                   initial={{ opacity: 0, y: -6 }}
                   animate={{ opacity: 1, y: 0 }}
                 >
-                  <Label htmlFor="teacherInviteCode" className="text-sm font-medium text-slate-300">
-                    Teacher Invite Code
+                  <Label htmlFor="teacherInviteCode" className="text-xs font-semibold text-slate-300">
+                    {t('teacher_invite_label')}
                   </Label>
                   <Input
                     id="teacherInviteCode"
@@ -256,43 +286,67 @@ export default function RegisterPage() {
                     onChange={(e) => setTeacherInviteCode(e.target.value)}
                     required
                     autoComplete="off"
-                    placeholder="Enter invite code"
-                    className="border-white/10 bg-white/5 text-white placeholder:text-slate-500 focus-visible:ring-blue-500 focus-visible:ring-offset-0 focus-visible:bg-white/10 transition-colors"
+                    placeholder={t('teacher_invite_placeholder')}
+                    leftIcon={<KeyRound className="h-4 w-4" />}
+                    className="glass-input border-white/10 text-white placeholder:text-slate-500 focus-visible:ring-blue-400/40 focus-visible:ring-offset-0 text-sm h-10 rounded-lg"
                   />
                 </motion.div>
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="password" className="text-sm font-medium text-slate-300">
-                  Password
+                <Label htmlFor="password" className="text-xs font-semibold text-slate-300">
+                  {t('password')}
                 </Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  minLength={6}
-                  autoComplete="new-password"
-                  placeholder="At least 6 characters"
-                  className="border-white/10 bg-white/5 text-white placeholder:text-slate-500 focus-visible:ring-blue-500 focus-visible:ring-offset-0 focus-visible:bg-white/10 transition-colors"
-                />
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    minLength={6}
+                    autoComplete="new-password"
+                    placeholder={t('password_placeholder')}
+                    leftIcon={<Lock className="h-4 w-4" />}
+                    className="glass-input border-white/10 text-white placeholder:text-slate-500 focus-visible:ring-blue-400/40 focus-visible:ring-offset-0 text-sm h-10 rounded-lg pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    aria-label={showPassword ? t('hide_password') : t('show_password')}
+                    className="absolute right-2 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-white/5 hover:text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/40"
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="confirmPassword" className="text-sm font-medium text-slate-300">
-                  Confirm Password
+                <Label htmlFor="confirmPassword" className="text-xs font-semibold text-slate-300">
+                  {t('confirm_password')}
                 </Label>
-                <Input
-                  id="confirmPassword"
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  required
-                  autoComplete="new-password"
-                  placeholder="Confirm your password"
-                  className="border-white/10 bg-white/5 text-white placeholder:text-slate-500 focus-visible:ring-blue-500 focus-visible:ring-offset-0 focus-visible:bg-white/10 transition-colors"
-                />
+                <div className="relative">
+                  <Input
+                    id="confirmPassword"
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    required
+                    autoComplete="new-password"
+                    placeholder={t('confirm_password_placeholder')}
+                    leftIcon={<Lock className="h-4 w-4" />}
+                    error={confirmPassword.length > 0 && confirmPassword !== password}
+                    className="glass-input border-white/10 text-white placeholder:text-slate-500 focus-visible:ring-blue-400/40 focus-visible:ring-offset-0 text-sm h-10 rounded-lg pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword((v) => !v)}
+                    aria-label={showConfirmPassword ? t('hide_password') : t('show_password')}
+                    className="absolute right-2 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-white/5 hover:text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/40"
+                  >
+                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
               </div>
 
               {error && (
@@ -300,6 +354,7 @@ export default function RegisterPage() {
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
                   exit={{ opacity: 0, height: 0 }}
+                  role="alert"
                   className="flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2.5"
                 >
                   <AlertCircle className="h-4 w-4 shrink-0 text-red-400" />
@@ -309,17 +364,12 @@ export default function RegisterPage() {
 
               <Button
                 type="submit"
-                className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:from-blue-600 hover:to-indigo-700 shadow-lg shadow-blue-500/25 transition-all duration-300"
-                disabled={loading}
+                variant="brand"
+                loading={loading}
+                loadingText={t('creating_account')}
+                className="w-full h-10 rounded-lg text-sm font-semibold"
               >
-                {loading ? (
-                  <span className="flex items-center gap-2">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Creating account...
-                  </span>
-                ) : (
-                  'Sign Up'
-                )}
+                {t('register_button')}
               </Button>
             </motion.form>
           )}
@@ -330,9 +380,9 @@ export default function RegisterPage() {
             animate={{ opacity: 1 }}
             transition={{ delay: 0.5 }}
           >
-            Already have an account?{' '}
-            <Link href="/login" className="font-medium text-blue-400 hover:text-blue-300 transition-colors">
-              Sign in
+            {t('have_account')}{' '}
+            <Link href="/login" className="font-medium text-blue-400 transition-colors hover:text-blue-300">
+              {t('signin_link')}
             </Link>
           </motion.p>
         </div>

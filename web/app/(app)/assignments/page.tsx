@@ -7,9 +7,10 @@ import { Button } from '@/components/ui/button'
 import { DataTable } from '@/components/shared/data-table'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { RowActions } from '@/components/shared/row-actions'
-import { FilterBar } from '@/components/shared/filter-bar'
+import { FilterBar, FilterSelect } from '@/components/shared/filter-bar'
 import { apiFetch } from '@/lib/http/client'
 import { useQuery } from '@tanstack/react-query'
+import { useLanguage } from '@/lib/context/language-context'
 
 interface Assignment {
   id: string
@@ -32,6 +33,7 @@ function useAssignments() {
 
 export default function AssignmentsPage() {
   const router = useRouter()
+  const { t } = useLanguage()
   const { data: assignments, isLoading, error, refetch } = useAssignments()
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
@@ -48,39 +50,43 @@ export default function AssignmentsPage() {
   }, [assignments, search, statusFilter])
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Assignments</h1>
-          <p className="mt-1 text-sm text-slate-400">Manage class assignments and homework</p>
+    <div className="space-y-6 animate-fade-in-up">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-bold tracking-tight text-slate-950 sm:text-3xl">{t('assignments_title')}</h1>
+          <p className="mt-1 text-sm text-slate-500">{t('assignments_subtitle')}</p>
         </div>
-        <Button onClick={() => router.push('/assignments/new')} className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:from-blue-600 hover:to-indigo-700 shadow-lg shadow-blue-500/25">
-          <Plus className="mr-2 h-4 w-4" />
-          Create Assignment
+        <Button
+          variant="brand"
+          onClick={() => router.push('/assignments/new')}
+          leftIcon={<Plus className="h-4 w-4" />}
+          className="self-start sm:self-auto"
+        >
+          {t('assignments_add')}
         </Button>
       </div>
       <FilterBar
-        placeholder="Search assignments..."
+        placeholder={t('assignments_search')}
         onChange={(q) => setSearch(q)}
         onClear={() => { setSearch(''); setStatusFilter('') }}
       >
-        <select
+        <FilterSelect
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="h-9 rounded-lg border border-white/10 bg-white/5 px-2 text-sm text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          aria-label={t('all_status')}
         >
-          <option value="" className="bg-slate-900 text-slate-200">All Status</option>
-          <option value="draft" className="bg-slate-900 text-slate-200">Draft</option>
-          <option value="published" className="bg-slate-900 text-slate-200">Published</option>
-          <option value="closed" className="bg-slate-900 text-slate-200">Closed</option>
-        </select>
+          <option value="">{t('all_status')}</option>
+          <option value="draft">{t('status_draft')}</option>
+          <option value="published">{t('status_published')}</option>
+          <option value="closed">{t('status_closed')}</option>
+        </FilterSelect>
       </FilterBar>
       <DataTable
         columns={[
-          { key: 'title', header: 'Title', cell: (a) => <span className="font-medium">{a.title}</span> },
+          { key: 'title', header: 'Title', cell: (a) => <span className="font-medium text-slate-900">{a.title}</span> },
           { key: 'type', header: 'Type', cell: (a) => a.assignment_type },
-          { key: 'max_score', header: 'Max Score', cell: (a) => a.max_score ?? '-' },
-          { key: 'due_date', header: 'Due Date', cell: (a) => a.due_date ? new Date(a.due_date).toLocaleDateString() : '-' },
+          { key: 'max_score', header: 'Max Score', cell: (a) => a.max_score ?? '—' },
+          { key: 'due_date', header: 'Due Date', cell: (a) => a.due_date ? new Date(a.due_date).toLocaleDateString() : '—' },
           { key: 'status', header: 'Status', cell: (a) => <StatusBadge status={a.status} /> },
           { key: 'actions', header: '', cell: (a) => (
             <RowActions onEdit={() => router.push(`/assignments/${a.id}`)} />
@@ -89,10 +95,10 @@ export default function AssignmentsPage() {
         data={filteredAssignments}
         isLoading={isLoading}
         isError={!!error}
-        errorMessage="Failed to load assignments"
+        errorMessage="ไม่สามารถโหลดข้อมูลงานได้"
         onRetry={refetch}
-        emptyTitle="No assignments yet"
-        emptyMessage="Get started by creating your first assignment."
+        emptyTitle={t('assignments_empty_title')}
+        emptyMessage={t('assignments_empty_message')}
       />
     </div>
   )

@@ -7,7 +7,7 @@ import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { DoorOpen, AlertCircle, Loader2, Globe, ArrowLeft } from 'lucide-react'
+import { DoorOpen, AlertCircle, Globe, ArrowLeft, Mail, Lock, Eye, EyeOff } from 'lucide-react'
 import { apiFetch } from '@/lib/http/client'
 import { setAccessToken, setStoredUser } from '@/lib/auth/session'
 import { useLanguage } from '@/lib/context/language-context'
@@ -39,6 +39,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -65,7 +66,7 @@ export default function LoginPage() {
         grade_level: res.data.user.grade_level,
       })
       document.cookie = `access_token=${res.data.access_token}; path=/; max-age=86400`
-      router.push(res.data.user.role === 'student' ? '/community' : '/dashboard')
+      router.push(res.data.user.role === 'student' ? '/student/dashboard' : '/dashboard')
     } catch (err: any) {
       setError(err?.message || 'Login failed')
     } finally {
@@ -144,8 +145,10 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                autoComplete="email"
                 placeholder="you@school.edu"
-                className="glass-input text-white placeholder:text-slate-600 focus-visible:ring-0 focus-visible:ring-offset-0 text-sm h-10 px-3.5 rounded-lg"
+                leftIcon={<Mail className="h-4 w-4" />}
+                className="glass-input border-white/10 text-white placeholder:text-slate-600 focus-visible:ring-blue-400/40 focus-visible:ring-offset-0 text-sm h-10 rounded-lg"
               />
             </div>
 
@@ -153,41 +156,49 @@ export default function LoginPage() {
               <Label htmlFor="password" className="text-xs font-semibold text-slate-300">
                 {t('password')}
               </Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                placeholder={lang === 'th' ? 'ป้อนรหัสผ่านของคุณ' : 'Enter your password'}
-                className="glass-input text-white placeholder:text-slate-600 focus-visible:ring-0 focus-visible:ring-offset-0 text-sm h-10 px-3.5 rounded-lg"
-              />
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  autoComplete="current-password"
+                  placeholder={lang === 'th' ? 'ป้อนรหัสผ่านของคุณ' : 'Enter your password'}
+                  leftIcon={<Lock className="h-4 w-4" />}
+                  className="glass-input border-white/10 text-white placeholder:text-slate-600 focus-visible:ring-blue-400/40 focus-visible:ring-offset-0 text-sm h-10 rounded-lg pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  aria-label={showPassword ? t('hide_password') : t('show_password')}
+                  className="absolute right-2 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-white/5 hover:text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/40"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
             </div>
 
             {error && (
               <motion.div
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
+                role="alert"
                 className="flex items-center gap-2.5 rounded-lg border border-red-500/20 bg-red-500/5 px-3 py-2.5"
               >
                 <AlertCircle className="h-4 w-4 shrink-0 text-red-400" />
-                <p className="text-xs text-red-300">{lang === 'th' ? 'การเข้าสู่ระบบล้มเหลว กรุณาตรวจสอบข้อมูล' : error}</p>
+                <p className="text-xs text-red-300">{t('login_failed')}</p>
               </motion.div>
             )}
 
             <Button
               type="submit"
-              className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:from-blue-600 hover:to-indigo-700 shadow-md shadow-blue-500/10 transition-all duration-300 h-10 rounded-lg text-sm font-semibold"
-              disabled={loading}
+              variant="brand"
+              loading={loading}
+              loadingText={t('signin_loading')}
+              className="w-full h-10 rounded-lg text-sm font-semibold"
             >
-              {loading ? (
-                <span className="flex items-center justify-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin text-white" />
-                  {t('signin_loading')}
-                </span>
-              ) : (
-                t('login')
-              )}
+              {t('login')}
             </Button>
 
             <div className="relative py-1">
