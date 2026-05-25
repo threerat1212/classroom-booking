@@ -93,6 +93,7 @@ const fallbackMissions = [
     href: '/student/assignments',
     color: 'from-blue-500 to-blue-600',
     bar: 'bg-blue-600',
+    cta: 'border-blue-600 bg-blue-600 text-white shadow-blue-200 group-hover:bg-blue-700',
   },
   {
     title: 'วิทยาศาสตร์',
@@ -104,6 +105,7 @@ const fallbackMissions = [
     href: '/student/quests',
     color: 'from-emerald-500 to-green-600',
     bar: 'bg-emerald-500',
+    cta: 'border-emerald-500 bg-emerald-500 text-white shadow-emerald-200 group-hover:bg-emerald-600',
   },
   {
     title: 'ภาษาอังกฤษ',
@@ -115,6 +117,7 @@ const fallbackMissions = [
     href: '/student/assignments',
     color: 'from-amber-400 to-orange-500',
     bar: 'bg-amber-500',
+    cta: 'border-orange-500 bg-orange-500 text-white shadow-orange-200 group-hover:bg-orange-600',
   },
 ]
 
@@ -221,7 +224,7 @@ export default function StudentDashboardPage() {
                 </div>
                 <div className="mt-4 flex items-center justify-between">
                   <span className="text-sm font-black text-amber-500">XP {mission.xp}</span>
-                  <span className="rounded-full border border-blue-100 px-4 py-2 text-xs font-black text-blue-600 transition-colors group-hover:bg-blue-600 group-hover:text-white">ทำต่อ</span>
+                  <span className={cn('rounded-full border px-4 py-2 text-xs font-black shadow-sm transition-colors', mission.cta)}>ทำต่อ</span>
                 </div>
               </Link>
             ))}

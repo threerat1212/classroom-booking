@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { MessageCircle, X, Send, Bot, User, Loader2 } from 'lucide-react'
-import { apiFetch } from '@/lib/http/client'
+import { sendChatMessage } from '@/lib/api/ai'
 
 interface ChatMessage {
   id: string
@@ -50,17 +50,14 @@ export function AIChatWidget() {
       const body: Record<string, string> = { message: userMsg.content }
       if (sessionId) body.session_id = sessionId
 
-      const res = await apiFetch<{ data: { session_id: string; message: string } }>('/api/v1/ai/chat', {
-        method: 'POST',
-        body: JSON.stringify(body),
-      })
+      const res = await sendChatMessage(userMsg.content, sessionId)
 
-      if (!sessionId) setSessionId(res.data.session_id)
+      if (!sessionId) setSessionId(res.session_id)
 
       const assistantMsg: ChatMessage = {
-        id: res.data.session_id + Date.now(),
+        id: res.session_id + Date.now(),
         role: 'assistant',
-        content: res.data.message,
+        content: res.message,
         created_at: new Date().toISOString(),
       }
       setMessages((prev) => [...prev, assistantMsg])

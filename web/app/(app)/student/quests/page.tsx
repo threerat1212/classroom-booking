@@ -4,30 +4,10 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { Zap, Clock, BookOpen, CheckCircle, Lock, Star, ChevronRight, Sparkles, Coins } from 'lucide-react'
-import { apiFetch } from '@/lib/http/client'
 import { useQuery } from '@tanstack/react-query'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
 import { Skeleton } from '@/components/ui/skeleton'
-
-interface Quest {
-  id: string
-  title: string
-  topic: string
-  description: string
-  difficulty: 'easy' | 'medium' | 'hard' | 'expert'
-  exp_reward: number
-  gold_reward: number
-  time_limit_minutes?: number
-  is_completed?: boolean
-  classroom_id?: string
-  classroom_name?: string
-  quest_kind?: 'standard' | 'special'
-  required_title_code?: string
-  required_title_name?: string
-  unlock_note?: string
-  is_locked?: boolean
-  locked_reason?: string
-}
+import { listQuests, type Quest } from '@/lib/api/quests'
 
 const difficultyConfig = {
   easy: { label: 'Easy', color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/20', stars: 1 },
@@ -40,8 +20,7 @@ function useQuests() {
   return useQuery({
     queryKey: ['learning-quests'],
     queryFn: async () => {
-      const res = await apiFetch<{ data: Quest[] }>('/api/v1/quests')
-      return res.data
+      return listQuests()
     },
   })
 }
@@ -181,7 +160,7 @@ export default function StudentQuestsPage() {
                   )}
                 </div>
                 {locked ? (
-                  <span className="flex items-center gap-1 rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-semibold text-slate-500">
+                  <span className="flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600">
                     <Lock className="h-3 w-3" />
                     Locked
                   </span>

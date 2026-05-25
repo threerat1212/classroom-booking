@@ -11,8 +11,8 @@ type Grade struct {
 	StudentID uuid.UUID  `json:"student_id"`
 	ItemType  string     `json:"item_type"`
 	ItemID    uuid.UUID  `json:"item_id"`
-	Score     int        `json:"score"`
-	MaxScore  int        `json:"max_score"`
+	Score     float64    `json:"score"`
+	MaxScore  float64    `json:"max_score"`
 	GradeCode *string    `json:"grade_code,omitempty"`
 	Feedback  *string    `json:"feedback,omitempty"`
 	GradedBy  *uuid.UUID `json:"graded_by,omitempty"`

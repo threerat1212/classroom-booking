@@ -38,7 +38,7 @@ type UpdateSubmissionRequest struct {
 }
 
 type GradeSubmissionRequest struct {
-	Score     int     `json:"score" binding:"required,min=0"`
+	Score     int     `json:"score" binding:"min=0"`
 	Feedback  string  `json:"feedback,omitempty"`
 	GradeCode *string `json:"grade_code,omitempty"`
 }

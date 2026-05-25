@@ -36,11 +36,12 @@ func (s *QuestService) SetAchievements(achievements *AchievementService) {
 func (s *QuestService) List(ctx context.Context, userID uuid.UUID, role string) ([]*model.LearningQuest, error) {
 	const baseSelect = `
 		SELECT q.id, q.teacher_id, q.classroom_id, r.name, q.title, q.topic, q.description, q.difficulty,
-		       q.exp_reward, q.gold_reward, q.time_limit_minutes, q.status, q.quest_kind,
+		       q.question, q.exp_reward, q.gold_reward, q.time_limit_minutes, q.status, q.quest_kind,
 		       q.required_title_code, rt.name, q.unlock_note,
 		       CASE WHEN $2::text = 'student' AND q.required_title_code IS NOT NULL AND ut.user_id IS NULL THEN true ELSE false END AS is_locked,
 		       CASE WHEN $2::text = 'student' AND q.required_title_code IS NOT NULL AND ut.user_id IS NULL THEN 'ปลดล็อกด้วยฉายา ' || COALESCE(rt.name, q.required_title_code) ELSE NULL END AS locked_reason,
-		       CASE WHEN a.id IS NOT NULL THEN true ELSE false END AS is_completed
+		       CASE WHEN a.id IS NOT NULL THEN true ELSE false END AS is_completed,
+		       q.created_at, q.updated_at
 		FROM learning_quests q
 		LEFT JOIN quest_attempts a ON a.quest_id = q.id AND a.student_id = $1
 		LEFT JOIN rooms r          ON r.id = q.classroom_id
@@ -77,7 +78,7 @@ func (s *QuestService) List(ctx context.Context, userID uuid.UUID, role string) 
 	var quests []*model.LearningQuest
 	for rows.Next() {
 		var q model.LearningQuest
-		if err := rows.Scan(&q.ID, &q.TeacherID, &q.ClassroomID, &q.ClassroomName, &q.Title, &q.Topic, &q.Description, &q.Difficulty, &q.ExpReward, &q.GoldReward, &q.TimeLimitMinutes, &q.Status, &q.QuestKind, &q.RequiredTitleCode, &q.RequiredTitleName, &q.UnlockNote, &q.IsLocked, &q.LockedReason, &q.IsCompleted); err != nil {
+		if err := rows.Scan(&q.ID, &q.TeacherID, &q.ClassroomID, &q.ClassroomName, &q.Title, &q.Topic, &q.Description, &q.Difficulty, &q.Question, &q.ExpReward, &q.GoldReward, &q.TimeLimitMinutes, &q.Status, &q.QuestKind, &q.RequiredTitleCode, &q.RequiredTitleName, &q.UnlockNote, &q.IsLocked, &q.LockedReason, &q.IsCompleted, &q.CreatedAt, &q.UpdatedAt); err != nil {
 			continue
 		}
 		quests = append(quests, &q)

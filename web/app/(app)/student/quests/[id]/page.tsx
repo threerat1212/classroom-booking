@@ -4,41 +4,9 @@ import { useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Zap, Clock, Lightbulb, Send, ArrowLeft, CheckCircle, Sparkles, Star, Lock, Coins } from 'lucide-react'
-import { apiFetch } from '@/lib/http/client'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
-
-interface Quest {
-  id: string
-  title: string
-  topic: string
-  difficulty: string
-  question: string
-  hints: string[]
-  explanation?: string
-  exp_reward: number
-  gold_reward: number
-  time_limit_minutes?: number
-  quest_kind?: 'standard' | 'special'
-  required_title_name?: string
-  unlock_note?: string
-  hint_tokens_available: number
-}
-
-interface AttemptResult {
-  is_correct: boolean
-  score: number
-  feedback: string
-  exp_earned: number
-  gold_earned: number
-}
-
-interface QuestHintResult {
-  hint: string
-  hint_tokens_available: number
-  redemption_id: string
-  used_at: string
-}
+import { getQuest, submitQuestAnswer, useQuestHintToken, type QuestDetail, type AttemptResult, type QuestHintResult } from '@/lib/api/quests'
 
 const diffMap: Record<string, { label: string; color: string }> = {
   easy: { label: 'Easy', color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/20' },
@@ -60,23 +28,15 @@ export default function QuestDetailPage() {
 
   const { data: quest, isLoading } = useQuery({
     queryKey: ['quest', id],
-    queryFn: async () => {
-      const res = await apiFetch<{ data: Quest }>(`/api/v1/quests/${id}`)
-      return res.data
-    },
+    queryFn: () => getQuest(id as string),
     enabled: !!id,
   })
 
   const hintMutation = useMutation({
-    mutationFn: async () => {
-      const res = await apiFetch<{ data: QuestHintResult }>(`/api/v1/quests/${id}/use-hint-token`, {
-        method: 'POST',
-      })
-      return res.data
-    },
+    mutationFn: () => useQuestHintToken(id as string),
     onSuccess: (data) => {
       setTokenHint(data.hint)
-      queryClient.setQueryData<Quest | undefined>(['quest', id], (current) => (
+      queryClient.setQueryData<QuestDetail | undefined>(['quest', id], (current) => (
         current ? { ...current, hint_tokens_available: data.hint_tokens_available } : current
       ))
     },
@@ -89,12 +49,9 @@ export default function QuestDetailPage() {
     if (!answer.trim() || submitting) return
     setSubmitting(true)
     try {
-      const res = await apiFetch<{ data: AttemptResult }>('/api/v1/quests/submit', {
-        method: 'POST',
-        body: JSON.stringify({ quest_id: id, answer: answer.trim() }),
-      })
-      setResult(res.data)
-      if (res.data.exp_earned > 0 || res.data.gold_earned > 0) {
+      const res = await submitQuestAnswer(id as string, answer.trim())
+      setResult(res)
+      if (res.exp_earned > 0 || res.gold_earned > 0) {
         await refreshUser().catch(() => undefined)
       }
     } catch (err: any) {

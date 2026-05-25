@@ -77,6 +77,7 @@ export function useCurrentUser() {
   const signOut = useCallback(() => {
     clearSession()
     document.cookie = 'access_token=; path=/; max-age=0'
+    document.cookie = 'user_role=; path=/; max-age=0'
     setUser(null)
     window.location.href = '/login'
   }, [])

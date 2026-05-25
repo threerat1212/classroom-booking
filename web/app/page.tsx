@@ -1,6 +1,5 @@
 'use client'
 
-import { useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
@@ -12,15 +11,16 @@ import { useCurrentUser } from '@/hooks/useCurrentUser'
 export default function HomeDashboard() {
   const router = useRouter()
   const { lang, setLang, t } = useLanguage()
-  const { role, isLoading } = useCurrentUser()
-
-  useEffect(() => {
-    if (!isLoading && role) {
-      router.replace(role === 'student' ? '/student/dashboard' : '/dashboard')
-    }
-  }, [isLoading, role, router])
-
-  if (!isLoading && role) return null
+  const { role } = useCurrentUser()
+  const dashboardTarget = role === 'student' ? '/student/dashboard' : '/dashboard'
+  const classroomTarget = role ? '/classrooms' : '/login?next=/classrooms'
+  const classroomCta = role ? t('nav_classrooms') : t('sign_in_now')
+  const authTarget = role ? dashboardTarget : '/login'
+  const authCta = role
+    ? role === 'student'
+      ? t('nav_my_dashboard')
+      : t('nav_dashboard')
+    : t('login')
 
   return (
     <div className="min-h-screen overflow-hidden bg-gradient-to-br from-slate-50 via-white to-blue-50/70 text-slate-950">
@@ -47,22 +47,22 @@ export default function HomeDashboard() {
             <Button
               variant="brand"
               size="sm"
-              onClick={() => router.push('/login')}
+              onClick={() => router.push(authTarget)}
               className="gap-1.5 rounded-xl"
             >
               <LogIn className="h-4 w-4" />
-              {t('login')}
+              {authCta}
             </Button>
           </div>
         </div>
       </header>
 
-      <main className="mx-auto grid max-w-6xl gap-10 px-5 py-12 lg:grid-cols-[1.04fr_0.96fr] lg:py-16">
+      <main className="mx-auto flex max-w-5xl flex-col px-5 py-12 lg:py-16">
         <motion.section
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.45, ease: 'easeOut' }}
-          className="flex flex-col justify-center"
+          className="flex flex-col"
         >
           <div className="inline-flex w-fit items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-3.5 py-1 text-xs font-black text-blue-700">
             <Sparkles className="h-3.5 w-3.5" />
@@ -79,7 +79,7 @@ export default function HomeDashboard() {
 
           <div className="mt-8 grid gap-4 sm:grid-cols-2">
             <button
-              onClick={() => router.push('/student/dashboard')}
+              onClick={() => router.push(classroomTarget)}
               className="group rounded-2xl border border-blue-100 bg-white p-5 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-xl hover:shadow-blue-100/70"
             >
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-600 text-white shadow-sm shadow-blue-200">
@@ -88,7 +88,7 @@ export default function HomeDashboard() {
               <h2 className="mt-5 text-lg font-black text-slate-950">{t('classrooms')}</h2>
               <p className="mt-2 text-sm font-medium leading-6 text-slate-500">{t('classrooms_desc')}</p>
               <div className="mt-5 flex items-center gap-1 text-sm font-black text-blue-600">
-                {t('sign_in_now')}
+                {classroomCta}
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
               </div>
             </button>
@@ -109,43 +109,9 @@ export default function HomeDashboard() {
             </button>
           </div>
         </motion.section>
-
-        <motion.section
-          initial={{ opacity: 0, y: 16, scale: 0.99 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ duration: 0.45, delay: 0.1, ease: 'easeOut' }}
-          className="rounded-3xl border border-slate-200 bg-white p-5 shadow-2xl shadow-blue-100/50"
-        >
-          <div className="rounded-2xl bg-gradient-to-br from-blue-50 via-sky-50 to-emerald-50 p-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-black uppercase text-blue-600">Learning center</p>
-                <p className="mt-1 text-xl font-black text-slate-950">ศูนย์การเรียนรู้</p>
-              </div>
-              <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-blue-600 shadow-sm">Lv. 18</span>
-            </div>
-            <div className="mt-6 grid gap-3">
-              {[
-                ['คณิตศาสตร์', '75%', 'bg-blue-600'],
-                ['วิทยาศาสตร์', '40%', 'bg-emerald-500'],
-                ['ภาษาอังกฤษ', '20%', 'bg-amber-500'],
-              ].map(([name, progress, color]) => (
-                <div key={name} className="rounded-2xl border border-white bg-white/90 p-4 shadow-sm">
-                  <div className="flex items-center justify-between">
-                    <p className="font-black text-slate-950">{name}</p>
-                    <p className="text-sm font-black text-slate-600">{progress}</p>
-                  </div>
-                  <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100">
-                    <div className={`h-full rounded-full ${color}`} style={{ width: progress }} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </motion.section>
       </main>
 
-      <footer className="mx-auto max-w-6xl px-5 pb-8 text-xs font-semibold text-slate-400">
+      <footer className="mx-auto max-w-5xl px-5 pb-8 text-xs font-semibold text-slate-400">
         {t('footer_text')}
       </footer>
     </div>

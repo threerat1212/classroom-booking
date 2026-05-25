@@ -3,24 +3,10 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Wand2, Plus, Zap, Star, Loader2, RefreshCw, Sparkles, Lock } from 'lucide-react'
-import { apiFetch } from '@/lib/http/client'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { listClassrooms, type Classroom } from '@/lib/api/classrooms'
 import { listTitles, type LearningTitle } from '@/lib/api/achievements'
-
-interface Quest {
-  id: string
-  title: string
-  topic: string
-  difficulty: string
-  exp_reward: number
-  gold_reward: number
-  status: string
-  classroom_id?: string
-  classroom_name?: string
-  quest_kind?: 'standard' | 'special'
-  required_title_name?: string
-}
+import { listQuests, generateQuests, createQuest, type Quest } from '@/lib/api/quests'
 
 const emptySpecialQuest = {
   classroom_id: '',
@@ -61,22 +47,13 @@ export default function TeacherQuestsPage() {
 
   const { data: quests, isLoading, refetch } = useQuery({
     queryKey: ['teacher-quests'],
-    queryFn: async () => {
-      const res = await apiFetch<{ data: Quest[] }>('/api/v1/quests')
-      return res.data
-    },
+    queryFn: listQuests,
   })
 
   const selectedTitle = titles?.find((title) => title.code === specialQuest.required_title_code)
 
   const generateMutation = useMutation({
-    mutationFn: async (input: { topic: string; classroom_id: string }) => {
-      const res = await apiFetch<{ data: Quest[] }>('/api/v1/quests/generate', {
-        method: 'POST',
-        body: JSON.stringify(input),
-      })
-      return res.data
-    },
+    mutationFn: generateQuests,
     onSuccess: () => {
       setTopic('')
       setGenerating(false)
@@ -94,25 +71,21 @@ export default function TeacherQuestsPage() {
         .split('\n')
         .map((hint) => hint.trim())
         .filter(Boolean)
-      const res = await apiFetch<{ data: Quest }>('/api/v1/quests', {
-        method: 'POST',
-        body: JSON.stringify({
-          classroom_id: specialQuest.classroom_id,
-          required_title_code: specialQuest.required_title_code,
-          quest_kind: 'special',
-          difficulty: specialQuest.difficulty,
-          title: specialQuest.title.trim(),
-          topic: specialQuest.topic.trim(),
-          question: specialQuest.question.trim(),
-          answer: specialQuest.answer.trim(),
-          hints,
-          explanation: specialQuest.explanation.trim(),
-          exp_reward: Number(specialQuest.exp_reward) || 35,
-          gold_reward: Number(specialQuest.gold_reward) || 25,
-          unlock_note: selectedTitle ? `ปลดล็อกด้วยฉายา ${selectedTitle.name}` : '',
-        }),
+      return createQuest({
+        classroom_id: specialQuest.classroom_id,
+        required_title_code: specialQuest.required_title_code,
+        quest_kind: 'special',
+        difficulty: specialQuest.difficulty,
+        title: specialQuest.title.trim(),
+        topic: specialQuest.topic.trim(),
+        question: specialQuest.question.trim(),
+        answer: specialQuest.answer.trim(),
+        hints,
+        explanation: specialQuest.explanation.trim(),
+        exp_reward: Number(specialQuest.exp_reward) || 35,
+        gold_reward: Number(specialQuest.gold_reward) || 25,
+        unlock_note: selectedTitle ? `ปลดล็อกด้วยฉายา ${selectedTitle.name}` : '',
       })
-      return res.data
     },
     onSuccess: () => {
       setSpecialQuest(emptySpecialQuest)

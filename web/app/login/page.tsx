@@ -7,12 +7,25 @@ import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { AlertCircle, ArrowLeft, BookOpen, CalendarCheck, DoorOpen, Eye, EyeOff, Globe, GraduationCap, Lock, Mail, Sparkles, Users } from 'lucide-react'
+import { AlertCircle, ArrowLeft, DoorOpen, Eye, EyeOff, Globe, GraduationCap, Lock, Mail } from 'lucide-react'
 import { apiFetch } from '@/lib/http/client'
 import { setAccessToken, setStoredUser } from '@/lib/auth/session'
 import { useLanguage } from '@/lib/context/language-context'
 
 const fieldClass = 'h-11 rounded-xl border-slate-200 bg-white text-slate-950 shadow-sm placeholder:text-slate-400 focus-visible:ring-blue-500 focus-visible:ring-offset-1'
+
+function safeNextPath() {
+  if (typeof window === 'undefined') return ''
+
+  const next = new URLSearchParams(window.location.search).get('next')
+  if (!next || !next.startsWith('/') || next.startsWith('//')) return ''
+
+  return next
+}
+
+function loginDestination(role: string) {
+  return safeNextPath() || (role === 'student' ? '/student/dashboard' : '/dashboard')
+}
 
 export default function LoginPage() {
   const router = useRouter()
@@ -49,7 +62,8 @@ export default function LoginPage() {
         grade_level: res.data.user.grade_level,
       })
       document.cookie = `access_token=${res.data.access_token}; path=/; max-age=86400`
-      router.push(res.data.user.role === 'student' ? '/student/dashboard' : '/dashboard')
+      document.cookie = `user_role=${res.data.user.role}; path=/; max-age=86400`
+      router.push(loginDestination(res.data.user.role))
     } catch (err: any) {
       setError(err?.message || 'Login failed')
     } finally {
@@ -86,74 +100,12 @@ export default function LoginPage() {
         </div>
       </header>
 
-      <main className="mx-auto grid min-h-[calc(100vh-92px)] max-w-6xl items-center gap-8 py-8 lg:grid-cols-[1.08fr_0.92fr]">
-        <motion.section
-          initial={{ opacity: 0, y: 14 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.45, ease: 'easeOut' }}
-          className="hidden lg:block"
-        >
-          <div className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-black text-blue-700">
-            <Sparkles className="h-3.5 w-3.5" />
-            Learning-first workspace
-          </div>
-          <h1 className="mt-5 max-w-xl text-5xl font-black leading-tight tracking-tight text-slate-950">
-            Classroom MS
-          </h1>
-          <p className="mt-4 max-w-xl text-base font-medium leading-7 text-slate-600">
-            {t('login_subtitle')} พร้อมพื้นที่เรียน งาน ห้องเรียน และรางวัลที่อยู่ในระบบเดียวกัน
-          </p>
-
-          <div className="mt-8 grid max-w-xl grid-cols-3 gap-3">
-            {[
-              { icon: BookOpen, label: 'Learn', value: '3 missions', tone: 'bg-blue-50 text-blue-600' },
-              { icon: Users, label: 'Class', value: 'M3/2', tone: 'bg-emerald-50 text-emerald-600' },
-              { icon: CalendarCheck, label: 'Schedule', value: 'Today', tone: 'bg-amber-50 text-amber-600' },
-            ].map((item) => (
-              <div key={item.label} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${item.tone}`}>
-                  <item.icon className="h-5 w-5" />
-                </div>
-                <p className="mt-4 text-xs font-bold text-slate-500">{item.label}</p>
-                <p className="mt-1 text-sm font-black text-slate-950">{item.value}</p>
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-6 max-w-xl rounded-3xl border border-blue-100 bg-white p-5 shadow-xl shadow-blue-100/50">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-black uppercase text-blue-600">Student hub</p>
-                <p className="mt-1 text-lg font-black text-slate-950">ภารกิจการเรียนวันนี้</p>
-              </div>
-              <span className="rounded-full bg-blue-600 px-3 py-1 text-xs font-black text-white">3 / 5</span>
-            </div>
-            <div className="mt-5 space-y-3">
-              {[
-                ['คณิตศาสตร์', '75%', 'bg-blue-600'],
-                ['วิทยาศาสตร์', '40%', 'bg-emerald-500'],
-                ['ภาษาอังกฤษ', '20%', 'bg-amber-500'],
-              ].map(([name, progress, color]) => (
-                <div key={name} className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-3">
-                  <div className={`h-10 w-10 rounded-xl ${color}`} />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-black text-slate-950">{name}</p>
-                    <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-200">
-                      <div className={`h-full rounded-full ${color}`} style={{ width: progress }} />
-                    </div>
-                  </div>
-                  <span className="text-xs font-black text-slate-600">{progress}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </motion.section>
-
+      <main className="mx-auto flex min-h-[calc(100vh-92px)] max-w-6xl items-center justify-center py-8">
         <motion.section
           initial={{ opacity: 0, y: 14, scale: 0.99 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{ duration: 0.4, ease: 'easeOut' }}
-          className="w-full"
+          className="w-full max-w-md"
         >
           <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-xl shadow-slate-200/70 sm:p-8">
             <div className="flex flex-col items-center text-center">
@@ -161,10 +113,12 @@ export default function LoginPage() {
                 <GraduationCap className="h-7 w-7" />
               </div>
               <h1 className="mt-5 text-2xl font-black tracking-tight text-slate-950">
-                {t('login_title')}
+                {t('login')}
               </h1>
               <p className="mt-2 max-w-xs text-sm font-medium leading-6 text-slate-500">
-                {t('login_subtitle')}
+                {lang === 'th'
+                  ? 'ใช้บัญชีเดียว ระบบจะเปิดพื้นที่ทำงานตามบทบาทของอีเมล'
+                  : 'Use one account. The app opens the workspace for that email role.'}
               </p>
             </div>
 
@@ -253,9 +207,6 @@ export default function LoginPage() {
               </Button>
             </form>
 
-            <p className="mt-5 text-center text-[11px] font-semibold text-slate-400">
-              {t('secure_login')}
-            </p>
           </div>
         </motion.section>
       </main>

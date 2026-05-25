@@ -142,7 +142,7 @@ func (s *SubmissionService) Grade(ctx context.Context, id uuid.UUID, req model.G
 
 	var maxScore int
 	err = s.db.QueryRow(ctx, `
-		SELECT a.max_score
+		SELECT COALESCE(a.max_score, 100)
 		FROM submissions s
 		JOIN assignments a ON a.id = s.assignment_id
 		WHERE s.id = $1 AND s.deleted_at IS NULL AND a.deleted_at IS NULL`, id).Scan(&maxScore)

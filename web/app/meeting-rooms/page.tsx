@@ -74,31 +74,31 @@ function RoomCard({ room, selected, onClick, t, lang }: { room: Room; selected: 
       onClick={onClick}
       className={`relative w-full rounded-xl border p-5 text-left transition-all ${
         selected
-          ? 'border-blue-500 bg-blue-500/5 ring-1 ring-blue-500/50'
-          : 'border-white/5 bg-slate-900/40 hover:bg-slate-900/60'
+          ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-200 shadow-sm'
+          : 'border-slate-200 bg-white hover:border-blue-200 hover:bg-blue-50/70 hover:shadow-sm'
       }`}
     >
       {selected && (
-        <div className="absolute inset-0 border-beam pointer-events-none" />
+        <div className="pointer-events-none absolute inset-0 rounded-xl ring-1 ring-inset ring-blue-500/20" />
       )}
 
       <div className="relative z-10 flex items-start justify-between">
         <div>
-          <h3 className="text-base font-bold text-white tracking-tight">{room.name}</h3>
-          <p className="mt-1 text-xs text-slate-400 font-mono">{room.code}</p>
+          <h3 className="text-base font-bold text-slate-950 tracking-tight">{room.name}</h3>
+          <p className="mt-1 text-xs text-slate-500 font-mono">{room.code}</p>
         </div>
         <span
           className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold tracking-wider ${
             room.status === 'available'
-              ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-              : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+              ? 'border border-emerald-200 bg-emerald-50 text-emerald-700'
+              : 'border border-amber-200 bg-amber-50 text-amber-700'
           }`}
         >
           {room.status === 'available' ? (lang === 'th' ? 'ว่าง' : 'Available') : room.status}
         </span>
       </div>
 
-      <div className="relative z-10 mt-4 flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-slate-400 border-t border-white/5 pt-3">
+      <div className="relative z-10 mt-4 flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-slate-600 border-t border-slate-200 pt-3">
         <span className="flex items-center gap-1">
           <Users className="h-3.5 w-3.5 text-slate-500" />
           {room.capacity} {t('capacity_people')}
@@ -109,7 +109,7 @@ function RoomCard({ room, selected, onClick, t, lang }: { room: Room; selected: 
         </span>
       </div>
       {room.description && (
-        <p className="relative z-10 mt-3 text-xs text-slate-500 line-clamp-2 leading-relaxed">{room.description}</p>
+        <p className="relative z-10 mt-3 text-xs text-slate-600 line-clamp-2 leading-relaxed">{room.description}</p>
       )}
     </motion.button>
   )
@@ -416,7 +416,7 @@ export default function MeetingRoomsPage() {
                             onChange={(e) => setRequesterName(e.target.value)}
                             placeholder={lang === 'th' ? 'กรอกชื่อผู้จอง' : 'Enter requester name'}
                             required
-                            className="glass-input text-white placeholder:text-slate-600 focus-visible:ring-0 focus-visible:ring-offset-0 text-sm h-10 pl-9.5 pr-3.5 rounded-lg"
+                            className="glass-input text-white placeholder:text-slate-600 focus-visible:ring-0 focus-visible:ring-offset-0 text-sm h-10 pl-10 pr-3.5 rounded-lg"
                           />
                         </div>
                       </div>
@@ -431,7 +431,7 @@ export default function MeetingRoomsPage() {
                             onChange={(e) => setRequesterEmail(e.target.value)}
                             placeholder="email@example.com"
                             required
-                            className="glass-input text-white placeholder:text-slate-600 focus-visible:ring-0 focus-visible:ring-offset-0 text-sm h-10 pl-9.5 pr-3.5 rounded-lg"
+                            className="glass-input text-white placeholder:text-slate-600 focus-visible:ring-0 focus-visible:ring-offset-0 text-sm h-10 pl-10 pr-3.5 rounded-lg"
                           />
                         </div>
                       </div>
@@ -445,7 +445,7 @@ export default function MeetingRoomsPage() {
                             value={requesterPhone}
                             onChange={(e) => setRequesterPhone(e.target.value)}
                             placeholder="081-234-5678"
-                            className="glass-input text-white placeholder:text-slate-600 focus-visible:ring-0 focus-visible:ring-offset-0 text-sm h-10 pl-9.5 pr-3.5 rounded-lg"
+                            className="glass-input text-white placeholder:text-slate-600 focus-visible:ring-0 focus-visible:ring-offset-0 text-sm h-10 pl-10 pr-3.5 rounded-lg"
                           />
                         </div>
                       </div>
@@ -468,9 +468,9 @@ export default function MeetingRoomsPage() {
                       type="button"
                       variant="ghost"
                       onClick={() => router.push('/login')}
-                      className="border border-white/5 bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white justify-between rounded-lg h-10 px-4 text-xs"
+                      className="border border-slate-200 bg-white text-slate-700 shadow-sm hover:bg-slate-50 hover:text-slate-950 justify-between rounded-lg h-10 px-4 text-xs"
                     >
-                      <span>{lang === 'th' ? 'หรือ เข้าสู่ระบบระบบห้องเรียน' : 'Or sign in to classrooms'}</span>
+                      <span>{lang === 'th' ? 'หรือ เข้าสู่ระบบห้องเรียน' : 'Or sign in to classrooms'}</span>
                       <ChevronRight className="ml-1.5 h-3.5 w-3.5" />
                     </Button>
 

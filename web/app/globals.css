@@ -255,16 +255,23 @@
   color: rgb(100 116 139);
 }
 
+.legacy-light-surface .text-blue-100,
+.legacy-light-surface .text-blue-200,
 .legacy-light-surface .text-blue-300,
 .legacy-light-surface .text-blue-400 {
   color: rgb(37 99 235);
 }
 
+.legacy-light-surface .text-violet-200,
+.legacy-light-surface .text-violet-200\/80,
 .legacy-light-surface .text-violet-300,
 .legacy-light-surface .text-violet-400 {
   color: rgb(109 40 217);
 }
 
+.legacy-light-surface .text-emerald-200,
+.legacy-light-surface .text-emerald-200\/70,
+.legacy-light-surface .text-emerald-300,
 .legacy-light-surface .text-emerald-400 {
   color: rgb(4 120 87);
 }
@@ -272,6 +279,7 @@
 .legacy-light-surface .text-amber-100,
 .legacy-light-surface .text-amber-100\/70,
 .legacy-light-surface .text-amber-200,
+.legacy-light-surface .text-amber-200\/80,
 .legacy-light-surface .text-amber-300,
 .legacy-light-surface .text-amber-400 {
   color: rgb(146 64 14);
@@ -286,8 +294,24 @@
   color: rgb(185 28 28);
 }
 
+.legacy-light-surface .text-rose-200,
+.legacy-light-surface .text-red-200\/70 {
+  color: rgb(190 18 60);
+}
+
 .legacy-light-surface .text-cyan-50 {
   color: rgb(21 94 117);
+}
+
+.legacy-light-surface .text-cyan-100,
+.legacy-light-surface .text-cyan-200,
+.legacy-light-surface .text-cyan-300 {
+  color: rgb(14 116 144);
+}
+
+.legacy-light-surface .text-white\/50,
+.legacy-light-surface .text-white\/70 {
+  color: rgb(71 85 105);
 }
 
 .legacy-light-surface .glass-panel,
@@ -347,7 +371,6 @@
   border-color: rgb(226 232 240);
 }
 
-.legacy-light-surface [class~="bg-white/15"][class~="text-white"],
 .legacy-light-surface [class*="bg-blue-"][class*="text-white"],
 .legacy-light-surface [class*="bg-indigo-"][class*="text-white"],
 .legacy-light-surface [class*="bg-violet-"][class*="text-white"],
@@ -359,6 +382,18 @@
 .legacy-light-surface [class*="bg-slate-9"][class*="text-white"],
 .legacy-light-surface [class*="bg-gradient"][class*="text-white"] {
   color: rgb(255 255 255);
+}
+
+.legacy-light-surface [class~="bg-white/15"][class~="text-white"] {
+  color: rgb(37 99 235);
+}
+
+.legacy-light-surface .hover\:text-white:hover:not([class*="bg-blue-"]):not([class*="bg-indigo-"]):not([class*="bg-violet-"]):not([class*="bg-emerald-"]):not([class*="bg-rose-"]):not([class*="bg-red-"]):not([class*="bg-orange-"]):not([class*="bg-slate-8"]):not([class*="bg-slate-9"]):not([class*="bg-gradient"]) {
+  color: rgb(37 99 235);
+}
+
+.legacy-light-surface .hover\:text-cyan-100:hover {
+  color: rgb(14 116 144);
 }
 
 @keyframes learning-border-flow {

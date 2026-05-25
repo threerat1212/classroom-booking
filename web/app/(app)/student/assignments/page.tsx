@@ -3,7 +3,8 @@
 import Link from 'next/link'
 import { DataTable } from '@/components/shared/data-table'
 import { StatusBadge } from '@/components/shared/status-badge'
-import { apiFetch } from '@/lib/http/client'
+import { listAssignments } from '@/lib/api/assignments'
+import { listSubmissions } from '@/lib/api/submissions'
 import { useQuery } from '@tanstack/react-query'
 
 interface Assignment {
@@ -19,14 +20,15 @@ function useAssignments() {
   return useQuery({
     queryKey: ['assignments'],
     queryFn: async () => {
-      const res = await apiFetch<{ data: Assignment[] }>('/api/v1/assignments')
-      return res.data
+      return listAssignments().then((res) => res.data)
     },
   })
 }
 
 export default function StudentAssignmentsPage() {
   const { data: assignments, isLoading, error, refetch } = useAssignments()
+  const { data: submissionsRes } = useQuery({ queryKey: ['my-submissions'], queryFn: () => listSubmissions(undefined, undefined).then(r => r.data) })
+  const submissionMap = new Map((submissionsRes ?? []).map((s) => [s.assignment_id, s]))
 
   return (
     <div className="space-y-6">
@@ -40,6 +42,7 @@ export default function StudentAssignmentsPage() {
           { key: 'type', header: 'Type', cell: (a) => a.assignment_type },
           { key: 'max_score', header: 'Max Score', cell: (a) => a.max_score ?? '-' },
           { key: 'due_date', header: 'Due Date', cell: (a) => a.due_date ? new Date(a.due_date).toLocaleDateString() : '-' },
+          { key: 'grade', header: 'Grade', cell: (a) => { const sub = submissionMap.get(a.id); return sub?.grade_code ? <span className='rounded bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-700'>{sub.grade_code}</span> : (sub?.score !== undefined ? <span className='text-xs text-slate-400'>-</span> : '-') } },
           { key: 'status', header: 'Status', cell: (a) => <StatusBadge status={a.status} /> },
         ]}
         data={assignments}
