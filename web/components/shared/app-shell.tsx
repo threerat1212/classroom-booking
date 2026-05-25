@@ -2,13 +2,16 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
 import { Button } from '@/components/ui/button'
 import { AIChatWidget } from '@/components/shared/ai-chat'
 import { StudentCharacterAvatar } from '@/components/shared/student-character-avatar'
+import { listNotifications, markAllRead, type Notification } from '@/lib/api/notifications'
 import { useLanguage } from '@/lib/context/language-context'
+import { notificationKeys } from '@/lib/query/keys'
 import { cn } from '@/lib/utils'
 import {
   Award,
@@ -123,11 +126,14 @@ function humanizeSegment(segment: string) {
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
+  const queryClient = useQueryClient()
   const { user, signOut } = useCurrentUser()
   const { lang, setLang, t } = useLanguage()
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const [missionCardCollapsed, setMissionCardCollapsed] = useState(true)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [notificationPopupOpen, setNotificationPopupOpen] = useState(false)
+  const notificationPopupRef = useRef<HTMLDivElement>(null)
 
   const isStudent = user?.role === 'student'
   const isStudentExperience = isStudent || pathname.startsWith('/student')
@@ -138,6 +144,41 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const level = user?.level ?? 1
   const xp = user?.xp ?? 0
   const gold = user?.gold_balance ?? 0
+  const { data: notifications = [] } = useQuery({
+    queryKey: notificationKeys.lists(),
+    queryFn: async () => {
+      const res = await listNotifications()
+      return res.data
+    },
+    enabled: isStudentExperience && Boolean(user),
+  })
+  const unreadNotificationCount = notifications.filter((notification) => !notification.read_at).length
+  const recentNotifications = notifications.slice(0, 5)
+  const { mutate: markAllNotificationsRead } = useMutation({
+    mutationFn: markAllRead,
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: notificationKeys.lists() })
+      const previous = queryClient.getQueryData<Notification[]>(notificationKeys.lists())
+      const readAt = new Date().toISOString()
+
+      queryClient.setQueryData<Notification[]>(notificationKeys.lists(), (current) =>
+        current?.map((notification) => ({
+          ...notification,
+          read_at: notification.read_at ?? readAt,
+        })),
+      )
+
+      return { previous }
+    },
+    onError: (_error, _variables, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(notificationKeys.lists(), context.previous)
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: notificationKeys.lists() })
+    },
+  })
   const currentLevelXp = xpForLevel(level)
   const nextLevelXp = xpForLevel(level + 1)
   const xpProgress = nextLevelXp > currentLevelXp ? ((xp - currentLevelXp) / (nextLevelXp - currentLevelXp)) * 100 : 100
@@ -155,6 +196,35 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
+  useEffect(() => {
+    if (!notificationPopupOpen) return
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target
+      if (target instanceof Node && !notificationPopupRef.current?.contains(target)) {
+        setNotificationPopupOpen(false)
+      }
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setNotificationPopupOpen(false)
+      }
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [notificationPopupOpen])
+
+  useEffect(() => {
+    setNotificationPopupOpen(false)
+  }, [pathname])
+
   const toggleSidebar = () => {
     setSidebarCollapsed((collapsed) => {
       const next = !collapsed
@@ -164,6 +234,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         // ignore
       }
       return next
+    })
+  }
+
+  const toggleNotificationPopup = () => {
+    setNotificationPopupOpen((open) => {
+      const nextOpen = !open
+      if (nextOpen && unreadNotificationCount > 0) {
+        markAllNotificationsRead()
+      }
+      return nextOpen
     })
   }
 
@@ -288,6 +368,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 const itemHref = isStudentExperience && item.href === '/' ? '/student/dashboard' : item.href
                 const active = pathname === itemHref || (itemHref !== '/' && pathname.startsWith(`${itemHref}/`))
                 const navLabel = t(item.labelKey)
+                const itemBadge = item.href === '/student/notifications' ? unreadNotificationCount : item.badge
                 return (
                   <Link
                     key={item.href}
@@ -314,13 +395,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     )}
                     <Icon className={cn('relative z-10 h-4 w-4 shrink-0', active ? 'text-current' : 'text-slate-500 group-hover:text-slate-700')} />
                     {!collapsed && <span className="relative z-10 flex-1 truncate">{navLabel}</span>}
-                    {item.badge !== undefined && item.badge > 0 && (
+                    {itemBadge !== undefined && itemBadge > 0 && (
                       <span className={cn(
                         'relative z-10 flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-extrabold',
                         collapsed && 'absolute -right-0.5 -top-0.5 h-4 min-w-4',
                         active && isStudentExperience ? 'bg-white text-blue-600' : 'bg-rose-500 text-white',
                       )}>
-                        {item.badge}
+                        {itemBadge}
                       </span>
                     )}
                     {active && !collapsed && <ChevronRight className={cn('relative z-10 h-3.5 w-3.5', isStudentExperience ? 'text-white/70' : 'text-blue-500')} />}
@@ -514,10 +595,97 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 </div>
               </div>
             </div>
-            <Link href="/student/notifications" className="relative flex h-12 w-12 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 shadow-sm transition-colors hover:bg-slate-50">
-              <Bell className="h-5 w-5" />
-              <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-black text-white">6</span>
-            </Link>
+            <div ref={notificationPopupRef} className="relative">
+              <button
+                type="button"
+                aria-label={t('nav_notifications')}
+                aria-expanded={notificationPopupOpen}
+                aria-controls="student-notification-popup"
+                onClick={toggleNotificationPopup}
+                className={cn(
+                  'relative flex h-12 w-12 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 shadow-sm transition-colors hover:bg-slate-50',
+                  notificationPopupOpen && 'border-blue-200 bg-blue-50 text-blue-700',
+                )}
+              >
+                <Bell className="h-5 w-5" />
+                {unreadNotificationCount > 0 && (
+                  <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-black text-white">
+                    {unreadNotificationCount}
+                  </span>
+                )}
+              </button>
+
+              {notificationPopupOpen && (
+                <div
+                  id="student-notification-popup"
+                  role="dialog"
+                  aria-label={t('nav_notifications')}
+                  className="absolute right-0 top-14 z-50 w-80 max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl shadow-slate-200/70"
+                >
+                  <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+                    <div>
+                      <p className="text-sm font-black text-slate-950">{t('nav_notifications')}</p>
+                      <p className="text-xs font-bold text-slate-500">
+                        {notifications.length.toLocaleString()} รายการ
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      aria-label="Close notifications"
+                      onClick={() => setNotificationPopupOpen(false)}
+                      className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+
+                  <div className="max-h-96 overflow-y-auto p-2">
+                    {recentNotifications.length === 0 ? (
+                      <div className="px-4 py-8 text-center">
+                        <Bell className="mx-auto h-8 w-8 text-slate-300" />
+                        <p className="mt-3 text-sm font-bold text-slate-500">ยังไม่มีการแจ้งเตือน</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-1">
+                        {recentNotifications.map((notification) => {
+                          const item = (
+                            <>
+                              <div className="flex items-start justify-between gap-3">
+                                <p className="line-clamp-1 text-sm font-black text-slate-950">{notification.title}</p>
+                                {!notification.read_at && <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-rose-500" />}
+                              </div>
+                              <p className="mt-1 line-clamp-2 text-xs font-semibold leading-5 text-slate-500">{notification.message}</p>
+                              <p className="mt-2 text-[11px] font-bold text-slate-400">
+                                {new Date(notification.created_at).toLocaleString(lang === 'th' ? 'th-TH' : 'en-US')}
+                              </p>
+                            </>
+                          )
+
+                          if (notification.action_url) {
+                            return (
+                              <Link
+                                key={notification.id}
+                                href={notification.action_url}
+                                onClick={() => setNotificationPopupOpen(false)}
+                                className="block rounded-lg px-3 py-3 transition-colors hover:bg-slate-50"
+                              >
+                                {item}
+                              </Link>
+                            )
+                          }
+
+                          return (
+                            <div key={notification.id} className="rounded-lg px-3 py-3">
+                              {item}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
             <Link href="/profile" className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-sm transition-colors hover:bg-slate-50">
               <StudentCharacterAvatar name={user?.full_name} compact className="h-9 w-9" />
               <div className="text-left">

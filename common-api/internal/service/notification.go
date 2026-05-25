@@ -13,11 +13,13 @@ type NotificationService struct {
 	db *pgxpool.Pool
 }
 
-func NewNotificationService(db *pgxpool.Pool) *NotificationService { return &NotificationService{db: db} }
+func NewNotificationService(db *pgxpool.Pool) *NotificationService {
+	return &NotificationService{db: db}
+}
 
 func (s *NotificationService) List(ctx context.Context, userID uuid.UUID, limit, offset int) ([]*model.Notification, error) {
 	rows, err := s.db.Query(ctx,
-		`SELECT id, user_id, title, message, type, channel, read_at, action_url, created_at
+		`SELECT id, user_id, title, message, type, channel, COALESCE(read_at, CASE WHEN is_read THEN created_at END), action_url, created_at
 		 FROM notifications WHERE user_id = $1
 		 ORDER BY created_at DESC
 		 LIMIT $2 OFFSET $3`, userID, limit, offset)
@@ -39,7 +41,7 @@ func (s *NotificationService) List(ctx context.Context, userID uuid.UUID, limit,
 func (s *NotificationService) Get(ctx context.Context, id, userID uuid.UUID) (*model.Notification, error) {
 	var n model.Notification
 	err := s.db.QueryRow(ctx,
-		`SELECT id, user_id, title, message, type, channel, read_at, action_url, created_at
+		`SELECT id, user_id, title, message, type, channel, COALESCE(read_at, CASE WHEN is_read THEN created_at END), action_url, created_at
 		 FROM notifications WHERE id = $1 AND user_id = $2`, id, userID,
 	).Scan(&n.ID, &n.UserID, &n.Title, &n.Message, &n.Type, &n.Channel, &n.ReadAt, &n.ActionURL, &n.CreatedAt)
 	if err != nil {
@@ -67,11 +69,11 @@ func (s *NotificationService) Create(ctx context.Context, req model.CreateNotifi
 }
 
 func (s *NotificationService) MarkRead(ctx context.Context, id, userID uuid.UUID) error {
-	_, err := s.db.Exec(ctx, `UPDATE notifications SET read_at = now() WHERE id = $1 AND user_id = $2`, id, userID)
+	_, err := s.db.Exec(ctx, `UPDATE notifications SET is_read = true, read_at = COALESCE(read_at, now()) WHERE id = $1 AND user_id = $2`, id, userID)
 	return err
 }
 
 func (s *NotificationService) MarkAllRead(ctx context.Context, userID uuid.UUID) error {
-	_, err := s.db.Exec(ctx, `UPDATE notifications SET read_at = now() WHERE user_id = $1 AND read_at IS NULL`, userID)
+	_, err := s.db.Exec(ctx, `UPDATE notifications SET is_read = true, read_at = COALESCE(read_at, now()) WHERE user_id = $1 AND read_at IS NULL`, userID)
 	return err
 }

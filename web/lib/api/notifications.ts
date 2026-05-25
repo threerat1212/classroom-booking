@@ -34,9 +34,9 @@ export function createNotification(payload: CreateNotificationPayload) {
 }
 
 export function markRead(id: string) {
-  return apiFetch(`/api/v1/notifications/${id}/read`, { method: 'POST' })
+  return apiFetch(`/api/v1/notifications/${id}/read`, { method: 'PATCH' })
 }
 
 export function markAllRead() {
-  return apiFetch('/api/v1/notifications/read-all', { method: 'POST' })
+  return apiFetch('/api/v1/notifications/read-all', { method: 'PATCH' })
 }
